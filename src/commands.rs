@@ -100,10 +100,10 @@ impl Commands {
                     todo!()
                 }
                 Command::SpawnEntity(entity_id) => {
-                    todo!()
+                    world.entities.spawn_entity(entity_id, Vec::new());
                 }
                 Command::DespawnEntity(entity_id) => {
-                    todo!()
+                    world.entities.despawn_entity(entity_id);
                 }
                 Command::InsertComponent(entity_id, component) => {
                     todo!()

@@ -73,6 +73,17 @@ impl Archetype {
         );
     }
 
+    /// Remove entity
+    fn remove_entity(&mut self, entity_id: EntityId) {
+        if let Some(index) = self.entity_ids.iter().position(|id| *id == entity_id) {
+            self.entity_ids.remove(index);
+
+            for components in self.components.iter_mut() {
+                components.remove(index);
+            }
+        }
+    }
+
     /// Returns sorted types
     pub fn sort_types(mut types: Vec<TypeId>) -> Vec<TypeId> {
         types.sort_by(|a, b| a.cmp(b));
@@ -185,5 +196,12 @@ impl Entities {
         self.archetypes.entry(archetype_id)
             .or_insert_with(|| Archetype::new(types))
             .insert_entity(entity_id, components);
+    }
+
+    /// Remove entity
+    pub fn despawn_entity(&mut self, entity_id: EntityId) {
+        if let Some(archetype) = self.archetypes.values_mut().find(|a| a.entity_ids.contains(&entity_id)) {
+            archetype.remove_entity(entity_id);
+        }
     }
 }
