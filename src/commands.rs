@@ -106,7 +106,7 @@ impl Commands {
                     world.entities.despawn_entity(entity_id);
                 }
                 Command::InsertComponent(entity_id, component) => {
-                    todo!()
+                    world.entities.insert_component(entity_id, component);
                 }
                 Command::RemoveComponent(entity_id, type_id) => {
                     todo!()

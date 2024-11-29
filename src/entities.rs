@@ -73,15 +73,31 @@ impl Archetype {
         );
     }
 
-    /// Remove entity
-    fn remove_entity(&mut self, entity_id: EntityId) {
+    /// Remove entity, returns removed components or None if entity_id doesn't exist
+    fn remove_entity(&mut self, entity_id: EntityId) -> Option<Vec<Box<dyn Any>>> {
         if let Some(index) = self.entity_ids.iter().position(|id| *id == entity_id) {
             self.entity_ids.remove(index);
 
+            let mut removed = Vec::with_capacity(self.components.len());
             for components in self.components.iter_mut() {
-                components.remove(index);
+                removed.push(components.remove(index))
             }
+
+            return Some(removed);
         }
+
+        None
+    }
+
+    /// Update component, returns true if successful
+    fn update_component(&mut self, entity_id: EntityId, component: Box<dyn Any>) -> bool {
+        if let Some(index) = self.entity_ids.iter().position(|id| *id == entity_id) {
+            let type_id = (*component).type_id();
+            let component_index = self.types[&type_id];
+            self.components[component_index][index] = component;
+            return true
+        }
+        false
     }
 
     /// Returns sorted types
@@ -198,10 +214,32 @@ impl Entities {
             .insert_entity(entity_id, components);
     }
 
-    /// Remove entity
+    /// Despawn entity
     pub fn despawn_entity(&mut self, entity_id: EntityId) {
         if let Some(archetype) = self.archetypes.values_mut().find(|a| a.entity_ids.contains(&entity_id)) {
             archetype.remove_entity(entity_id);
+        }
+    }
+
+    /// Insert new component
+    pub fn insert_component(&mut self, entity_id: EntityId, component: Box<dyn Any>) {
+        if let Some(archetype) = self.archetypes.values_mut().find(|a| a.entity_ids.contains(&entity_id)) {
+            let type_id = (*component).type_id(); 
+            if archetype.has_type(type_id) {
+                assert!(archetype.update_component(entity_id, component), "Failed to update component");
+                return;
+            }
+
+            let mut old_components = archetype.remove_entity(entity_id).expect("entity_id should exist in archetype");
+            old_components.push(component);
+
+            let mut types = archetype.types_vec();
+            types.push(type_id);
+
+            let archetype_id = Archetype::hash_types(types.clone());
+            self.archetypes.entry(archetype_id)
+                .or_insert_with(|| Archetype::new(types))
+                .insert_entity(entity_id, old_components);
         }
     }
 }
