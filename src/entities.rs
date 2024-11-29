@@ -164,20 +164,10 @@ pub struct Entities {
 
 impl Entities {
     pub fn new() -> Self {
-        let mut s = Self {
+        Self {
             next_entity_id: EntityId(0),
             archetypes: HashMap::new(),
-        };
-
-        s.spawn_entity(EntityId(0), vec![Box::new(0u32)]);
-        s.spawn_entity(EntityId(1), vec![Box::new(0u64), Box::new(0u32)]);
-        s.spawn_entity(EntityId(2), vec![Box::new(0u32)]);
-        s.spawn_entity(EntityId(3), vec![Box::new(0u32)]);
-        s.spawn_entity(EntityId(4), vec![Box::new(0u32), Box::new(0u64)]);
-
-        println!("{:#?}", s);
-
-        s
+        }
     }
 
     /// Exposes archetypes
