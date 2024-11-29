@@ -242,4 +242,25 @@ impl Entities {
                 .insert_entity(entity_id, old_components);
         }
     }
+
+    /// Remove component
+    pub fn remove_component(&mut self, entity_id: EntityId, type_id: TypeId) {
+        if let Some(archetype) = self.archetypes.values_mut().find(|a| a.entity_ids.contains(&entity_id)) {
+            if !archetype.has_type(type_id) {
+                return;
+            }
+
+            let mut old_components = archetype.remove_entity(entity_id).expect("entity_id should exist in archetype");
+            let index = archetype.types[&type_id];
+            old_components.remove(index);
+
+            let mut types = archetype.types_vec();
+            types.remove(index);
+
+            let archetype_id = Archetype::hash_types(types.clone());
+            self.archetypes.entry(archetype_id)
+                .or_insert_with(|| Archetype::new(types))
+                .insert_entity(entity_id, old_components);
+        }
+    }
 }

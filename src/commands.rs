@@ -109,7 +109,7 @@ impl Commands {
                     world.entities.insert_component(entity_id, component);
                 }
                 Command::RemoveComponent(entity_id, type_id) => {
-                    todo!()
+                    world.entities.remove_component(entity_id, type_id);
                 }
             }
         }
