@@ -39,7 +39,7 @@ impl App {
 
     fn run_systems(&mut self) {
         let mut commands = Commands::build(&self.world);
-        for system in self.startup_systems.iter_mut() {
+        for system in self.systems.iter_mut() {
             commands.spawn_empty();
             system.run(&mut self.world);
         }
