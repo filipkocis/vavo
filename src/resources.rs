@@ -43,6 +43,10 @@ impl Resources {
         self.resources.insert(TypeId::of::<T>(), Box::new(resource)); 
     }
 
+    pub fn remove(&mut self, type_id: TypeId) {
+        self.resources.remove(&type_id);
+    }
+
     pub fn get<T: 'static>(&self) -> Option<Res<T>> {
         self.resources.get(&TypeId::of::<T>()).map(|r| Res(r.downcast_ref::<T>().unwrap()))
     }

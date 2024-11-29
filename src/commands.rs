@@ -94,10 +94,10 @@ impl Commands {
         for command in self.commands {
             match command {
                 Command::InsertResource(resource) => {
-                    todo!()
+                    world.resources.insert(resource);
                 }
                 Command::RemoveResource(type_id) => {
-                    todo!()
+                    world.resources.remove(type_id);
                 }
                 Command::SpawnEntity(entity_id) => {
                     world.entities.spawn_entity(entity_id, Vec::new());
