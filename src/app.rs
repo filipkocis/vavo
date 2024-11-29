@@ -7,7 +7,6 @@ pub struct App {
     systems: Vec<System>,
 
     world: World,
-    // resources: Resources,
     // plugins: Plugins,
 }
 

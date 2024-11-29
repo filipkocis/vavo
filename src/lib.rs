@@ -4,6 +4,7 @@ mod entities;
 mod query;
 mod system;
 mod world;
+mod resources;
 
 use app::App;
 use query::{Query, RunQuery};
