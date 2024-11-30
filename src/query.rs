@@ -1,14 +1,15 @@
-use crate::{entities::Archetype, world::World};
+use crate::{entities::{Archetype, Entities}};
 use std::any::{Any, TypeId};
+use std::collections::HashMap;
 
 pub struct Query<'a, T> {
-    world: &'a mut World,
+    entities: &'a mut Entities,
     _marker: std::marker::PhantomData<T>,
 }
 impl<T> Query<'_, T> {
-    pub fn new(world: &mut World) -> Query<T> {
+    pub fn new(entities: &mut Entities) -> Query<T> {
         Query {
-            world,
+            entities,
             _marker: std::marker::PhantomData,
         }
     }
@@ -32,27 +33,29 @@ macro_rules! impl_run_query {
                 let types = vec![$(TypeId::of::<$types>()),+];
                 let archetype_id = Archetype::hash_types(types);
 
-                let archetype = match self.world.entities.archetypes().get_mut(&archetype_id) {
+                let archetype = match self.entities.archetypes().get_mut(&archetype_id) {
                     Some(archetype) => archetype,
                     None => return Vec::new(),
                 };
 
                 // Extract types and their indices
+                let mut extracted: HashMap<TypeId, *mut Vec<_>> = HashMap::new();
                 $(
-                    #[allow(non_snake_case)]
-                    let $types = {
-                        let type_type_id = TypeId::of::<$types>();
-                        let index = *archetype.types().get(&type_type_id).unwrap();
-                        &mut archetype.components.split_at_mut(index).0[index] as *mut Vec<Box<dyn Any>>
-                    };
+                    let type_id = TypeId::of::<$types>();
+                    let index = *archetype.types().get(&type_id).expect("type should exist in archetype");
+                    let components = &mut archetype.components[index] as *mut Vec<Box<dyn Any>>;
+                    extracted.insert(type_id, components);
                 )+
 
                 let mut result = Vec::new();
-
                 for i in 0..archetype.len() {
                     result.push((
                         $(
-                            unsafe { &mut *$types }[i].downcast_mut::<$types>().unwrap()
+                            unsafe { 
+                                &mut **extracted.get(&TypeId::of::<$types>())
+                                    .expect("extracted should have $type vec") 
+                            }[i].downcast_mut::<$types>()
+                            .expect("extracted $type vec should downcast into $type")
                         ),+
                     ));
                 }
