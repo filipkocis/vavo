@@ -1,18 +1,6 @@
-use crate::{world::entities::Entities};
 use std::any::{Any, TypeId};
 
-pub struct Query<'a, T> {
-    entities: &'a mut Entities,
-    _marker: std::marker::PhantomData<T>,
-}
-impl<T> Query<'_, T> {
-    pub fn new(entities: &mut Entities) -> Query<T> {
-        Query {
-            entities,
-            _marker: std::marker::PhantomData,
-        }
-    }
-}
+use super::Query;
 
 pub trait RunQuery<T> {
     // fn iter_mut(query: &mut Query<T>) -> Vec<T>;
@@ -58,6 +46,7 @@ macro_rules! impl_run_query {
         }
     };
 }
+
 impl_run_query!(T);
 impl_run_query!(T, U);
 impl_run_query!(T, U, V);
