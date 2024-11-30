@@ -56,11 +56,12 @@ impl Archetype {
             .map(|v| ((*v).type_id(), v))
             .collect::<Vec<_>>();
 
-        let component_types = Self::sort_types(components.iter().map(|(t, _)| *t).collect::<Vec<_>>());
+        let component_types = components.iter().map(|(t, _)| *t).collect::<Vec<_>>();
         assert!(self.has_types_all(&component_types), "Component types mismatch with archetype types");
 
-        for (i, (_, component)) in components.into_iter().enumerate() {
-            self.components[i].push(component);
+        for (type_id, component) in components {
+            let index = self.types[&type_id];
+            self.components[index].push(component);
         }
 
         assert!(
