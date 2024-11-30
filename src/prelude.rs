@@ -1,7 +1,7 @@
 pub use super::{
     app::App,
     query::{Query, RunQuery},
-    system::System,
+    system::{System, SystemsContext},
     commands::Commands,
 };
 
