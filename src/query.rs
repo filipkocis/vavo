@@ -39,23 +39,20 @@ macro_rules! impl_run_query {
                 };
 
                 // Extract types and their indices
-                let mut extracted: HashMap<TypeId, *mut Vec<_>> = HashMap::new();
                 $(
-                    let type_id = TypeId::of::<$types>();
-                    let index = *archetype.types().get(&type_id).expect("type should exist in archetype");
-                    let components = &mut archetype.components[index] as *mut Vec<Box<dyn Any>>;
-                    extracted.insert(type_id, components);
+                    #[allow(non_snake_case)]
+                    let $types = {
+                        let type_id = TypeId::of::<$types>();
+                        let index = *archetype.types().get(&type_id).expect("type should exist in archetype");
+                        &mut archetype.components[index] as *mut Vec<Box<dyn Any>>
+                    };
                 )+
 
                 let mut result = Vec::new();
                 for i in 0..archetype.len() {
                     result.push((
                         $(
-                            unsafe { 
-                                &mut **extracted.get(&TypeId::of::<$types>())
-                                    .expect("extracted should have $type vec") 
-                            }[i].downcast_mut::<$types>()
-                            .expect("extracted $type vec should downcast into $type")
+                            unsafe { &mut *$types }[i].downcast_mut::<$types>().expect("variable $type[i] should downcast into $type")
                         ),+
                     ));
                 }
