@@ -1,4 +1,4 @@
-use crate::{entities::Entities};
+use crate::{world::entities::Entities};
 use std::any::{Any, TypeId};
 
 pub struct Query<'a, T> {

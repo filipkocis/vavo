@@ -1,10 +1,13 @@
 mod app;
 mod commands;
-mod entities;
 mod query;
 mod system;
 mod world;
-mod resources;
+mod assets;
+mod material;
+mod window;
+mod events;
+mod state;
 
 pub mod prelude;
 

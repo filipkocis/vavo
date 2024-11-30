@@ -1,4 +1,4 @@
-use crate::{entities::Entities, resources::Resources};
+use super::{entities::Entities, resources::Resources};
 
 pub struct World {
     pub entities: Entities,

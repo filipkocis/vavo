@@ -1,4 +1,4 @@
-use crate::{entities::Entities, events::{EventReader, EventWriter, Events}, prelude::Commands, query::Query, resources::Resources, state::RenderContext};
+use crate::{events::{EventReader, EventWriter, Events}, commands::Commands, query::Query, world::resources::Resources, state::RenderContext, world::entities::Entities};
 
 pub struct SystemsContext<'a, 'b> {
     pub commands: Commands,

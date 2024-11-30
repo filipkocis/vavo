@@ -1,7 +1,6 @@
 use std::any::{Any, TypeId};
 
-use crate::entities::EntityId;
-use crate::world::World;
+use crate::world::{World, entities::EntityId};
 
 enum Command {
     InsertResource(Box<dyn Any>),
