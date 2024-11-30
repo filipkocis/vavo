@@ -1,5 +1,4 @@
 mod app;
-mod commands;
 mod query;
 mod system;
 mod world;
