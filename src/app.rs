@@ -1,5 +1,5 @@
 use crate::commands::Commands;
-use crate::system::System;
+use crate::system::{System, SystemsContext};
 use crate::world::World;
 
 pub struct App {
@@ -32,19 +32,25 @@ impl App {
     }
 
     fn run_startup_systems(&mut self) {
+        let commands = Commands::build(&self.world);
+        let mut ctx = SystemsContext::new(commands, &mut self.world.resources);
+
         for system in self.startup_systems.iter_mut() {
-            system.run(&mut self.world);
+            system.run(&mut ctx, &mut self.world.entities);
         }
+
+        ctx.commands.apply(&mut self.world);
     }
 
     fn run_systems(&mut self) {
-        let mut commands = Commands::build(&self.world);
+        let commands = Commands::build(&self.world);
+        let mut ctx = SystemsContext::new(commands, &mut self.world.resources);
+
         for system in self.systems.iter_mut() {
-            commands.spawn_empty();
-            system.run(&mut self.world);
+            system.run(&mut ctx, &mut self.world.entities);
         }
 
-        commands.apply(&mut self.world);
+        ctx.commands.apply(&mut self.world);
     }
 
     pub fn run(&mut self) {
