@@ -171,9 +171,9 @@ impl Entities {
         }
     }
 
-    /// Exposes archetypes
-    pub fn archetypes(&mut self) -> &mut HashMap<ArchetypeId, Archetype> {
-        &mut self.archetypes
+    /// Returns archetypes containing type_ids  
+    pub fn archetypes_filtered(&mut self, type_ids: &[TypeId]) -> Vec<&mut Archetype> {
+        self.archetypes.values_mut().filter(|a| a.has_types(type_ids)).collect()
     }
 
     /// Exposes next entity ID

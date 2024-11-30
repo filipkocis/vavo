@@ -1,6 +1,5 @@
-use crate::{entities::{Archetype, Entities}};
+use crate::{entities::Entities};
 use std::any::{Any, TypeId};
-use std::collections::HashMap;
 
 pub struct Query<'a, T> {
     entities: &'a mut Entities,
@@ -30,31 +29,28 @@ macro_rules! impl_run_query {
         {
             #[allow(unused_parens)]
             fn iter_mut(&mut self) -> Vec<($(&'b mut $types),+)> {
-                let types = vec![$(TypeId::of::<$types>()),+];
-                let archetype_id = Archetype::hash_types(types);
-
-                let archetype = match self.entities.archetypes().get_mut(&archetype_id) {
-                    Some(archetype) => archetype,
-                    None => return Vec::new(),
-                };
-
-                // Extract types and their indices
-                $(
-                    #[allow(non_snake_case)]
-                    let $types = {
-                        let type_id = TypeId::of::<$types>();
-                        let index = *archetype.types().get(&type_id).expect("type should exist in archetype");
-                        &mut archetype.components[index] as *mut Vec<Box<dyn Any>>
-                    };
-                )+
-
+                let requested_types = vec![$(TypeId::of::<$types>()),+];
                 let mut result = Vec::new();
-                for i in 0..archetype.len() {
-                    result.push((
-                        $(
-                            unsafe { &mut *$types }[i].downcast_mut::<$types>().expect("variable $type[i] should downcast into $type")
-                        ),+
-                    ));
+
+                for archetype in self.entities.archetypes_filtered(&requested_types) {
+                    // Extract specific component vecs into a $type variable
+                    $(
+                        #[allow(non_snake_case)]
+                        let $types = {
+                            let type_id = TypeId::of::<$types>();
+                            let index = *archetype.types().get(&type_id).expect("type should exist in archetype");
+                            &mut archetype.components[index] as *mut Vec<Box<dyn Any>>
+                        };
+                    )+
+
+                    for i in 0..archetype.len() {
+                        result.push((
+                            $(
+                                unsafe { &mut *$types }[i].downcast_mut::<$types>().expect("variable $type[i] should downcast into $type")
+                            ),+
+                        ));
+                    }
+
                 }
 
                 result
