@@ -1,15 +1,21 @@
-use crate::{entities::Entities, prelude::Commands, query::Query, resources::Resources};
+use crate::{entities::Entities, events::{EventReader, EventWriter, Events}, prelude::Commands, query::Query, resources::Resources};
 
 pub struct SystemsContext<'a> {
     pub commands: Commands,
     pub resources: &'a mut Resources,
+    pub event_writer: EventWriter<'a>,
+    pub event_reader: EventReader<'a>,
 }
 
 impl<'a> SystemsContext<'a> {
-    pub fn new(commands: Commands, resources: &'a mut Resources) -> Self {
+    pub fn new(commands: Commands, resources: &'a mut Resources, events: &'a mut Events) -> Self {
+        let (event_reader, event_writer) = events.handlers();
+
         Self {
             commands,
             resources,
+            event_writer, 
+            event_reader, 
         }
     }
 }

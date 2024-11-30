@@ -1,4 +1,5 @@
 use crate::commands::Commands;
+use crate::events::Events;
 use crate::system::{System, SystemsContext};
 use crate::world::World;
 
@@ -7,6 +8,7 @@ pub struct App {
     systems: Vec<System>,
 
     world: World,
+    events: Events,
     // plugins: Plugins,
 }
 
@@ -16,9 +18,14 @@ impl App {
             startup_systems: Vec::new(),
             systems: Vec::new(),
             world: World::new(),
+            events: Events::new(),
         };
 
         return app;
+    }
+
+    pub fn create_event<T: 'static>(&mut self, event: T) {
+        self.events.write(event);
     }
 
     pub fn add_startup_system(mut self, system: System) -> Self {
@@ -33,7 +40,7 @@ impl App {
 
     fn run_startup_systems(&mut self) {
         let commands = Commands::build(&self.world);
-        let mut ctx = SystemsContext::new(commands, &mut self.world.resources);
+        let mut ctx = SystemsContext::new(commands, &mut self.world.resources, &mut self.events);
 
         for system in self.startup_systems.iter_mut() {
             system.run(&mut ctx, &mut self.world.entities);
@@ -44,7 +51,7 @@ impl App {
 
     fn run_systems(&mut self) {
         let commands = Commands::build(&self.world);
-        let mut ctx = SystemsContext::new(commands, &mut self.world.resources);
+        let mut ctx = SystemsContext::new(commands, &mut self.world.resources, &mut self.events);
 
         for system in self.systems.iter_mut() {
             system.run(&mut ctx, &mut self.world.entities);
@@ -58,6 +65,7 @@ impl App {
 
         loop {
             self.run_systems();
+            self.events.apply();
         }
 
         // let systems = &self.systems;
