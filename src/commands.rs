@@ -25,7 +25,7 @@ pub struct EntityCommands<'a> {
 impl<'a> EntityCommands<'a> {
     pub fn new(commands: &'a mut Commands) -> Self {
         Self {
-            entity_id: commands.next_entity_id,
+            entity_id: commands.next_entity_id - 1,
             commands,
         }
     }
