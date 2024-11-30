@@ -1,6 +1,8 @@
 use crate::commands::Commands;
 use crate::events::Events;
+use crate::state::{AppState, RenderContext};
 use crate::system::{System, SystemsContext};
+use crate::window::AppHandler;
 use crate::world::World;
 
 pub struct App {
@@ -38,20 +40,24 @@ impl App {
         self
     }
 
-    fn run_startup_systems(&mut self) {
-        let commands = Commands::build(&self.world);
-        let mut ctx = SystemsContext::new(commands, &mut self.world.resources, &mut self.events);
+    pub(crate) fn run_startup_systems(&mut self, renderer: &mut RenderContext) {
+        if self.startup_systems.is_empty() {
+            return;
+        }
 
-        for system in self.startup_systems.iter_mut() {
+        let commands = Commands::build(&self.world);
+        let mut ctx = SystemsContext::new(commands, &mut self.world.resources, &mut self.events, renderer);
+
+        for mut system in self.startup_systems.drain(..) {
             system.run(&mut ctx, &mut self.world.entities);
         }
 
         ctx.commands.apply(&mut self.world);
     }
 
-    fn run_systems(&mut self) {
+    pub(crate) fn run_systems(&mut self, renderer: &mut RenderContext) {
         let commands = Commands::build(&self.world);
-        let mut ctx = SystemsContext::new(commands, &mut self.world.resources, &mut self.events);
+        let mut ctx = SystemsContext::new(commands, &mut self.world.resources, &mut self.events, renderer);
 
         for system in self.systems.iter_mut() {
             system.run(&mut ctx, &mut self.world.entities);
@@ -60,16 +66,22 @@ impl App {
         ctx.commands.apply(&mut self.world);
     }
 
-    pub fn run(&mut self) {
-        self.run_startup_systems();
-
-        loop {
-            self.run_systems();
-            self.events.apply();
-        }
+    pub fn run(self) {
+        let (event_loop, mut app) = AppHandler::init(self);
+        event_loop.run_app(&mut app).unwrap();
 
         // let systems = &self.systems;
         // let eq = systems[0].func_ptr == systems[1].func_ptr;
         // println!("eq: {} | {} == {}", eq, systems[0].name, systems[1].name);
+    }
+
+    pub(crate) fn render(&mut self, state: &mut AppState) -> Result<(), wgpu::SurfaceError> {
+        let mut renderer = RenderContext::new(state)?;
+
+        self.run_startup_systems(&mut renderer);
+        self.run_systems(&mut renderer);
+        self.events.apply();
+
+        Ok(())
     }
 }
