@@ -1,7 +1,6 @@
 use crate::events::Events;
-use crate::state::{AppState, RenderContext};
 use crate::system::{System, SystemsContext, Commands};
-use crate::window::AppHandler;
+use crate::window::{AppHandler, AppState, RenderContext};
 use crate::world::World;
 
 pub struct App {

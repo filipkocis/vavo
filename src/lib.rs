@@ -6,7 +6,6 @@ mod assets;
 mod material;
 mod window;
 mod events;
-mod state;
 
 pub mod prelude;
 

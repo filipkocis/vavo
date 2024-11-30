@@ -2,7 +2,9 @@ use winit::{
     application::ApplicationHandler, dpi::PhysicalSize, event::*, event_loop::{ActiveEventLoop, ControlFlow, EventLoop}, keyboard::{KeyCode, PhysicalKey}, window::{Window, WindowId}
 };
 
-use crate::{app::App, state::AppState};
+use crate::app::App;
+
+use super::AppState;
 
 pub struct AppHandler {
     app: App,
