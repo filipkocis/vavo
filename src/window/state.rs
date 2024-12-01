@@ -65,7 +65,7 @@ impl RenderContext<'_> {
         &self.state.device
     }
 
-    pub fn queue(&self) -> &wgpu::Queue {
+    pub(crate) fn queue(&self) -> &wgpu::Queue {
         &self.state.queue
     }
 
@@ -88,14 +88,6 @@ impl RenderContext<'_> {
     pub fn target_mut(&mut self) -> (&mut wgpu::SurfaceTexture, &mut wgpu::TextureView) {
         let target = self.target.as_mut().unwrap();
         (&mut target.0, &mut target.1)
-    }
-
-    pub fn device_mut(&mut self) -> &mut wgpu::Device {
-        &mut self.state.device
-    }
-
-    pub fn queue_mut(&mut self) -> &mut wgpu::Queue {
-        &mut self.state.queue
     }
 
     pub fn config_mut(&mut self) -> &mut wgpu::SurfaceConfiguration {
