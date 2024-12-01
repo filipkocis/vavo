@@ -3,7 +3,6 @@ mod query;
 mod system;
 mod world;
 mod assets;
-mod material;
 mod window;
 mod events;
 
