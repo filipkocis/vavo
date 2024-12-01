@@ -1,7 +1,8 @@
-use crate::events::Events;
 use crate::system::{System, SystemsContext, Commands};
 use crate::window::{AppHandler, AppState, RenderContext};
 use crate::world::World;
+
+use super::Events;
 
 pub struct App {
     startup_systems: Vec<System>,
