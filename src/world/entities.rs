@@ -1,9 +1,18 @@
 use std::{
-    any::{Any, TypeId}, collections::HashMap, hash::{DefaultHasher, Hash, Hasher}, ops::{Add, Sub}
+    any::{Any, TypeId}, collections::HashMap, hash::Hash, ops::{Add, Sub}
 };
+
+use super::archetype::{Archetype, ArchetypeId};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct EntityId(u32);
+
+impl EntityId {
+    pub fn from_raw(raw: u32) -> Self {
+        Self(raw)
+    }
+}
+
 impl Add<u32> for EntityId {
     type Output = EntityId;
 
@@ -11,6 +20,7 @@ impl Add<u32> for EntityId {
         EntityId(self.0 + rhs)
     }
 }
+
 impl Sub<u32> for EntityId {
     type Output = EntityId;
 
