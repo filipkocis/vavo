@@ -22,21 +22,21 @@ pub struct EntityCommands<'a> {
 }
 
 impl<'a> EntityCommands<'a> {
-    pub fn new(commands: &'a mut Commands) -> Self {
+    fn new(commands: &'a mut Commands) -> Self {
         Self {
             entity_id: commands.next_entity_id - 1,
             commands,
         }
     }
 
-    pub fn set_entity_id(&mut self, entity_id: EntityId) {
+    fn set_entity_id(&mut self, entity_id: EntityId) {
         self.entity_id = entity_id;
     }
 
-    pub fn despawn(self, entity_id: EntityId) {
+    pub fn despawn(self) {
         self.commands
             .commands
-            .push(Command::DespawnEntity(entity_id));
+            .push(Command::DespawnEntity(self.entity_id));
     }
 
     pub fn insert<T: 'static>(self, component: T) -> Self {
