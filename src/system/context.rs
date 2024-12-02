@@ -1,4 +1,4 @@
-use crate::{app::{EventReader, EventWriter, Events}, window::RenderContext, world::resources::Resources};
+use crate::{app::{EventReader, EventWriter, Events}, window::Renderer, world::resources::Resources};
 
 use super::Commands;
 
@@ -8,11 +8,11 @@ pub struct SystemsContext<'a, 'b> {
     pub resources: &'a mut Resources,
     pub event_writer: EventWriter<'a>,
     pub event_reader: EventReader<'a>,
-    pub renderer: &'a mut RenderContext<'b>,
+    pub renderer: Renderer<'b>,
 }
 
 impl<'a, 'b> SystemsContext<'a, 'b> {
-    pub fn new(commands: Commands, resources: &'a mut Resources, events: &'a mut Events, renderer: &'a mut RenderContext<'b>) -> Self {
+    pub fn new(commands: Commands, resources: &'a mut Resources, events: &'a mut Events, renderer: Renderer<'b>) -> Self {
         let (event_reader, event_writer) = events.handlers();
 
         Self {

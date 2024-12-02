@@ -1,5 +1,5 @@
 use crate::system::{System, SystemsContext, Commands};
-use crate::window::{AppHandler, AppState, RenderContext};
+use crate::window::{AppHandler, AppState, RenderContext, Renderer};
 use crate::world::World;
 
 use super::Events;
@@ -39,7 +39,7 @@ impl App {
         self
     }
 
-    pub(crate) fn run_startup_systems(&mut self, renderer: &mut RenderContext) {
+    pub(crate) fn run_startup_systems(&mut self, renderer: Renderer) {
         if self.startup_systems.is_empty() {
             return;
         }
@@ -54,7 +54,7 @@ impl App {
         ctx.commands.apply(&mut self.world);
     }
 
-    pub(crate) fn run_systems(&mut self, renderer: &mut RenderContext) {
+    pub(crate) fn run_systems(&mut self, renderer: Renderer) {
         let commands = Commands::build(&self.world);
         let mut ctx = SystemsContext::new(commands, &mut self.world.resources, &mut self.events, renderer);
 
@@ -75,10 +75,10 @@ impl App {
     }
 
     pub(crate) fn render(&mut self, state: &mut AppState) -> Result<(), wgpu::SurfaceError> {
-        let mut renderer = RenderContext::new(state)?;
+        let mut context = RenderContext::new(state)?;
 
-        self.run_startup_systems(&mut renderer);
-        self.run_systems(&mut renderer);
+        self.run_startup_systems(context.as_renderer());
+        self.run_systems(context.as_renderer());
         self.events.apply();
 
         Ok(())
