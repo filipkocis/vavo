@@ -2,6 +2,8 @@
 
 use super::Color;
 
+pub const TRANSPARENT: Color = Color::new(0.0, 0.0, 0.0, 0.0);
+
 // basic colors
 pub const AQUA: Color = Color::rgb(0.0, 1.0, 1.0);
 pub const BLACK: Color = Color::rgb(0.0, 0.0, 0.0);

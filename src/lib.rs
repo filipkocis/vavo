@@ -6,6 +6,9 @@ mod assets;
 mod window;
 mod renderer;
 
+pub use renderer::shapes;
+pub use renderer::palette;
+
 pub mod prelude;
 
 use app::App;

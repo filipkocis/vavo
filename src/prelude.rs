@@ -4,7 +4,7 @@ pub use super::{
     system::{System, SystemsContext, Commands},
     assets::{Assets, Handle},
     world::EntityId,
-    renderer::{Material, Image, Color, Face},
+    renderer::{Material, Image, Color, Face, Mesh, Meshable, shapes},
 };
 
 pub mod color {
