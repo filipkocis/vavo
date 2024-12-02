@@ -4,6 +4,7 @@ mod system;
 mod world;
 mod assets;
 mod window;
+mod renderer;
 
 pub mod prelude;
 
