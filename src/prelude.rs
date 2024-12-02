@@ -3,5 +3,6 @@ pub use super::{
     query::{Query, RunQuery},
     system::{System, SystemsContext, Commands},
     assets::{Assets, Handle},
+    world::EntityId,
 };
 

@@ -56,7 +56,7 @@ impl<'a> EntityCommands<'a> {
 }
 
 impl Commands {
-    pub fn build(world: &World) -> Self {
+    pub(crate) fn build(world: &World) -> Self {
         Self {
             next_entity_id: world.entities.next_entity_id(),
             commands: Vec::new(),
@@ -89,7 +89,7 @@ impl Commands {
         entity_commands
     }
 
-    pub fn apply(self, world: &mut World) {
+    pub(crate) fn apply(self, world: &mut World) {
         for command in self.commands {
             match command {
                 Command::InsertResource(resource) => {

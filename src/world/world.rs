@@ -1,6 +1,6 @@
 use super::{entities::Entities, resources::Resources};
 
-pub struct World {
+pub(crate) struct World {
     pub entities: Entities,
     pub resources: Resources,
 }

@@ -10,7 +10,7 @@ pub struct Query<'a, T> {
 }
 
 impl<T> Query<'_, T> {
-    pub fn new(entities: &mut Entities) -> Query<T> {
+    pub(crate) fn new(entities: &mut Entities) -> Query<T> {
         Query {
             entities,
             _marker: std::marker::PhantomData,

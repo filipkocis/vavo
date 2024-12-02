@@ -20,7 +20,7 @@ impl System {
         }
     }
 
-    pub fn run(&mut self, ctx: &mut SystemsContext, entities: &mut Entities) {
+    pub(crate) fn run(&mut self, ctx: &mut SystemsContext, entities: &mut Entities) {
         (self.exec)(ctx, entities);
     }
 }
