@@ -12,7 +12,7 @@ macro_rules! impl_run_query {
     ($($types:ident),+) => {
         #[allow(unused_parens)]
         impl<'a, 'b, $($types: 'static),+> RunQuery<($(&'b mut $types),+)>
-        for Query<'a, ($(&'b mut $types),+)>
+        for Query<'a, ($($types),+)>
         where 'a: 'b
         {
             #[allow(unused_parens)]
