@@ -36,6 +36,17 @@ impl Color {
     }
 }
 
+impl Into<wgpu::Color> for Color {
+    fn into(self) -> wgpu::Color {
+        wgpu::Color {
+            r: self.r.into(),
+            g: self.g.into(),
+            b: self.b.into(),
+            a: self.a.into(),
+        }
+    }
+}
+
 impl Default for Color {
     fn default() -> Self {
         Self::new(1.0, 1.0, 1.0, 1.0)
