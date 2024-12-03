@@ -41,6 +41,46 @@ pub struct Plane {
     pub height: f32,
 }
 
+pub struct Triangle {
+    pub vertices: [[f32; 3]; 3],
+} 
+
+impl Triangle {
+    pub fn equilateral(base: f32) -> Self {
+        let height = (3.0_f32.sqrt() / 2.0) * base;
+
+        Self {
+            vertices: [
+                [0.0, height, 0.0],
+                [-base / 2.0, -height / 2.0, 0.0],
+                [base / 2.0, -height / 2.0, 0.0],
+            ]
+        }
+    }
+}
+
+impl Meshable for Triangle {
+    fn mesh(&self) -> Mesh {
+        let positions = self.vertices.iter().map(|v| *v).collect(); 
+        let normals = vec![[0.0, 0.0, 1.0]; 3];
+        let uvs = vec![
+            [0.5, 1.0],
+            [0.0, 0.0],
+            [1.0, 0.0],
+        ];
+        let indices = vec![0, 1, 2];
+        
+        Mesh::new(
+            wgpu::PrimitiveTopology::TriangleList,
+            None,
+            positions,
+            Some(normals),
+            Some(uvs),
+            Some(indices)
+        )
+    }
+}
+
 impl Cuboid {
     pub fn new(width: f32, height: f32, depth: f32) -> Self {
         Self { width, height, depth }
