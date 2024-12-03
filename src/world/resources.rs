@@ -1,5 +1,7 @@
 use std::{any::{Any, TypeId}, collections::HashMap, ops::{Deref, DerefMut}};
 
+use crate::{assets::Assets, renderer::{Image, Material, Mesh}, time::Time};
+
 pub struct Resources {
     resources: HashMap<TypeId, Box<dyn Any>>,
 }
@@ -53,5 +55,19 @@ impl Resources {
 
     pub fn get_mut<T: 'static>(&mut self) -> Option<ResMut<T>> {
         self.resources.get_mut(&TypeId::of::<T>()).map(|r| ResMut(r.downcast_mut::<T>().unwrap()))
+    }
+
+    pub(crate) fn with_default_resources() -> Self {
+        let mut resources = Self::new();
+
+        // assets
+        resources.insert(Assets::<Mesh>::new());
+        resources.insert(Assets::<Material>::new());
+        resources.insert(Assets::<Image>::new());
+
+        // resources
+        resources.insert(Time::new());
+
+        resources
     }
 }
