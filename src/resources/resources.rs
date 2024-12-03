@@ -1,6 +1,6 @@
 use std::{any::{Any, TypeId}, collections::HashMap, ops::{Deref, DerefMut}};
 
-use crate::{assets::Assets, renderer::{Image, Material, Mesh}};
+use crate::{assets::Assets, render_assets::{BindGroup, Buffer, Pipeline, RenderAssets}, renderer::{Image, Material, Mesh}};
 
 use super::Time;
 
@@ -65,6 +65,11 @@ impl Resources {
         self.insert(Assets::<Mesh>::new());
         self.insert(Assets::<Material>::new());
         self.insert(Assets::<Image>::new());
+
+        // render assets
+        self.insert(RenderAssets::<Buffer>::new());
+        self.insert(RenderAssets::<BindGroup>::new());
+        self.insert(RenderAssets::<Pipeline>::new());
 
         // resources
         self.insert(Time::new());

@@ -6,6 +6,7 @@ mod assets;
 mod window;
 mod renderer;
 mod resources;
+pub mod render_assets;
 
 pub use renderer::shapes;
 pub use renderer::palette;
