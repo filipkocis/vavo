@@ -13,6 +13,10 @@ impl<T> Handle<T> {
             _marker: std::marker::PhantomData
         }
     }
+
+    pub(crate) fn id(&self) -> u64 {
+        self.id
+    }
 }
 
 impl<T> Hash for Handle<T> {

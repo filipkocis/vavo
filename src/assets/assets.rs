@@ -27,15 +27,15 @@ impl<T> Assets<T> {
         id
     }
 
-    pub fn get(&self, id: Handle<T>) -> Option<&T> {
-        self.storage.get(&id)
+    pub fn get(&self, id: &Handle<T>) -> Option<&T> {
+        self.storage.get(id)
     }
 
-    pub fn get_mut(&mut self, id: Handle<T>) -> Option<&mut T> {
-        self.storage.get_mut(&id)
+    pub fn get_mut(&mut self, id: &Handle<T>) -> Option<&mut T> {
+        self.storage.get_mut(id)
     }
 
-    pub fn remove(&mut self, id: Handle<T>) -> Option<T> {
-        self.storage.remove(&id)
+    pub fn remove(&mut self, id: &Handle<T>) -> Option<T> {
+        self.storage.remove(id)
     }
 }
