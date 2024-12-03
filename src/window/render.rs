@@ -28,14 +28,16 @@ pub struct RenderContext<'a> {
 
 impl<'a> Drop for RenderContext<'a> {
     fn drop(&mut self) {
-        let encoder = unsafe { Box::from_raw(self.encoder.take().unwrap()) };
-        self.state.queue.submit(Some(encoder.finish()));
+        if let Some(encoder_raw) = self.encoder.take() {
+            let encoder = unsafe { Box::from_raw(encoder_raw) };
+            self.state.queue.submit(Some(encoder.finish()));
+        }
         self.target.take().map(|(st, _)| st.present());
     }
 }
 
 impl<'a> RenderContext<'a> {
-    pub(crate) fn new(state: &'a mut AppState) -> Result<Self, wgpu::SurfaceError> {
+    pub(crate) fn new_render_context(state: &'a mut AppState) -> Result<Self, wgpu::SurfaceError> {
         let target = Some(Self::create_target(&state.surface)?);
         let encoder = Some(Self::create_encoder(&state.device));
 
@@ -44,6 +46,14 @@ impl<'a> RenderContext<'a> {
             encoder,
             state,
         })
+    }
+
+    pub(crate) fn new_update_context(state: &'a mut AppState) -> Self {
+        Self {
+            target: None,
+            encoder: None,
+            state,
+        }
     }
 
     pub(crate) fn as_renderer(&mut self) -> Renderer<'a> {
@@ -104,17 +114,17 @@ impl RenderContext<'_> {
     }
 
     pub fn target(&self) -> (&wgpu::SurfaceTexture, &wgpu::TextureView) {
-        let target = self.target.as_ref().unwrap();
+        let target = self.target.as_ref().expect("no render target, system is probably in an update stage");
         (&target.0, &target.1)
     }
 
     pub fn view(&self) -> &wgpu::TextureView {
-        let target = self.target.as_ref().unwrap();
+        let target = self.target.as_ref().expect("no render target, system is probably in an update stage");
         &target.1
     }
 
     pub fn encoder(&self) -> CommandEncoder {
-        CommandEncoder::new(self.encoder.unwrap())
+        CommandEncoder::new(self.encoder.expect("no command encoder, system is probably in an update stage"))
     }
  
     pub fn device(&self) -> &wgpu::Device {

@@ -61,7 +61,7 @@ impl ApplicationHandler for AppHandler {
         }
 
         // TODO: handle events
-        self.app.update();
+        self.app.update(self.state.as_mut().unwrap());
 
         match event {
             WindowEvent::KeyboardInput { 

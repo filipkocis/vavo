@@ -1,13 +1,12 @@
 use crate::resources::Time;
-use crate::system::{System, SystemsContext, Commands};
+use crate::system::{Commands, System, SystemHandler, SystemStage, SystemsContext};
 use crate::window::{AppHandler, AppState, RenderContext, Renderer};
 use crate::world::World;
 
 use super::Events;
 
 pub struct App {
-    startup_systems: Vec<System>,
-    systems: Vec<System>,
+    system_handler: SystemHandler,
 
     world: World,
     events: Events,
@@ -17,8 +16,7 @@ pub struct App {
 impl App {
     pub fn build() -> Self {
         let mut app = App {
-            startup_systems: Vec::new(),
-            systems: Vec::new(),
+            system_handler: SystemHandler::new(),
             world: World::new(),
             events: Events::new(),
         };
@@ -30,44 +28,48 @@ impl App {
         self.events.write(event);
     }
 
+    /// Add a system to the startup stage
     pub fn add_startup_system(mut self, system: System) -> Self {
-        self.startup_systems.push(system);
+        self.system_handler.register_system(system, SystemStage::Startup);
         self
     }
 
+    /// Add a system to the update stage
     pub fn add_system(mut self, system: System) -> Self {
-        self.systems.push(system);
+        self.system_handler.register_system(system, SystemStage::Update);
         self
     }
 
-    pub(crate) fn run_startup_systems(&mut self, renderer: Renderer) {
-        if self.startup_systems.is_empty() {
+    /// Register a system to a specific stage
+    pub fn register_system(mut self, system: System, stage: SystemStage) -> Self {
+        self.system_handler.register_system(system, stage);
+        self
+    }
+
+    fn run_systems(&mut self, stage: SystemStage, renderer: Renderer) {
+        let systems = self.system_handler.get_systems(stage);
+        if systems.is_empty() {
             return;
         }
 
         let commands = Commands::build(&self.world);
         let mut ctx = SystemsContext::new(commands, &mut self.world.resources, &mut self.events, renderer);
 
-        for mut system in self.startup_systems.drain(..) {
+        for system in systems.iter_mut() {
             system.run(&mut ctx, &mut self.world.entities);
         }
 
         ctx.commands.apply(&mut self.world);
     }
 
-    pub(crate) fn run_systems(&mut self, renderer: Renderer) {
-        let commands = Commands::build(&self.world);
-        let mut ctx = SystemsContext::new(commands, &mut self.world.resources, &mut self.events, renderer);
+    pub(crate) fn update(&mut self, state: &mut AppState) {
+        let mut context = RenderContext::new_update_context(state);
 
-        for system in self.systems.iter_mut() {
-            system.run(&mut ctx, &mut self.world.entities);
-        }
-
-        ctx.commands.apply(&mut self.world);
-    }
-
-    pub(crate) fn update(&mut self) {
         self.world.resources.get_mut::<Time>().unwrap().update();
+
+        self.run_systems(SystemStage::PreRender, context.as_renderer());
+        self.run_systems(SystemStage::Render, context.as_renderer());
+        self.run_systems(SystemStage::PostRender, context.as_renderer());
     } 
 
     pub fn run(self) {
@@ -80,10 +82,13 @@ impl App {
     }
 
     pub(crate) fn render(&mut self, state: &mut AppState) -> Result<(), wgpu::SurfaceError> {
-        let mut context = RenderContext::new(state)?;
+        let mut context = RenderContext::new_render_context(state)?;
 
-        self.run_startup_systems(context.as_renderer());
-        self.run_systems(context.as_renderer());
+        self.run_systems(SystemStage::PreRender, context.as_renderer());
+        self.run_systems(SystemStage::Render, context.as_renderer());
+        self.run_systems(SystemStage::PostRender, context.as_renderer());
+
+        self.run_systems(SystemStage::Last, context.as_renderer());
         self.events.apply();
 
         Ok(())
