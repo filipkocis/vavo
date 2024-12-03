@@ -3,7 +3,7 @@ use std::mem;
 pub use wgpu::PrimitiveTopology;
 use wgpu::{util::DeviceExt, VertexAttribute, VertexFormat};
 
-use crate::renderer::palette;
+use crate::{prelude::Resources, render_assets::{Buffer, RenderAsset}, renderer::palette};
 
 use super::Color;
 
@@ -73,8 +73,8 @@ impl Mesh {
         self.indices.as_deref()
     }
 
-    /// Returns the vertex buffer layout for this Mesh
-    pub(crate) fn vetex_desc(&self) -> wgpu::VertexBufferLayout<'static> {
+    /// Returns the vertex buffer layout for Mesh
+    pub fn vertex_descriptor() -> wgpu::VertexBufferLayout<'static> {
         wgpu::VertexBufferLayout {
             array_stride: Self::VERTEX_SIZE_IN_U8 as wgpu::BufferAddress,
             step_mode: wgpu::VertexStepMode::Vertex,
@@ -106,26 +106,17 @@ impl Mesh {
             ]
         }
     }
+}
 
-    /// Returns new Mesh vertex buffer
-    pub(crate) fn create_vertex_buffer(&self, device: &wgpu::Device) -> wgpu::Buffer {
-        device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("mesh_vertex_buffer"),
-            contents: bytemuck::cast_slice(&self.vertex_data()),
-            usage: wgpu::BufferUsages::VERTEX, 
-        }) 
-    }
+impl RenderAsset<Buffer> for Mesh {
+    fn create_render_asset(&self, device: &wgpu::Device, _: &mut Resources) -> Buffer {
+        let buffer = Buffer::new("mesh")
+            .create_vertex_buffer(&self.vertex_data(), None, device);
 
-    /// Returns new Mesh index buffer, or None if the Mesh has no indices
-    pub(crate) fn create_index_buffer(&self, device: &wgpu::Device) -> Option<wgpu::Buffer> {
-        if let Some(index_data) = self.index_data() {
-            return Some(device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("mesh_index_buffer"),
-                contents: bytemuck::cast_slice(&index_data),
-                usage: wgpu::BufferUsages::INDEX, 
-            }));
+        if let Some(indices) = self.index_data() {
+            buffer.create_index_buffer(indices, None, device)
+        } else {
+            buffer
         }
-
-        None
     }
 }
