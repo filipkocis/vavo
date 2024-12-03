@@ -1,4 +1,5 @@
 use crate::system::{System, SystemsContext, Commands};
+use crate::time::Time;
 use crate::window::{AppHandler, AppState, RenderContext, Renderer};
 use crate::world::World;
 
@@ -64,6 +65,10 @@ impl App {
 
         ctx.commands.apply(&mut self.world);
     }
+
+    pub(crate) fn update(&mut self) {
+        self.world.resources.get_mut::<Time>().unwrap().update();
+    } 
 
     pub fn run(self) {
         let (event_loop, mut app) = AppHandler::init(self);

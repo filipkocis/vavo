@@ -60,6 +60,9 @@ impl ApplicationHandler for AppHandler {
             return
         }
 
+        // TODO: handle events
+        self.app.update();
+
         match event {
             WindowEvent::KeyboardInput { 
                 event: KeyEvent {
