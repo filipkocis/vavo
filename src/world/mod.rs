@@ -1,5 +1,4 @@
 pub mod entities;
-pub mod resources;
 mod world;
 mod archetype;
 

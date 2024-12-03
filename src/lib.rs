@@ -5,7 +5,7 @@ mod world;
 mod assets;
 mod window;
 mod renderer;
-mod time;
+mod resources;
 
 pub use renderer::shapes;
 pub use renderer::palette;

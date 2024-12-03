@@ -1,5 +1,5 @@
+use crate::resources::Time;
 use crate::system::{System, SystemsContext, Commands};
-use crate::time::Time;
 use crate::window::{AppHandler, AppState, RenderContext, Renderer};
 use crate::world::World;
 

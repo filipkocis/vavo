@@ -1,4 +1,4 @@
-use crate::{app::{EventReader, EventWriter, Events}, window::Renderer, world::resources::Resources};
+use crate::{app::{EventReader, EventWriter, Events}, window::Renderer, resources::Resources};
 
 use super::Commands;
 

@@ -1,6 +1,8 @@
 use std::{any::{Any, TypeId}, collections::HashMap, ops::{Deref, DerefMut}};
 
-use crate::{assets::Assets, renderer::{Image, Material, Mesh}, time::Time};
+use crate::{assets::Assets, renderer::{Image, Material, Mesh}};
+
+use super::Time;
 
 pub struct Resources {
     resources: HashMap<TypeId, Box<dyn Any>>,

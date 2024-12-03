@@ -1,4 +1,6 @@
-use super::{entities::Entities, resources::Resources};
+use crate::resources::Resources;
+
+use super::{entities::Entities};
 
 pub(crate) struct World {
     pub entities: Entities,
