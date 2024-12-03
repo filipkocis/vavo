@@ -11,7 +11,7 @@ impl World {
     pub fn new() -> Self {
         Self {
             entities: Entities::new(),
-            resources: Resources::with_default_resources(),
+            resources: Resources::new(),
         }
     }
 }

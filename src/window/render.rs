@@ -37,6 +37,7 @@ impl<'a> Drop for RenderContext<'a> {
 }
 
 impl<'a> RenderContext<'a> {
+    /// Creates a new render context with a render target and encoder, used in the render stage
     pub(crate) fn new_render_context(state: &'a mut AppState) -> Result<Self, wgpu::SurfaceError> {
         let target = Some(Self::create_target(&state.surface)?);
         let encoder = Some(Self::create_encoder(&state.device));
@@ -48,6 +49,8 @@ impl<'a> RenderContext<'a> {
         })
     }
 
+    /// Creates a new render context without a render target or encoder, used in the update and
+    /// startup stages
     pub(crate) fn new_update_context(state: &'a mut AppState) -> Self {
         Self {
             target: None,

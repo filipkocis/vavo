@@ -14,16 +14,16 @@ pub struct App {
 }
 
 impl App {
+    /// Create a new App
     pub fn build() -> Self {
-        let mut app = App {
+        Self {
             system_handler: SystemHandler::new(),
             world: World::new(),
             events: Events::new(),
-        };
-
-        return app;
+        }
     }
 
+    /// Write event T to the event queue
     pub fn create_event<T: 'static>(&mut self, event: T) {
         self.events.write(event);
     }
@@ -62,6 +62,17 @@ impl App {
         ctx.commands.apply(&mut self.world);
     }
 
+    /// Initialize the app and run all startup systems
+    pub(crate) fn startup(&mut self, state: &mut AppState) {
+        let mut context = RenderContext::new_update_context(state);
+
+        self.world.resources.insert_default_resources();
+
+        self.run_systems(SystemStage::PreStartup, context.as_renderer());
+        self.run_systems(SystemStage::Startup, context.as_renderer());
+    }
+
+    /// Update the app and run all update systems
     pub(crate) fn update(&mut self, state: &mut AppState) {
         let mut context = RenderContext::new_update_context(state);
 
@@ -73,6 +84,7 @@ impl App {
         self.run_systems(SystemStage::Last, context.as_renderer());
     } 
 
+    /// Run the app
     pub fn run(self) {
         let (event_loop, mut app) = AppHandler::init(self);
         event_loop.run_app(&mut app).unwrap();
@@ -82,6 +94,7 @@ impl App {
         // println!("eq: {} | {} == {}", eq, systems[0].name, systems[1].name);
     }
 
+    /// Render the app and run all render systems
     pub(crate) fn render(&mut self, state: &mut AppState) -> Result<(), wgpu::SurfaceError> {
         let mut context = RenderContext::new_render_context(state)?;
 

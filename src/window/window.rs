@@ -36,7 +36,11 @@ impl ApplicationHandler for AppHandler {
             .with_title("Game");
 
         let window = event_loop.create_window(window_attrs).unwrap();
-        let state = AppState::new(window);
+        let mut state = AppState::new(window);
+
+        if self.state.is_none() {
+            self.app.startup(&mut state);
+        }
 
         self.state = Some(state);
     }
