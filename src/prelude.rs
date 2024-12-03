@@ -5,6 +5,7 @@ pub use super::{
     assets::{Assets, Handle},
     world::EntityId,
     renderer::{Material, Image, Color, Face, Mesh, Meshable, shapes},
+    time::Time,
 };
 
 pub mod color {
