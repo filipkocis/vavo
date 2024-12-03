@@ -33,9 +33,16 @@ impl<T> RenderAssets<T> {
         (TypeId::of::<A>(), handle.id())
     }
 
-    pub fn get<A>(&mut self, handle: &Handle<A>, device: &wgpu::Device, resources: &mut Resources) -> &T
+    pub fn get_or_create<A>(
+        &mut self, 
+        handle: &Handle<A>, 
+        device: &wgpu::Device, 
+        resources: &mut Resources
+    ) -> &T
     where A: 'static + RenderAsset<T> {
-        self.storage.entry(Self::get_key(handle)).or_insert_with(|| Self::create_asset(handle, device, resources))
+        self.storage
+            .entry(Self::get_key(handle))
+            .or_insert_with(|| Self::create_asset(handle, device, resources))
     }
 
     fn create_asset<A>(handle: &Handle<A>, device: &wgpu::Device, resources: &mut Resources) -> T
