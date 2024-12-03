@@ -67,9 +67,10 @@ impl App {
 
         self.world.resources.get_mut::<Time>().unwrap().update();
 
-        self.run_systems(SystemStage::PreRender, context.as_renderer());
-        self.run_systems(SystemStage::Render, context.as_renderer());
-        self.run_systems(SystemStage::PostRender, context.as_renderer());
+        self.run_systems(SystemStage::PreUpdate, context.as_renderer());
+        self.run_systems(SystemStage::Update, context.as_renderer());
+        self.run_systems(SystemStage::PostUpdate, context.as_renderer());
+        self.run_systems(SystemStage::Last, context.as_renderer());
     } 
 
     pub fn run(self) {
@@ -88,7 +89,6 @@ impl App {
         self.run_systems(SystemStage::Render, context.as_renderer());
         self.run_systems(SystemStage::PostRender, context.as_renderer());
 
-        self.run_systems(SystemStage::Last, context.as_renderer());
         self.events.apply();
 
         Ok(())
