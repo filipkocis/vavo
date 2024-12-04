@@ -1,4 +1,4 @@
-use crate::{assets::Handle, prelude::Resources, render_assets::{BindGroup, Buffer, Pipeline, RenderAsset, RenderAssets}, resources};
+use crate::{assets::Handle, prelude::Resources, render_assets::{BindGroup, Buffer, RenderAsset}, world::EntityId};
 
 use super::{Color, Face, Image};
 
@@ -60,16 +60,26 @@ impl Default for Material {
 }
 
 impl RenderAsset<Buffer> for Material {
-    fn create_render_asset(&self, device: &wgpu::Device, _: &mut Resources) -> Buffer {
-        let buffer = Buffer::new("material")
-            .create_uniform_buffer(&self.uniform_data(), None, device);
-        
-        buffer
+    fn create_render_asset(
+        &self, 
+        device: 
+        &wgpu::Device, 
+        _: &mut Resources,
+        _: Option<&EntityId>
+    ) -> Buffer {
+        Buffer::new("material")
+            .create_uniform_buffer(&self.uniform_data(), None, device)
     }
 }
 
 impl RenderAsset<BindGroup> for Material {
-    fn create_render_asset(&self, device: &wgpu::Device, resources: &mut Resources) -> BindGroup {
+    fn create_render_asset(
+        &self, 
+        device: 
+        &wgpu::Device, 
+        resources: &mut Resources,
+        _: Option<&EntityId>
+    ) -> BindGroup {
         BindGroup::build("material", device)
             .add_texture(&self.base_color_texture, resources)
             .add_texture(&self.normal_map_texture, resources)

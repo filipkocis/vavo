@@ -5,7 +5,13 @@ use crate::{assets::{Assets, Handle}, prelude::Resources, world::EntityId};
 use super::RenderHandle;
 
 pub trait RenderAsset<R> {
-    fn create_render_asset(&self, device: &wgpu::Device, resources: &mut Resources) -> R;
+    fn create_render_asset(
+        &self, 
+        device: 
+        &wgpu::Device, 
+        resources: &mut Resources,
+        entity_id: Option<&EntityId>
+    ) -> R;
 }
 
 /// Wrapper for render asset entry to allow multiple mutable borrows for RenderAssets<T>
@@ -86,10 +92,10 @@ impl<T> RenderAssets<T> {
             Some(key) => {
                 self.storage
                     .entry(key.clone())
-                    .or_insert_with(|| component.create_render_asset(device, resources))
+                    .or_insert_with(|| component.create_render_asset(device, resources, Some(entity_id)))
             },
             None => {
-                let key = self.insert(component.create_render_asset(device, resources));
+                let key = self.insert(component.create_render_asset(device, resources, Some(entity_id)));
                 self.entity_component_map.insert(entity_component_id, key.clone());
                 self.storage.get(&key).unwrap()
             }
@@ -125,7 +131,7 @@ impl<T> RenderAssets<T> {
     where A: 'static + RenderAsset<T> {
         let assets = resources.get::<Assets<A>>().unwrap();
         let asset = assets.get(handle).unwrap();
-        let render_asset = asset.create_render_asset(device, resources);
+        let render_asset = asset.create_render_asset(device, resources, None);
 
         render_asset
     }
