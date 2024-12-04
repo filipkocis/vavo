@@ -60,7 +60,7 @@ impl Buffer {
         });
 
         Self {
-            vertex: Some(uniform_buffer),
+            uniform: Some(uniform_buffer),
             ..self
         }
     }
