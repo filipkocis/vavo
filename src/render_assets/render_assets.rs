@@ -1,6 +1,6 @@
 use std::{any::TypeId, collections::HashMap};
 
-use crate::{assets::{Assets, Handle}, prelude::Resources};
+use crate::{assets::{Assets, Handle}, prelude::Resources, world::EntityId};
 
 use super::RenderHandle;
 
@@ -12,15 +12,26 @@ pub trait RenderAsset<R> {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct AssetHandleId(TypeId, u64);
 
+/// ID combining entity id and component type id
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+struct EntityComponentId(u32, TypeId);
+
 impl<T: 'static> Into<AssetHandleId> for &Handle<T> {
     fn into(self) -> AssetHandleId {
         AssetHandleId(TypeId::of::<T>(), self.id())
     }
 }
 
+impl<T: 'static> Into<EntityComponentId> for (&EntityId, &T) {
+    fn into(self) -> EntityComponentId {
+        EntityComponentId(self.0.raw(), TypeId::of::<T>())
+    }
+}
+
 pub struct RenderAssets<T> {
     storage: HashMap<RenderHandle<T>, T>,
     handle_map: HashMap<AssetHandleId, RenderHandle<T>>,
+    entity_component_map: HashMap<EntityComponentId, RenderHandle<T>>,
     next_id: u64,
 }
 
@@ -29,6 +40,7 @@ impl<T> RenderAssets<T> {
         Self {
             storage: HashMap::new(),
             handle_map: HashMap::new(),
+            entity_component_map: HashMap::new(),
             next_id: 0,
         }
     }
@@ -49,7 +61,31 @@ impl<T> RenderAssets<T> {
         self.storage.get(&handle)
     }
 
-    pub fn get_or_create<A>(
+    pub fn get_by_entity<A>(
+        &mut self, 
+        entity_id: &EntityId, 
+        component: &A, 
+        device: &wgpu::Device, 
+        resources: &mut Resources
+    ) -> &T
+    where A: 'static + RenderAsset<T> {
+        let entity_component_id = (entity_id, component).into();
+
+        match self.entity_component_map.get(&entity_component_id){
+            Some(key) => {
+                self.storage
+                    .entry(key.clone())
+                    .or_insert_with(|| component.create_render_asset(device, resources))
+            },
+            None => {
+                let key = self.insert(component.create_render_asset(device, resources));
+                self.entity_component_map.insert(entity_component_id, key.clone());
+                self.storage.get(&key).unwrap()
+            }
+        }
+    }
+
+    pub fn get_by_handle<A>(
         &mut self, 
         handle: &Handle<A>, 
         device: &wgpu::Device, 
