@@ -7,6 +7,7 @@ pub struct Buffer {
     pub index: Option<wgpu::Buffer>,
     pub uniform: Option<wgpu::Buffer>,
     pub num_indices: u32,
+    pub num_vertices: u32,
 }
 
 impl Buffer {
@@ -17,6 +18,7 @@ impl Buffer {
             index: None,
             uniform: None,
             num_indices: 0,
+            num_vertices: 0,
         }
     }
 
@@ -30,6 +32,7 @@ impl Buffer {
 
         Self {
             vertex: Some(vertex_buffer),
+            num_vertices: data.len() as u32,
             ..self
         }
     }
