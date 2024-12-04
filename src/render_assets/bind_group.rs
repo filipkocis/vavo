@@ -64,6 +64,32 @@ impl<'a> BindGroupBuilder<'a> {
         self
     }
 
+    pub fn add_uniform_buffer(mut self, buffer: &'a wgpu::Buffer, visibility: wgpu::ShaderStages) -> Self {
+        let layout_entry = wgpu::BindGroupLayoutEntry {
+            binding: self.layout_entries.len() as u32,
+            visibility,
+            ty: wgpu::BindingType::Buffer {
+                ty: wgpu::BufferBindingType::Uniform,
+                has_dynamic_offset: false,
+                min_binding_size: None,
+            },
+            count: None,
+        };
+
+        let entry = wgpu::BindGroupEntry {
+            binding: layout_entry.binding,
+            resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                buffer,
+                offset: 0,
+                size: None,
+            })
+        };
+
+        self.layout_entries.push(layout_entry);                             
+        self.entries.push(entry);
+        self
+    }
+
     pub fn finish(self) -> BindGroup {
         let layout = self.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             entries: &self.layout_entries,
