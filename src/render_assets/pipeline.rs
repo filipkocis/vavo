@@ -1,5 +1,3 @@
-use wgpu::VertexBufferLayout;
-
 use super::RenderHandle;
 
 pub struct Pipeline {
@@ -19,10 +17,12 @@ impl StandardPipeline {
 }
 
 impl Pipeline {
+    /// Creates a new instance of PipelineBuilder
     pub fn build(label: &str) -> PipelineBuilder<'_> {
         PipelineBuilder::new(label)
     }
 
+    /// Return the inner wgpu::RenderPipeline
     pub fn render_pipeline(&self) -> &wgpu::RenderPipeline {
         &self.inner
     }
@@ -30,7 +30,7 @@ impl Pipeline {
 
 pub struct PipelineBuilder<'a> {
     pub label: &'a str,
-    pub layout: Option<&'a wgpu::PipelineLayout>,
+    pub bind_group_layouts: Option<&'a [&'a wgpu::BindGroupLayout]>,
     pub vertex_buffer_layouts: Option<&'a [wgpu::VertexBufferLayout<'a>]>,
     pub vertex_shader: Option<(&'a str, &'a str)>,
     pub fragment_shader: Option<(&'a str, &'a str)>,
@@ -40,10 +40,10 @@ pub struct PipelineBuilder<'a> {
 }
 
 impl<'a> PipelineBuilder<'a> {
-    pub fn new(label: &'a str) -> Self {
+    fn new(label: &'a str) -> Self {
         Self {
             label,
-            layout: None,
+            bind_group_layouts: None,
             vertex_buffer_layouts: None,
             vertex_shader: None,
             fragment_shader: None,
@@ -53,36 +53,64 @@ impl<'a> PipelineBuilder<'a> {
         }
     }
 
-    pub fn set_layout(mut self, layout: &'a wgpu::PipelineLayout) -> Self {
-        self.layout = Some(layout);
+    /// Set bind group layouts for pipeline layout
+    ///
+    /// # Note
+    /// If this is not set, the pipeline layout will be None
+    pub fn set_bind_group_layouts(mut self, layouts: &'a [&'a wgpu::BindGroupLayout]) -> Self {
+        self.bind_group_layouts = Some(layouts);
         self
     }
 
-    pub fn set_vertex_buffer_layout(mut self, layouts: &'a [VertexBufferLayout<'a>]) -> Self {
+    /// Set vertex buffer layouts for vertex state
+    ///
+    /// # Note
+    /// Default is an empty slice
+    pub fn set_vertex_buffer_layouts(mut self, layouts: &'a [wgpu::VertexBufferLayout<'a>]) -> Self {
         self.vertex_buffer_layouts = Some(layouts);
         self
     }
 
+    /// Set wgsl vertex shader
+    ///
+    /// # Note
+    /// This is required
     pub fn set_vertex_shader(mut self, path: &'a str, entry_point: &'a str) -> Self {
         self.vertex_shader = Some((path, entry_point));
         self
     }
 
+    /// Set wgsl fragment shader
+    ///
+    /// # Note
+    /// If not set, the fragment state will be None
     pub fn set_fragment_shader(mut self, path: &'a str, entry_point: &'a str) -> Self {
         self.fragment_shader = Some((path, entry_point));
         self
     }
 
+    /// Set the texture format color target in fragment state
+    ///
+    /// # Note
+    /// For this to be used, you must set a fragment shader
     pub fn set_color_format(mut self, format: wgpu::TextureFormat) -> Self {
         self.color_format = Some(format);
         self
     }
 
+    /// Set texture format for depth stencil
+    ///
+    /// # Note
+    /// If not set, the depth stencil state will be None
     pub fn set_depth_format(mut self, depth_format: wgpu::TextureFormat) -> Self {
         self.depth_format = Some(depth_format);
         self
     }
     
+    /// Set primitive topology for the pipeline
+    ///
+    /// # Note
+    /// Default is TriangleList
     pub fn set_topology(mut self, topology: wgpu::PrimitiveTopology) -> Self {
         self.topology = Some(topology);
         self
@@ -108,6 +136,7 @@ impl<'a> PipelineBuilder<'a> {
         }
     }
 
+    /// Finish building the pipeline
     pub fn finish(self, device: &wgpu::Device) -> Pipeline {
         let (vertex_module, vertex_entry) = self.load_shader("vertex", &self.vertex_shader, device);
         let fragment_maybe = self.load_shader_maybe("fragment", &self.fragment_shader, device);
@@ -120,13 +149,21 @@ impl<'a> PipelineBuilder<'a> {
             }
         )];
 
+        let layout = self.bind_group_layouts.map(|layouts| {
+            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some(&format!("{}_layout", self.label)),
+                bind_group_layouts: layouts, 
+                push_constant_ranges: &[]
+            })
+        });
+
         let pipeline_desc = wgpu::RenderPipelineDescriptor {
             label: Some(self.label),
-            layout: self.layout,
+            layout: layout.as_ref(),
             vertex: wgpu::VertexState {
                 module: &vertex_module,
                 entry_point: Some(vertex_entry),
-                buffers: self.vertex_buffer_layouts.expect("vertex buffer layouts not set"),
+                buffers: self.vertex_buffer_layouts.unwrap_or(&[]),
                 compilation_options: Default::default(),
             },
             fragment: fragment_maybe.as_ref().map(|(module, entry)| wgpu::FragmentState {
