@@ -71,9 +71,10 @@ impl RenderAsset<BindGroup> for Transform {
 
         let mut buffers = resources.get_mut::<RenderAssets<Buffer>>().unwrap();
         let buffer = buffers.get_by_entity(id, self, device, resources);
+        let uniform_buffer = buffer.uniform.as_ref().expect("Transform buffer should be uniform");
 
         BindGroup::build("transform", device)
-            .add_uniform_buffer(buffer.uniform.as_ref().unwrap(), wgpu::ShaderStages::VERTEX)
+            .add_uniform_buffer(uniform_buffer, wgpu::ShaderStages::VERTEX)
             .finish()
     }
 }
