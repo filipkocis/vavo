@@ -48,12 +48,14 @@ pub struct Triangle {
 impl Triangle {
     pub fn equilateral(base: f32) -> Self {
         let height = (3.0_f32.sqrt() / 2.0) * base;
+        let half_height = height / 2.0;
+        let half_base = base / 2.0;
 
         Self {
             vertices: [
-                [0.0, height, 0.0],
-                [-base / 2.0, -height / 2.0, 0.0],
-                [base / 2.0, -height / 2.0, 0.0],
+                [0.0, half_height, 0.0],
+                [-half_base, -half_height, 0.0],
+                [half_base, -half_height, 0.0],
             ]
         }
     }

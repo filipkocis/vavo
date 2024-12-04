@@ -1,7 +1,7 @@
 use std::mem;
 
 pub use wgpu::PrimitiveTopology;
-use wgpu::{util::DeviceExt, VertexAttribute, VertexFormat};
+use wgpu::{VertexAttribute, VertexFormat};
 
 use crate::{prelude::Resources, render_assets::{Buffer, RenderAsset}, renderer::palette};
 
