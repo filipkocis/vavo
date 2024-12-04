@@ -1,4 +1,4 @@
-use std::{any::TypeId, collections::HashMap};
+use std::{any::TypeId, collections::HashMap, ops::Deref};
 
 use crate::{assets::{Assets, Handle}, prelude::Resources, world::EntityId};
 
@@ -6,6 +6,17 @@ use super::RenderHandle;
 
 pub trait RenderAsset<R> {
     fn create_render_asset(&self, device: &wgpu::Device, resources: &mut Resources) -> R;
+}
+
+/// Wrapper for render asset entry to allow multiple mutable borrows for RenderAssets<T>
+pub struct RenderAssetEntry<T>(*const T);
+
+impl<T> Deref for RenderAssetEntry<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        unsafe { &*self.0 }   
+    }
 }
 
 /// Generic handle for Asset of any type
@@ -67,11 +78,11 @@ impl<T> RenderAssets<T> {
         component: &A, 
         device: &wgpu::Device, 
         resources: &mut Resources
-    ) -> &T
+    ) -> RenderAssetEntry<T>
     where A: 'static + RenderAsset<T> {
         let entity_component_id = (entity_id, component).into();
 
-        match self.entity_component_map.get(&entity_component_id){
+        let rae = match self.entity_component_map.get(&entity_component_id){
             Some(key) => {
                 self.storage
                     .entry(key.clone())
@@ -82,7 +93,9 @@ impl<T> RenderAssets<T> {
                 self.entity_component_map.insert(entity_component_id, key.clone());
                 self.storage.get(&key).unwrap()
             }
-        }
+        };
+
+        RenderAssetEntry(rae)
     }
 
     pub fn get_by_handle<A>(
@@ -90,9 +103,9 @@ impl<T> RenderAssets<T> {
         handle: &Handle<A>, 
         device: &wgpu::Device, 
         resources: &mut Resources
-    ) -> &T
+    ) -> RenderAssetEntry<T>
     where A: 'static + RenderAsset<T> {
-        match self.handle_map.get(&handle.into()){
+        let rae = match self.handle_map.get(&handle.into()){
             Some(key) => {
                 self.storage
                     .entry(key.clone())
@@ -103,7 +116,9 @@ impl<T> RenderAssets<T> {
                 self.handle_map.insert(handle.into(), key.clone());
                 self.storage.get(&key).unwrap()
             }
-        }
+        };
+
+        RenderAssetEntry(rae)
     }
 
     fn create_asset<A>(handle: &Handle<A>, device: &wgpu::Device, resources: &mut Resources) -> T
