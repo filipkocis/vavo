@@ -77,13 +77,3 @@ impl RenderAsset<BindGroup> for Material {
             .finish()
     }
 }
-
-impl RenderAsset<Pipeline> for Material {
-    fn create_render_asset(&self, device: &wgpu::Device, resources: &mut Resources) -> Pipeline {
-        // Pipeline::build("material", device)        
-
-
-
-        todo!()
-    }
-}
