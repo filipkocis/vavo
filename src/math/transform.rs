@@ -1,6 +1,6 @@
 use glam::{Quat, Vec3};
 
-use crate::render_assets::{Buffer, RenderAsset};
+use crate::{render_assets::{BindGroup, Buffer, RenderAsset, RenderAssets}, resources::Resources, world::EntityId};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Transform {
@@ -45,10 +45,35 @@ impl Default for Transform {
 }
 
 impl RenderAsset<Buffer> for Transform {
-    fn create_render_asset(&self, device: &wgpu::Device, _: &mut crate::prelude::Resources) -> Buffer {
+    fn create_render_asset(
+        &self, 
+        device: 
+        &wgpu::Device, 
+        _: &mut Resources,
+        _: Option<&EntityId>
+    ) -> Buffer {
         let data = self.as_matrix().to_cols_array_2d();
 
         Buffer::new("transform")
             .create_uniform_buffer(&[data], Some(wgpu::BufferUsages::COPY_DST), device)
+    }
+}   
+
+impl RenderAsset<BindGroup> for Transform {
+    fn create_render_asset(
+        &self, 
+        device: 
+        &wgpu::Device, 
+        resources: &mut Resources,
+        entity_id: Option<&EntityId>
+    ) -> BindGroup {
+        let id = entity_id.expect("EntityId should be provided for Transform BindGroup");
+
+        let mut buffers = resources.get_mut::<RenderAssets<Buffer>>().unwrap();
+        let buffer = buffers.get_by_entity(id, self, device, resources);
+
+        BindGroup::build("transform", device)
+            .add_uniform_buffer(buffer.uniform.as_ref().unwrap(), wgpu::ShaderStages::VERTEX)
+            .finish()
     }
 }
