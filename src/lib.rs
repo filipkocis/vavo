@@ -7,6 +7,7 @@ mod window;
 mod renderer;
 mod resources;
 pub mod render_assets;
+mod math;
 
 pub use renderer::shapes;
 pub use renderer::palette;
