@@ -9,6 +9,15 @@ pub(super) struct ArchetypeId(u64);
 pub(crate) struct Archetype {
     pub(super) entity_ids: Vec<EntityId>,
     pub(super) types: HashMap<TypeId, usize>,
+
+    /// Per entity components are currently stored together in a row
+    /// ```
+    /// vec![
+    ///  vec![A, B, C], -> entity 1
+    ///  vec![A, B, C], -> entity 2
+    ///  vec![A, B, C], -> entity 3
+    /// ]
+    /// ```
     pub components: Vec<Vec<Box<dyn Any>>>,
 }
 
