@@ -64,8 +64,7 @@ impl ApplicationHandler for AppHandler {
             return
         }
 
-        // TODO: handle events
-        self.app.update(self.state.as_mut().unwrap());
+        // TODO: handle sending input events to the app 
 
         match event {
             WindowEvent::KeyboardInput { 
@@ -79,6 +78,8 @@ impl ApplicationHandler for AppHandler {
             WindowEvent::CloseRequested => event_loop.exit(),
             WindowEvent::Resized(physical_size) => self.resize(physical_size),
             WindowEvent::RedrawRequested => {
+                self.app.update(self.state.as_mut().unwrap());
+
                 if let Err(err) = self.app.render(self.state.as_mut().unwrap()) {
                     match err {
                         wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated => {
