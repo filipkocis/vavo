@@ -11,6 +11,7 @@ mod math;
 
 pub use renderer::shapes;
 pub use renderer::palette;
+pub use resources::Tick;
 
 pub mod prelude;
 
