@@ -57,6 +57,7 @@ pub(crate) struct Filters {
     pub changed: Vec<TypeId>,
     pub with: Vec<TypeId>,
     pub without: Vec<TypeId>,
+    pub empty: bool,
 }
 
 impl Filters {
@@ -65,6 +66,7 @@ impl Filters {
             changed: Vec::new(),
             with: Vec::new(),
             without: Vec::new(),
+            empty: true,
         }
     }
 
@@ -76,5 +78,6 @@ impl Filters {
 
     pub fn add<T: QueryFilter>(&mut self) {
         T::into_filters(self);
+        self.empty = false;
     }
 }
