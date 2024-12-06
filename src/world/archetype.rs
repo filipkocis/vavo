@@ -9,6 +9,9 @@ pub(super) struct ArchetypeId(u64);
 pub(crate) struct Archetype {
     pub(super) entity_ids: Vec<EntityId>,
     pub(super) types: HashMap<TypeId, usize>,
+    /// Same layout as components, stores the last tick the component was updated
+    ticks: Vec<Vec<u64>>,
+    current_tick: *const u64,
 
     /// Components of the same type are stored together in a row
     /// ```
@@ -23,7 +26,7 @@ pub(crate) struct Archetype {
 }
 
 impl Archetype {
-    pub fn new(types: Vec<TypeId>) -> Self {
+    pub fn new(types: Vec<TypeId>, current_tick: *const u64) -> Self {
         let original_len = types.len();
         let types = Self::sort_types(types);
         let types = types.into_iter().enumerate()
@@ -33,10 +36,13 @@ impl Archetype {
         assert!(types.len() == original_len, "Duplicate types in archetype");
 
         let components = types.iter().map(|_| Vec::new()).collect();
+        let ticks = types.iter().map(|_| Vec::new()).collect();
 
         Self {
             entity_ids: Vec::new(),
             types,
+            ticks,
+            current_tick,
             components,
         }
     }
@@ -53,17 +59,26 @@ impl Archetype {
         assert!(self.has_types_all(&component_types), "Component types mismatch with archetype types");
 
         for (type_id, component) in components {
-            let index = self.types[&type_id];
-            self.components[index].push(component);
+            let component_index = self.types[&type_id];
+            self.components[component_index].push(component);
+            self.ticks[component_index].push(0);
         }
 
         assert!(
             self.components.iter().all(|row| row.len() == self.entity_ids.len()), 
-            "Specific component length mismatch with entity IDs length"
+            "Specific components length mismatch with entity IDs length"
+        );
+        assert!(
+            self.ticks.iter().all(|row| row.len() == self.entity_ids.len()), 
+            "Specific ticks length mismatch with entity IDs length"
         );
         assert!(
             self.components.len() == self.types.len(),
             "Components length mismatch with types length"
+        );
+        assert!(
+            self.ticks.len() == self.types.len(),
+            "Ticks length mismatch with types length"
         );
     }
 
@@ -71,6 +86,7 @@ impl Archetype {
     pub(super) fn remove_entity(&mut self, entity_id: EntityId) -> Option<Vec<Box<dyn Any>>> {
         if let Some(index) = self.entity_ids.iter().position(|id| *id == entity_id) {
             self.entity_ids.remove(index);
+            self.ticks.iter_mut().for_each(|ticks| { ticks.remove(index); });
 
             let mut removed = Vec::with_capacity(self.components.len());
             for components in self.components.iter_mut() {
@@ -84,14 +100,28 @@ impl Archetype {
     }
 
     /// Update component, returns true if successful
-    pub(super) fn update_component(&mut self, entity_id: EntityId, component: Box<dyn Any>) -> bool {
-        if let Some(index) = self.entity_ids.iter().position(|id| *id == entity_id) {
+    pub(super) fn update_component(&mut self, entity_id: EntityId, component: Box<dyn Any>, current_tick: u64) -> bool {
+        if let Some(entity_index) = self.entity_ids.iter().position(|id| *id == entity_id) {
             let type_id = (*component).type_id();
             let component_index = self.types[&type_id];
-            self.components[component_index][index] = component;
+            self.components[component_index][entity_index] = component;
+            self.ticks[component_index][entity_index] = current_tick;
             return true
         }
         false
+    }
+
+    fn current_tick(&self) -> u64 {
+        unsafe { *self.current_tick }
+    }
+
+    pub(crate) fn mark_mutated(&mut self, type_index: usize) {
+        let current_tick = self.current_tick();
+        self.ticks[type_index].iter_mut().for_each(|tick| *tick = current_tick);
+    }
+
+    pub(crate) fn components_at_mut(&mut self, index: usize) -> *mut Vec<Box<dyn Any>> {
+        &mut self.components[index]
     }
 
     /// Returns sorted types
