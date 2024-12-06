@@ -100,12 +100,12 @@ impl Archetype {
     }
 
     /// Update component, returns true if successful
-    pub(super) fn update_component(&mut self, entity_id: EntityId, component: Box<dyn Any>, current_tick: u64) -> bool {
+    pub(super) fn update_component(&mut self, entity_id: EntityId, component: Box<dyn Any>) -> bool {
         if let Some(entity_index) = self.entity_ids.iter().position(|id| *id == entity_id) {
             let type_id = (*component).type_id();
             let component_index = self.types[&type_id];
             self.components[component_index][entity_index] = component;
-            self.ticks[component_index][entity_index] = current_tick;
+            self.ticks[component_index][entity_index] = self.current_tick();
             return true
         }
         false

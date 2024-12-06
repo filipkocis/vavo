@@ -120,8 +120,7 @@ impl Entities {
         let mut emptied_archetype = None;
         if let Some((id, archetype)) = self.archetypes.iter_mut().find(|(_, a)| a.entity_ids.contains(&entity_id)) {
             if archetype.has_type(type_id) {
-                // TODO: ADD REAL CURRENT WRLD TIME TICK
-                assert!(archetype.update_component(entity_id, component, 0), "Failed to update component");
+                assert!(archetype.update_component(entity_id, component), "Failed to update component");
                 return;
             }
 
