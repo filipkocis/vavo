@@ -37,13 +37,15 @@ impl Sub<u32> for EntityId {
 pub(crate) struct Entities {
     next_entity_id: EntityId,
     archetypes: HashMap<ArchetypeId, Archetype>, // Map archetype ID to its storage
+    current_tick: *const u64,
 }
 
 impl Entities {
-    pub fn new() -> Self {
+    pub fn new(current_tick: *const u64) -> Self {
         Self {
             next_entity_id: EntityId(0),
             archetypes: HashMap::new(),
+            current_tick,
         }
     }
 
@@ -87,14 +89,23 @@ impl Entities {
         self.step_entity_id();
 
         self.archetypes.entry(archetype_id)
-            .or_insert_with(|| Archetype::new(types))
+            .or_insert_with(|| Archetype::new(types, self.current_tick))
             .insert_entity(entity_id, components);
     }
 
     /// Despawn entity
     pub(crate) fn despawn_entity(&mut self, entity_id: EntityId) {
-        if let Some(archetype) = self.archetypes.values_mut().find(|a| a.entity_ids.contains(&entity_id)) {
+        let mut emptied_archetype = None;
+        if let Some((id, archetype)) = self.archetypes.iter_mut().find(|(_, a)| a.entity_ids.contains(&entity_id)) {
             archetype.remove_entity(entity_id);
+
+            if archetype.len() == 0 {
+                emptied_archetype = Some(*id);
+            }
+        }
+
+        if let Some(id) = emptied_archetype {
+            self.archetypes.remove(&id);
         }
     }
 
@@ -106,22 +117,32 @@ impl Entities {
         let type_id = (*component).type_id(); 
         assert_ne!(type_id, TypeId::of::<EntityId>(), "Cannot insert EntityId as a component");
 
-        if let Some(archetype) = self.archetypes.values_mut().find(|a| a.entity_ids.contains(&entity_id)) {
+        let mut emptied_archetype = None;
+        if let Some((id, archetype)) = self.archetypes.iter_mut().find(|(_, a)| a.entity_ids.contains(&entity_id)) {
             if archetype.has_type(type_id) {
-                assert!(archetype.update_component(entity_id, component), "Failed to update component");
+                // TODO: ADD REAL CURRENT WRLD TIME TICK
+                assert!(archetype.update_component(entity_id, component, 0), "Failed to update component");
                 return;
             }
 
             let mut old_components = archetype.remove_entity(entity_id).expect("entity_id should exist in archetype");
             old_components.push(component);
 
+            if archetype.len() == 0 {
+                emptied_archetype = Some(*id);
+            }
+
             let mut types = archetype.types_vec();
             types.push(type_id);
 
             let archetype_id = Archetype::hash_types(types.clone());
             self.archetypes.entry(archetype_id)
-                .or_insert_with(|| Archetype::new(types))
+                .or_insert_with(|| Archetype::new(types, self.current_tick))
                 .insert_entity(entity_id, old_components);
+        }
+
+        if let Some(id) = emptied_archetype {
+            self.archetypes.remove(&id);
         }
     }
 
@@ -132,7 +153,8 @@ impl Entities {
     pub(crate) fn remove_component(&mut self, entity_id: EntityId, type_id: TypeId) {
         assert_ne!(type_id, TypeId::of::<EntityId>(), "Cannot remove builtin EntityId component");
 
-        if let Some(archetype) = self.archetypes.values_mut().find(|a| a.entity_ids.contains(&entity_id)) {
+        let mut emptied_archetype = None;
+        if let Some((id, archetype)) = self.archetypes.iter_mut().find(|(_, a)| a.entity_ids.contains(&entity_id)) {
             if !archetype.has_type(type_id) {
                 return;
             }
@@ -141,13 +163,21 @@ impl Entities {
             let index = archetype.types[&type_id];
             old_components.remove(index);
 
+            if archetype.len() == 0 {
+                emptied_archetype = Some(*id);
+            }
+
             let mut types = archetype.types_vec();
             types.remove(index);
 
             let archetype_id = Archetype::hash_types(types.clone());
             self.archetypes.entry(archetype_id)
-                .or_insert_with(|| Archetype::new(types))
+                .or_insert_with(|| Archetype::new(types, self.current_tick))
                 .insert_entity(entity_id, old_components);
+        }
+
+        if let Some(id) = emptied_archetype {
+            self.archetypes.remove(&id);
         }
     }
 }
