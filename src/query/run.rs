@@ -1,6 +1,6 @@
 use std::any::{Any, TypeId};
 
-use super::Query;
+use super::{Query, filter::{Filters, QueryFilter}};
 
 // pub trait RunQuery<'a, T, U> {
 pub trait RunQuery<'a> {
@@ -53,18 +53,29 @@ impl<'a, T: 'static> QueryGetDowncasted<'a> for &mut T {
 }
 
 macro_rules! impl_run_query {
-    ($($types:ident),+) => {
+    ($($types:ident),+; $($filter:ident),*) => {
         #[allow(unused_parens)]
-        impl<'e, 't, 's, $($types),+> RunQuery<'s> for Query<'e, ($($types),+)>
+        impl<'e, 't, 's, $($types),+, $($filter),*> RunQuery<'s> for Query<'e, ($($types),+), ($($filter),*)>
         where
             $(
                 $types: QueryGetType + QueryGetDowncasted<'t, Output = $types>
             ,)+
+            $(
+                $filter: QueryFilter
+            ),*
         {
             type Output = ($($types),+);
 
             #[allow(unused_parens)]
             fn iter_mut(&'s mut self) -> Vec<($($types),+)> {
+                #[allow(unused_mut)]
+                let mut filters = Filters::new();
+                $(
+                    filters.add::<$filter>();
+                    println!("filter: {:?}", stringify!($filter));
+                )*
+
+
                 let requested_types = vec![$($types::get_type_id()),+];
                 let mut result = Vec::new();
 
@@ -129,13 +140,26 @@ macro_rules! impl_run_query {
     };
 }
 
-impl_run_query!(T);
-impl_run_query!(T, U);
-impl_run_query!(T, U, V);
-impl_run_query!(T, U, V, W);
-impl_run_query!(T, U, V, W, X);
-impl_run_query!(T, U, V, W, X, Y);
-impl_run_query!(T, U, V, W, X, Y, Z);
+impl_run_query!(T; );
+impl_run_query!(T; F);
+
+impl_run_query!(T, U; );
+impl_run_query!(T, U; F);
+
+impl_run_query!(T, U, V; );
+impl_run_query!(T, U, V; F);
+
+impl_run_query!(T, U, V, W; );
+impl_run_query!(T, U, V, W; F);
+
+impl_run_query!(T, U, V, W, X; );
+impl_run_query!(T, U, V, W, X; F);
+
+impl_run_query!(T, U, V, W, X, Y; );
+impl_run_query!(T, U, V, W, X, Y; F);
+
+impl_run_query!(T, U, V, W, X, Y, Z; );
+impl_run_query!(T, U, V, W, X, Y, Z; F);
 
 // impl<'a, 'b, T: 'static, U: 'static> RunQuery<(&'b mut T, &'b mut U)>
 // for Query<'a, (&'b mut T, &'b mut U)>

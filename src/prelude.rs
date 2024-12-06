@@ -1,6 +1,6 @@
 pub use super::{
     app::App,
-    query::{Query, RunQuery},
+    query::{Query, RunQuery, filter::{Changed, With, Without}},
     system::{System, SystemsContext, Commands, SystemStage},
     assets::{Assets, Handle},
     world::EntityId,
