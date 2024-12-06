@@ -9,7 +9,7 @@ pub struct System {
 }
 
 impl System {
-    pub fn new<T: 'static>(name: &str, func: fn(&mut SystemsContext, Query<T>)) -> System {
+    pub fn new<T: 'static, F: 'static>(name: &str, func: fn(&mut SystemsContext, Query<T, F>)) -> System {
         System {
             name: name.to_string(),
             func_ptr: func as *const (),
