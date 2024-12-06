@@ -70,16 +70,13 @@ macro_rules! impl_run_query {
             fn iter_mut(&'s mut self) -> Vec<($($types),+)> {
                 #[allow(unused_mut)]
                 let mut filters = Filters::new();
-                $(
-                    filters.add::<$filter>();
-                    println!("filter: {:?}", stringify!($filter));
-                )*
+                $(filters.add::<$filter>();)*
 
 
                 let requested_types = vec![$($types::get_type_id()),+];
                 let mut result = Vec::new();
 
-                for archetype in self.entities.archetypes_filtered(&requested_types) {
+                for archetype in self.entities.archetypes_filtered(&requested_types, &filters) {
                     // Extract specific component vecs into a $type variable
                     $(
                         #[allow(non_snake_case)]
@@ -88,6 +85,7 @@ macro_rules! impl_run_query {
                             let index = *archetype.types().get(&type_id).expect("type should exist in archetype");
 
                             if $types::is_mut() {
+                                // Mark components as mutated if $type is &mut T
                                 archetype.mark_mutated(index);
                             }
 
@@ -95,13 +93,15 @@ macro_rules! impl_run_query {
                         };
                     )+
 
+                    let component_indices_filter = archetype.get_changed_filter_indices(&filters);
                     for i in 0..archetype.len() {
+                        if !archetype.check_changed_fields(i, &component_indices_filter) {
+                            continue;
+                        }
+
+                        // SAFETY: We know that the components are of the correct type $type
                         result.push(($(unsafe { 
-                            // *const Vec<Box<dyn Any>> -> &mut Vec<Box<dyn Any>> with index i 
-                            // -> &mut Box<dyn Any> -> &mut $type
                             $types::get_downcasted(&mut (&mut *$types)[i])
-                                // .downcast_mut::<$types>()
-                                // .expect("variable $type[i] should downcast into $type")
                         }),+));
                     }
                 }
