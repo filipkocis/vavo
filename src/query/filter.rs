@@ -1,0 +1,71 @@
+use std::any::TypeId;
+
+pub struct Changed<T> {
+    _marker: std::marker::PhantomData<T>,
+}
+
+pub struct With<T> {
+    _marker: std::marker::PhantomData<T>,
+}
+
+pub struct Without<T> {
+    _marker: std::marker::PhantomData<T>,
+}
+
+/// This trait defines what can be applied as a filter to a query
+pub(crate) trait QueryFilter {
+    fn into_filters(filters: &mut Filters);
+}
+
+impl<T: 'static> QueryFilter for Changed<T> {
+    fn into_filters(filters: &mut Filters) {
+        filters.changed.push(TypeId::of::<T>())
+    }
+}
+
+impl<T: 'static> QueryFilter for With<T> {
+    fn into_filters(filters: &mut Filters) {
+        filters.with.push(TypeId::of::<T>())
+    }
+}
+
+impl<T: 'static> QueryFilter for Without<T> {
+    fn into_filters(filters: &mut Filters) {
+        filters.without.push(TypeId::of::<T>())
+    }
+}
+
+// impl QueryFilter for () {
+//     fn get_type_id() -> TypeId {
+//         TypeId::of::<()>()
+//     }
+//
+//     fn into_filters(_: &mut Filters) {}
+// }
+
+/// Struct to store parsed T query filters
+pub(crate) struct Filters {
+    pub changed: Vec<TypeId>,
+    pub with: Vec<TypeId>,
+    pub without: Vec<TypeId>,
+}
+
+impl Filters {
+    pub fn new() -> Self {
+        Self {
+            changed: Vec::new(),
+            with: Vec::new(),
+            without: Vec::new(),
+        }
+    }
+
+    pub fn from<T: QueryFilter>() -> Filters {
+        let mut filters = Filters::new();
+        filters.add::<T>();
+        filters
+    }
+
+    pub fn add<T: QueryFilter>(&mut self) {
+        T::into_filters(self);
+    }
+}
