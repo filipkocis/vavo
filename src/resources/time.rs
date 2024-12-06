@@ -37,6 +37,10 @@ impl Time {
         self.tick
     }
 
+    pub(crate) fn tick_raw(&self) -> *const u64 {
+        &self.tick
+    }
+
     pub fn delta(&self) -> f32 {
         self.delta
     }

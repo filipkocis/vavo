@@ -66,8 +66,6 @@ impl App {
     pub(crate) fn startup(&mut self, state: &mut AppState) {
         let mut context = RenderContext::new_update_context(state);
 
-        self.world.resources.insert_default_resources();
-
         self.run_systems(SystemStage::PreStartup, context.as_renderer());
         self.run_systems(SystemStage::Startup, context.as_renderer());
     }
