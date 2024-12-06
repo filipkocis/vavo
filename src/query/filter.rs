@@ -35,13 +35,22 @@ impl<T: 'static> QueryFilter for Without<T> {
     }
 }
 
-// impl QueryFilter for () {
-//     fn get_type_id() -> TypeId {
-//         TypeId::of::<()>()
-//     }
-//
-//     fn into_filters(_: &mut Filters) {}
-// }
+macro_rules! impl_query_filter {
+    ($($type:ident),+) => {
+        impl<$($type: QueryFilter),+> QueryFilter for ($($type,)+) {
+            fn into_filters(filters: &mut Filters) {
+                $(
+                    $type::into_filters(filters);
+                )+
+            }
+        }
+    };
+}
+
+impl_query_filter!(A, B);
+impl_query_filter!(A, B, C);
+impl_query_filter!(A, B, C, D);
+impl_query_filter!(A, B, C, D, E);
 
 /// Struct to store parsed T query filters
 pub(crate) struct Filters {
