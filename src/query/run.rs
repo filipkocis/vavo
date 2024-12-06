@@ -2,26 +2,63 @@ use std::any::{Any, TypeId};
 
 use super::Query;
 
-pub trait RunQuery<T, U> {
-    fn iter_mut(&mut self) -> Vec<T>;
-    fn iter(&mut self) -> Vec<U>;
+// pub trait RunQuery<'a, T, U> {
+pub trait RunQuery<'a> {
+    type Output;
+
+    fn iter_mut(&'a mut self) -> Vec<Self::Output>;
+    // fn iter(&mut self) -> Vec<U>;
+}
+
+trait QueryGetType {
+    fn get_type_id() -> TypeId;
+}
+
+impl<T: 'static> QueryGetType for &T {
+    fn get_type_id() -> TypeId {
+        TypeId::of::<T>()
+    }
+}
+
+impl<T: 'static> QueryGetType for &mut T {
+    fn get_type_id() -> TypeId {
+        TypeId::of::<T>()
+    }
+}
+
+trait QueryGetDowncasted<'a> {
+    type Output;
+    fn get_downcasted(comp: &'a mut Box<dyn Any>) -> Self::Output;
+}
+
+impl<'a, Type: 'static> QueryGetDowncasted<'a> for &Type {
+    type Output = &'a Type;
+    fn get_downcasted(comp: &'a mut Box<dyn Any>) -> Self::Output {
+        comp.downcast_ref::<Type>().expect("downcast failed")
+    }
+}
+
+impl<'a, T: 'static> QueryGetDowncasted<'a> for &mut T {
+    type Output = &'a mut T;
+    fn get_downcasted(comp: &'a mut Box<dyn Any>) -> Self::Output {
+        comp.downcast_mut::<T>().expect("downcast failed")
+    }
 }
 
 macro_rules! impl_run_query {
-    // Base case for a single pair of types
     ($($types:ident),+) => {
         #[allow(unused_parens)]
-        impl<'a, 'b, $($types: 'static),+> 
-            RunQuery<
-                ($(&'b mut $types),+),
-                ($(&'b $types),+)
-            >
-        for Query<'a, ($($types),+)>
-        where 'a: 'b
+        impl<'e, 't, 's, $($types),+> RunQuery<'s> for Query<'e, ($($types),+)>
+        where
+            $(
+                $types: QueryGetType + QueryGetDowncasted<'t, Output = $types>
+            ,)+
         {
+            type Output = ($($types),+);
+
             #[allow(unused_parens)]
-            fn iter_mut(&mut self) -> Vec<($(&'b mut $types),+)> {
-                let requested_types = vec![$(TypeId::of::<$types>()),+];
+            fn iter_mut(&'s mut self) -> Vec<($($types),+)> {
+                let requested_types = vec![$($types::get_type_id()),+];
                 let mut result = Vec::new();
 
                 for archetype in self.entities.archetypes_filtered(&requested_types) {
@@ -29,17 +66,19 @@ macro_rules! impl_run_query {
                     $(
                         #[allow(non_snake_case)]
                         let $types = {
-                            let type_id = TypeId::of::<$types>();
+                            let type_id = $types::get_type_id();
                             let index = *archetype.types().get(&type_id).expect("type should exist in archetype");
-                            &mut archetype.components[index] as *mut Vec<Box<dyn Any>>
+                            archetype.components_at_mut(index)
                         };
                     )+
 
                     for i in 0..archetype.len() {
                         result.push(($(unsafe { 
-                            (&mut *$types)[i]
-                                .downcast_mut::<$types>()
-                                .expect("variable $type[i] should downcast into $type")
+                            // *const Vec<Box<dyn Any>> -> &mut Vec<Box<dyn Any>> with index i 
+                            // -> &mut Box<dyn Any> -> &mut $type
+                            $types::get_downcasted(&mut (&mut *$types)[i])
+                                // .downcast_mut::<$types>()
+                                // .expect("variable $type[i] should downcast into $type")
                         }),+));
                     }
                 }
@@ -47,33 +86,33 @@ macro_rules! impl_run_query {
                 result
             }
 
-            #[allow(unused_parens)]
-            fn iter(&mut self) -> Vec<($(&'b $types),+)> {
-                let requested_types = vec![$(TypeId::of::<$types>()),+];
-                let mut result = Vec::new();
-
-                for archetype in self.entities.archetypes_filtered(&requested_types) {
-                    // Extract specific component vecs into a $type variable
-                    $(
-                        #[allow(non_snake_case)]
-                        let $types = {
-                            let type_id = TypeId::of::<$types>();
-                            let index = *archetype.types().get(&type_id).expect("type should exist in archetype");
-                            &archetype.components[index] as *const Vec<Box<dyn Any>>
-                        };
-                    )+
-
-                    for i in 0..archetype.len() {
-                        result.push(($(unsafe { 
-                            (&*$types)[i]
-                                .downcast_ref::<$types>()
-                                .expect("variable $type[i] should downcast into $type")
-                        }),+));
-                    }
-                }
-
-                result
-            }
+            // #[allow(unused_parens)]
+            // fn iter(&mut self) -> Vec<($(&'b $types),+)> {
+            //     let requested_types = vec![$(TypeId::of::<$types>()),+];
+            //     let mut result = Vec::new();
+            //
+            //     for archetype in self.entities.archetypes_filtered(&requested_types) {
+            //         // Extract specific component vecs into a $type variable
+            //         $(
+            //             #[allow(non_snake_case)]
+            //             let $types = {
+            //                 let type_id = TypeId::of::<$types>();
+            //                 let index = *archetype.types().get(&type_id).expect("type should exist in archetype");
+            //                 archetype.components_at(index)
+            //             };
+            //         )+
+            //
+            //         for i in 0..archetype.len() {
+            //             result.push(($(unsafe { 
+            //                 (&*$types)[i]
+            //                     .downcast_ref::<$types>()
+            //                     .expect("variable $type[i] should downcast into $type")
+            //             }),+));
+            //         }
+            //     }
+            //
+            //     result
+            // }
         }
     };
 }
