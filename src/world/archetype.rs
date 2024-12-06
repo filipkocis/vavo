@@ -1,5 +1,7 @@
 use std::{any::{Any, TypeId}, collections::HashMap, hash::{DefaultHasher, Hash, Hasher}};
 
+use crate::query::filter::Filters;
+
 use super::entities::EntityId;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
@@ -147,13 +149,13 @@ impl Archetype {
     }
 
     /// Check if type_id exists in self
-    pub fn has_type(&self, type_id: TypeId) -> bool {
-        self.types.contains_key(&type_id)
+    pub fn has_type(&self, type_id: &TypeId) -> bool {
+        self.types.contains_key(type_id)
     }
 
     /// Check if all type_ids exist in self
     pub fn has_types(&self, type_ids: &[TypeId]) -> bool {
-        type_ids.iter().all(|type_id| self.has_type(*type_id))
+        type_ids.iter().all(|type_id| self.has_type(type_id))
     }
 
     /// Check if all type_ids exist in self, no more no less
@@ -163,7 +165,7 @@ impl Archetype {
 
     /// Same as has_type but with generic T type
     pub fn has_t<T: 'static>(self) -> bool {
-        self.has_type(TypeId::of::<T>())
+        self.has_type(&TypeId::of::<T>())
     }
 
     /// Returns hash of sorted types
@@ -177,5 +179,54 @@ impl Archetype {
 
         let hash = hasher.finish();
         ArchetypeId(hash)
-    } 
+    }
+}
+
+impl Archetype {
+    pub fn matches_filters(&self, filters: &Filters) -> bool {
+        if filters.empty {
+            return true
+        }
+
+        self.match_filter_changed(&filters) &&
+        self.match_filter_with(&filters) &&
+        self.match_filter_without(&filters)
+    }
+
+    /// Returns indices of requested changed fields in this archetype
+    ///
+    /// # Panics
+    /// Panics if type_id in filters.changed is not found in archetype
+    pub fn get_changed_filter_indices(&self, filters: &Filters) -> Vec<usize> {
+        filters.changed.iter().filter_map(|type_id| 
+            Some(*self.types.get(type_id)
+                .expect("type_id in filters.changed not found in archetype"))
+        ).collect()
+    }
+
+    /// Checks if requested fields (indices) are marked as changed in entities[at]
+    ///
+    /// # Note
+    /// To get the correct indices call `archetype.get_changed_filter_indices(filters)`
+    pub fn check_changed_fields(&self, at: usize, indices: &[usize]) -> bool {
+        if indices.is_empty() {
+            return true
+        }
+
+        indices.iter().all(|&index| {
+            self.ticks[index][at] == self.current_tick()
+        })
+    }
+
+    fn match_filter_changed(&self, filters: &Filters) -> bool {
+        filters.changed.iter().all(|type_id| self.has_type(type_id))
+    }
+
+    fn match_filter_with(&self, filters: &Filters) -> bool {
+        filters.with.iter().all(|type_id| self.has_type(type_id))
+    }
+
+    fn match_filter_without(&self, filters: &Filters) -> bool {
+        filters.without.iter().all(|type_id| !self.has_type(type_id)) 
+    }
 }
