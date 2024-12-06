@@ -29,6 +29,9 @@ impl<T: 'static> QueryGetType for &mut T {
 trait QueryGetDowncasted<'a> {
     type Output;
     fn get_downcasted(comp: &'a mut Box<dyn Any>) -> Self::Output;
+    fn is_mut() -> bool {
+        false
+    }
 }
 
 impl<'a, Type: 'static> QueryGetDowncasted<'a> for &Type {
@@ -42,6 +45,10 @@ impl<'a, T: 'static> QueryGetDowncasted<'a> for &mut T {
     type Output = &'a mut T;
     fn get_downcasted(comp: &'a mut Box<dyn Any>) -> Self::Output {
         comp.downcast_mut::<T>().expect("downcast failed")
+    }
+
+    fn is_mut() -> bool {
+        true
     }
 }
 
@@ -68,6 +75,11 @@ macro_rules! impl_run_query {
                         let $types = {
                             let type_id = $types::get_type_id();
                             let index = *archetype.types().get(&type_id).expect("type should exist in archetype");
+
+                            if $types::is_mut() {
+                                archetype.mark_mutated(index);
+                            }
+
                             archetype.components_at_mut(index)
                         };
                     )+
