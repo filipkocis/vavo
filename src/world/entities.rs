@@ -2,6 +2,8 @@ use std::{
     any::{Any, TypeId}, collections::HashMap, hash::Hash, ops::{Add, Sub}
 };
 
+use crate::query::filter::Filters;
+
 use super::archetype::{Archetype, ArchetypeId};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
@@ -40,6 +42,9 @@ pub(crate) struct Entities {
     current_tick: *const u64,
 }
 
+
+// TODO: Implement the correct removal and transfer of ticks, not just components
+
 impl Entities {
     pub fn new(current_tick: *const u64) -> Self {
         Self {
@@ -57,8 +62,10 @@ impl Entities {
     }
 
     /// Returns archetypes containing type_ids  
-    pub(crate) fn archetypes_filtered(&mut self, type_ids: &[TypeId]) -> Vec<&mut Archetype> {
-        self.archetypes.values_mut().filter(|a| a.has_types(type_ids)).collect()
+    pub(crate) fn archetypes_filtered(&mut self, type_ids: &[TypeId], filters: &Filters) -> Vec<&mut Archetype> {
+        self.archetypes.values_mut().filter(|a| {
+            a.has_types(type_ids) && a.matches_filters(filters)
+        }).collect()
     }
 
     /// Exposes next entity ID
@@ -119,7 +126,7 @@ impl Entities {
 
         let mut emptied_archetype = None;
         if let Some((id, archetype)) = self.archetypes.iter_mut().find(|(_, a)| a.entity_ids.contains(&entity_id)) {
-            if archetype.has_type(type_id) {
+            if archetype.has_type(&type_id) {
                 assert!(archetype.update_component(entity_id, component), "Failed to update component");
                 return;
             }
@@ -154,7 +161,7 @@ impl Entities {
 
         let mut emptied_archetype = None;
         if let Some((id, archetype)) = self.archetypes.iter_mut().find(|(_, a)| a.entity_ids.contains(&entity_id)) {
-            if !archetype.has_type(type_id) {
+            if !archetype.has_type(&type_id) {
                 return;
             }
 
