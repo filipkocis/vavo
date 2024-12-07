@@ -72,3 +72,13 @@ impl Default for OrthographicProjection {
         }
     }
 }
+
+impl Projection {
+    pub fn perspective() -> Self {
+        Self::Perspective(PerspectiveProjection::default())
+    }
+
+    pub fn orthographic() -> Self {
+        Self::Orthographic(OrthographicProjection::default())
+    }
+}

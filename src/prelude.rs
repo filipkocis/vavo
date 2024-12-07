@@ -9,6 +9,8 @@ pub use super::{
     math::{Transform, camera::{Camera, Camera3D, Projection}},
 };
 
+pub use super::math::camera;
+
 pub mod color {
     pub use super::super::renderer::palette::*; 
 }
