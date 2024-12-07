@@ -134,7 +134,7 @@ impl RenderContext<'_> {
         &self.state.device
     }
 
-    pub(crate) fn queue(&self) -> &wgpu::Queue {
+    pub fn queue(&self) -> &wgpu::Queue {
         &self.state.queue
     }
 
