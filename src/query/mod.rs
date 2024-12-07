@@ -17,4 +17,11 @@ impl<T, F> Query<'_, T, F> {
             _marker: std::marker::PhantomData,
         }
     }
+
+    pub fn cast<'a, U, V>(&'a mut self) -> Query<'a, U, V> {
+        Query {
+            entities: self.entities,
+            _marker: std::marker::PhantomData
+        }
+    }
 }
