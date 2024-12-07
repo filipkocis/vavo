@@ -22,6 +22,11 @@ impl Buffer {
         }
     }
 
+    pub fn data_from_slice<A>(data: &[A]) -> &[u8]
+    where A: NoUninit + AnyBitPattern {
+        bytemuck::cast_slice(data)
+    }
+
     pub fn create_vertex_buffer<A>(self, data: &[A], usages: Option<wgpu::BufferUsages>, device: &wgpu::Device) -> Self
     where A: NoUninit + AnyBitPattern {
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
