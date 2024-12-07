@@ -6,7 +6,7 @@ pub use super::{
     world::EntityId,
     renderer::{Material, Image, Color, Face, Mesh, Meshable, shapes},
     resources::{Resources, Res, ResMut, Time},
-    math::{Transform},
+    math::{Transform, camera::{Camera, Camera3D, Projection}},
 };
 
 pub mod color {
