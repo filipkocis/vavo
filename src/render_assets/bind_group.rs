@@ -5,7 +5,7 @@ use crate::assets::{Assets, Handle};
 use super::RenderAssets;
 
 pub struct BindGroup {
-    inner: wgpu::BindGroup,
+    pub(crate) inner: wgpu::BindGroup,
 }
 
 impl<'a> Into<Option<&'a wgpu::BindGroup>> for &'a BindGroup {
@@ -65,11 +65,23 @@ impl<'a> BindGroupBuilder<'a> {
     }
 
     pub fn add_uniform_buffer(mut self, buffer: &'a wgpu::Buffer, visibility: wgpu::ShaderStages) -> Self {
+        let ty = wgpu::BufferBindingType::Uniform;
+        self.add_buffer(buffer, visibility, ty);
+        self
+    }
+
+    pub fn add_storage_buffer(mut self, buffer: &'a wgpu::Buffer, visibility: wgpu::ShaderStages, read_only: bool) -> Self {
+        let ty = wgpu::BufferBindingType::Storage { read_only };
+        self.add_buffer(buffer, visibility, ty);
+        self
+    }
+
+    fn add_buffer(&mut self, buffer: &'a wgpu::Buffer, visibility: wgpu::ShaderStages, ty: wgpu::BufferBindingType) {
         let layout_entry = wgpu::BindGroupLayoutEntry {
             binding: self.layout_entries.len() as u32,
             visibility,
             ty: wgpu::BindingType::Buffer {
-                ty: wgpu::BufferBindingType::Uniform,
+                ty,
                 has_dynamic_offset: false,
                 min_binding_size: None,
             },
@@ -87,7 +99,6 @@ impl<'a> BindGroupBuilder<'a> {
 
         self.layout_entries.push(layout_entry);                             
         self.entries.push(entry);
-        self
     }
 
     pub fn finish(self) -> BindGroup {

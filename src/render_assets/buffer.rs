@@ -6,6 +6,7 @@ pub struct Buffer {
     pub vertex: Option<wgpu::Buffer>,
     pub index: Option<wgpu::Buffer>,
     pub uniform: Option<wgpu::Buffer>,
+    pub storage: Option<wgpu::Buffer>,
     pub num_indices: u32,
     pub num_vertices: u32,
 }
@@ -17,6 +18,7 @@ impl Buffer {
             vertex: None,
             index: None,
             uniform: None,
+            storage: None,
             num_indices: 0,
             num_vertices: 0,
         }
@@ -66,6 +68,20 @@ impl Buffer {
 
         Self {
             uniform: Some(uniform_buffer),
+            ..self
+        }
+    }
+
+    pub fn create_storage_buffer<A>(self, data: &[A], usages: Option<wgpu::BufferUsages>, device: &wgpu::Device) -> Self
+    where A: NoUninit + AnyBitPattern {
+        let storage_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some(&format!("{}_storage_buffer", self.label)),
+            contents: bytemuck::cast_slice(data),
+            usage: if let Some(usages) = usages { wgpu::BufferUsages::STORAGE | usages } else { wgpu::BufferUsages::STORAGE }, 
+        });
+
+        Self {
+            storage: Some(storage_buffer),
             ..self
         }
     }
