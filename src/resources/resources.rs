@@ -76,4 +76,11 @@ impl Resources {
         self.insert(Input::<KeyCode>::new());
         self.insert(Input::<MouseButton>::new());
     }
+
+    /// Update some builtin resources
+    pub(crate) fn update(&mut self) {
+        self.get_mut::<Time>().unwrap().update();
+        self.get_mut::<Input<KeyCode>>().unwrap().clear_just_pressed();
+        self.get_mut::<Input<MouseButton>>().unwrap().clear_just_pressed();
+    }
 }

@@ -78,7 +78,7 @@ impl App {
     pub(crate) fn update(&mut self, state: &mut AppState) {
         let mut context = RenderContext::new_update_context(state);
 
-        self.world.resources.get_mut::<Time>().unwrap().update();
+        self.world.resources.update();
 
         self.run_systems(SystemStage::PreUpdate, context.as_renderer());
         self.run_systems(SystemStage::Update, context.as_renderer());
@@ -110,7 +110,7 @@ impl App {
     }
 
     /// Handle keyboard input
-    pub fn handle_keyboard_input(&mut self, event: winit::event::KeyEvent) {
+    pub(crate) fn handle_keyboard_input(&mut self, event: winit::event::KeyEvent) {
         let code = match event.physical_key {
             PhysicalKey::Code(code) => code,
             _ => return,
@@ -121,7 +121,7 @@ impl App {
             state: event.state,
         };
 
-        let mut input = self.world.resources.get_mut::<Input<super::input::KeyCode>>().expect("Input<MouseButton> resource not found");
+        let mut input = self.world.resources.get_mut::<Input<super::input::KeyCode>>().expect("Input<KeyCode> resource not found");
         if event.state == winit::event::ElementState::Pressed {
             input.press(event.code);
         } else {
@@ -132,7 +132,7 @@ impl App {
     }
 
     /// Handle mouse input
-    pub fn handle_mouse_input(&mut self, state: winit::event::ElementState, button: winit::event::MouseButton) {
+    pub(crate) fn handle_mouse_input(&mut self, state: winit::event::ElementState, button: winit::event::MouseButton) {
         let event = MouseInput {
             button, state
         };

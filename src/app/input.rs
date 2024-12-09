@@ -28,6 +28,7 @@ where T: Eq + Hash + Copy
 
     pub(crate) fn press(&mut self, key: T) {
         self.storage.insert(key);
+        self.just_pressed.insert(key);
     }
 
     pub(crate) fn release(&mut self, key: T) {
