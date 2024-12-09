@@ -1,7 +1,35 @@
 use std::{any::{Any, TypeId}, collections::HashMap};
 
+use crate::app::input::{KeyCode, ElementState, MouseButton, MouseScrollDelta};
+
+use glam::Vec2;
+
+pub struct KeyboardInput {
+    pub code: KeyCode,
+    pub state: ElementState,
+}
+
+pub struct MouseInput {
+    pub button: MouseButton,
+    pub state: ElementState,
+}
+
+pub struct MouseWheel {
+    pub delta: MouseScrollDelta,
+}
+
+pub struct MouseMotion {
+    pub delta: Vec2,
+}
+
+pub struct CursorMoved {
+    pub position: Vec2,
+}
+
 pub struct Events {
+    /// Current frame events
     storage: HashMap<TypeId, Vec<Box<dyn Any>>>,
+    /// Unapplied events, to be used in the next frame
     staging: HashMap<TypeId, Vec<Box<dyn Any>>>,
 }
 

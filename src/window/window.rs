@@ -1,8 +1,9 @@
+use glam::Vec2;
 use winit::{
     application::ApplicationHandler, dpi::PhysicalSize, event::*, event_loop::{ActiveEventLoop, ControlFlow, EventLoop}, keyboard::{KeyCode, PhysicalKey}, window::{Window, WindowId}
 };
 
-use crate::app::App;
+use crate::{app::App, events::{CursorMoved, MouseMotion, MouseWheel}};
 
 use super::AppState;
 
@@ -51,9 +52,12 @@ impl ApplicationHandler for AppHandler {
         _device_id: DeviceId,
         event: DeviceEvent,
     ) {
+        self.app.create_event(event.clone());
+
         match event {
             DeviceEvent::MouseMotion { delta } => {
-                self.app.create_event(DeviceEvent::MouseMotion { delta });
+                let delta = Vec2::new(delta.0 as f32, delta.1 as f32);
+                self.app.create_event(MouseMotion { delta })
             },
             _ => (),
         }
@@ -64,7 +68,7 @@ impl ApplicationHandler for AppHandler {
             return
         }
 
-        // TODO: handle sending input events to the app 
+        self.app.create_event(event.clone());
 
         match event {
             WindowEvent::KeyboardInput { 
@@ -76,6 +80,21 @@ impl ApplicationHandler for AppHandler {
                 ..
             } |
             WindowEvent::CloseRequested => event_loop.exit(),
+
+            WindowEvent::KeyboardInput { event, .. } => {
+                self.app.handle_keyboard_input(event);
+            },
+            WindowEvent::MouseInput { state, button, .. } => {
+                self.app.handle_mouse_input(state, button);
+            }
+            WindowEvent::MouseWheel { delta, .. } => {
+                self.app.create_event(MouseWheel { delta });
+            },
+            WindowEvent::CursorMoved { position, .. } => {
+                let position = Vec2::new(position.x as f32, position.y as f32);
+                self.app.create_event(CursorMoved { position });
+            }
+
             WindowEvent::Resized(physical_size) => self.resize(physical_size),
             WindowEvent::RedrawRequested => {
                 self.app.update(self.state.as_mut().unwrap());

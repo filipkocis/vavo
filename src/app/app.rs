@@ -1,8 +1,12 @@
+use winit::keyboard::PhysicalKey;
+
 use crate::resources::Time;
 use crate::system::{Commands, System, SystemHandler, SystemStage, SystemsContext};
 use crate::window::{AppHandler, AppState, RenderContext, Renderer};
 use crate::world::World;
 
+use super::events::{KeyboardInput, MouseInput};
+use super::input::Input;
 use super::Events;
 
 pub struct App {
@@ -103,5 +107,43 @@ impl App {
         self.events.apply();
 
         Ok(())
+    }
+
+    /// Handle keyboard input
+    pub fn handle_keyboard_input(&mut self, event: winit::event::KeyEvent) {
+        let code = match event.physical_key {
+            PhysicalKey::Code(code) => code,
+            _ => return,
+        };
+
+        let event = KeyboardInput {
+            code: code,
+            state: event.state,
+        };
+
+        let mut input = self.world.resources.get_mut::<Input<super::input::KeyCode>>().expect("Input<MouseButton> resource not found");
+        if event.state == winit::event::ElementState::Pressed {
+            input.press(event.code);
+        } else {
+            input.release(event.code);
+        }
+
+        self.create_event(event);
+    }
+
+    /// Handle mouse input
+    pub fn handle_mouse_input(&mut self, state: winit::event::ElementState, button: winit::event::MouseButton) {
+        let event = MouseInput {
+            button, state
+        };
+
+        let mut input = self.world.resources.get_mut::<Input<super::input::MouseButton>>().expect("Input<MouseButton> resource not found");
+        if event.state == winit::event::ElementState::Pressed {
+            input.press(event.button);
+        } else {
+            input.release(event.button);
+        }
+
+        self.create_event(event);
     }
 }

@@ -1,6 +1,7 @@
 mod app;
-mod events;
+pub mod events;
 mod event_handler;
+pub mod input;
 
 pub use app::App;
 pub use events::Events;
