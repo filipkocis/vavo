@@ -1,8 +1,9 @@
 mod transform;
 pub mod camera;
+mod light;
 
 use glam::Vec2;
-pub use transform::{Transform};
+pub use transform::{Transform, GlobalTransform};
 
 pub struct Rect {
     pub min: Vec2,

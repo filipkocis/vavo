@@ -1,12 +1,49 @@
-use glam::{Quat, Vec3};
+use glam::{Mat4, Quat, Vec3};
 
-use crate::{render_assets::{BindGroup, Buffer, RenderAsset, RenderAssets}, resources::Resources, system::SystemsContext, world::EntityId};
+use crate::{render_assets::{BindGroup, Buffer, RenderAsset, RenderAssets}, system::SystemsContext, world::EntityId};
 
 #[derive(Debug, Clone, Copy)]
+/// Represents the local transform of an entity, relative to its parent or the world space if it
+/// has no parent.
 pub struct Transform {
     pub scale: Vec3,
     pub rotation: Quat,
     pub translation: Vec3,
+}
+
+#[derive(Debug, Clone, Copy)]
+/// GlobalTransform represents the world-space transform of an entity.
+/// If an entity has a parent, it will be calculated as the parent's GlobalTransform * child's
+/// local Transform.
+///
+/// # Note
+/// This component is added automatically when a Transform component is added to an entity.
+pub struct GlobalTransform {
+    pub matrix: Mat4,
+}
+
+impl GlobalTransform {
+    pub fn new(matrix: Mat4) -> Self {
+        Self { matrix }
+    }
+
+    pub fn from_transform(transform: &Transform) -> Self {
+        Self {
+            matrix: transform.as_matrix()
+        }
+    }
+
+    pub fn as_matrix(&self) -> Mat4 {
+        self.matrix
+    }
+
+    /// Combine this global transform with a child local transform, returning a new global
+    /// transform for the child.
+    pub fn combine_child(&self, child_local: &Transform) -> Self {
+        Self {
+            matrix: self.matrix * child_local.as_matrix()
+        }
+    }
 }
 
 impl Transform {
@@ -29,8 +66,8 @@ impl Transform {
         self
     }
 
-    pub fn as_matrix(&self) -> glam::Mat4 {
-        glam::Mat4::from_scale_rotation_translation(self.scale, self.rotation, self.translation)
+    pub fn as_matrix(&self) -> Mat4 {
+        Mat4::from_scale_rotation_translation(self.scale, self.rotation, self.translation)
     }
 }
 

@@ -8,6 +8,7 @@ pub mod renderer;
 mod resources;
 pub mod render_assets;
 mod math;
+pub mod core;
 
 pub use renderer::{shapes, palette};
 pub use app::{input, events};

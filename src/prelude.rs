@@ -3,10 +3,10 @@ pub use super::{
     query::{Query, RunQuery, filter::{Changed, With, Without}},
     system::{System, SystemsContext, Commands, SystemStage},
     assets::{Assets, Handle},
-    world::EntityId,
+    world::{EntityId, Parent, Children},
     renderer::{Material, Texture, Image, Color, Face, Mesh, Meshable, shapes},
     resources::{Resources, Res, ResMut, Time},
-    math::{Transform, camera::{Camera, Camera3D, Projection}},
+    math::{Transform, GlobalTransform, camera::{Camera, Camera3D, Projection}},
 };
 
 pub use super::math::camera;
