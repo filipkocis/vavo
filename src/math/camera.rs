@@ -107,8 +107,15 @@ impl Projection {
 }
 
 impl Camera {
-    pub fn get_buffer_data(projection: &Projection, transform: &Transform) -> [[f32; 4]; 4] {
-        projection.get_view_projection_matrix(transform)
+    pub fn get_buffer_data(projection: &Projection, transform: &Transform) -> Vec<f32> {
+        let mut data = projection.get_view_projection_matrix(transform).as_flattened().to_vec();
+        data.extend(&[
+            transform.translation.x,
+            transform.translation.y,
+            transform.translation.z,
+            0.0, // padding
+        ]);
+        data
     }
 }
 
@@ -118,32 +125,14 @@ impl RenderAsset<Buffer> for Camera {
             ctx: &mut crate::prelude::SystemsContext,
             _: Option<&crate::prelude::EntityId>
     ) -> Buffer {
-        // TODO: implement some query system for components, for now we use defaults
         let transform = crate::math::Transform::default()
             .with_translation(glam::Vec3::new(0.0, 0.0, 10.0));
         let projection = Projection::perspective();
 
-        let data = match projection {
-            Projection::Perspective(p) => {
-                let projection = glam::Mat4::perspective_rh(p.fov.to_radians(), p.aspect_ratio, p.near, p.far);
-                let view = transform.as_matrix().inverse();
-                let view_projection = projection * view;
-                
-                view_projection.to_cols_array_2d()
-            },
-            Projection::Orthographic(o) => {
-                let projection = glam::Mat4::orthographic_rh(
-                    o.area.min.x, o.area.max.x, o.area.min.y, o.area.max.y, o.near, o.far
-                );
-                let view = transform.as_matrix().inverse();
-                let view_projection = projection * view;
-                
-                view_projection.to_cols_array_2d()
-            }
-        };
+        let data = Camera::get_buffer_data(&projection, &transform);
         
         Buffer::new("camera")
-            .create_uniform_buffer(&[data], Some(wgpu::BufferUsages::COPY_DST), ctx.renderer.device())
+            .create_uniform_buffer(&data, Some(wgpu::BufferUsages::COPY_DST), ctx.renderer.device())
     }
 }
 
