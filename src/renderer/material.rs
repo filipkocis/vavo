@@ -1,4 +1,4 @@
-use crate::{assets::Handle, prelude::Resources, render_assets::{BindGroup, Buffer, RenderAsset}, world::EntityId};
+use crate::{assets::Handle, prelude::Resources, render_assets::{BindGroup, Buffer, RenderAsset}, system::SystemsContext, world::EntityId};
 
 use super::{Color, Face, Image};
 
@@ -31,10 +31,13 @@ impl Material {
             self.metallic,
             self.reflectance,
         ]));
+
+
+        let booleans = self.flip_normal_map_y as u32 &
+            (matches!(self.cull_mode, Some(Face::Back)) as u32) << 1 &
+            (self.unlit as u32) << 2;
         data.extend_from_slice(bytemuck::cast_slice(&[
-            self.flip_normal_map_y,
-            matches!(self.cull_mode, Some(Face::Back)),
-            self.unlit
+            booleans, 0, 0, 0
         ]));
 
         data
@@ -62,28 +65,27 @@ impl Default for Material {
 impl RenderAsset<Buffer> for Material {
     fn create_render_asset(
         &self, 
-        device: 
-        &wgpu::Device, 
-        _: &mut Resources,
+        ctx: &mut SystemsContext,
         _: Option<&EntityId>
     ) -> Buffer {
         Buffer::new("material")
-            .create_uniform_buffer(&self.uniform_data(), None, device)
+            .create_uniform_buffer(&self.uniform_data(), None, ctx.renderer.device())
     }
 }
 
 impl RenderAsset<BindGroup> for Material {
     fn create_render_asset(
         &self, 
-        device: 
-        &wgpu::Device, 
-        resources: &mut Resources,
+        ctx: &mut SystemsContext,
         _: Option<&EntityId>
     ) -> BindGroup {
-        BindGroup::build("material", device)
-            .add_texture(&self.base_color_texture, resources)
-            .add_texture(&self.normal_map_texture, resources)
-            // .add_uniform(self, device)
-            .finish()
+        let buffer: Buffer = self.create_render_asset(ctx, None);
+        let uniform = buffer.uniform.expect("material buffer should be uniform");
+
+        BindGroup::build("material")
+            .add_texture(&self.base_color_texture, ctx)
+            .add_texture(&self.normal_map_texture, ctx)
+            .add_uniform_buffer(&uniform, wgpu::ShaderStages::VERTEX_FRAGMENT)
+            .finish(ctx)
     }
 }
