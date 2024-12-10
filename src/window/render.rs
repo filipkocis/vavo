@@ -83,7 +83,7 @@ impl<'a> RenderContext<'a> {
 }
 
 pub struct CommandEncoder<'a> {
-    inner: *mut wgpu::CommandEncoder,
+    pub inner: *mut wgpu::CommandEncoder,
     _marker: std::marker::PhantomData<&'a ()>,
 }
 

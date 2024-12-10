@@ -1,6 +1,6 @@
 use glam::{Quat, Vec3};
 
-use crate::{render_assets::{BindGroup, Buffer, RenderAsset, RenderAssets}, resources::Resources, world::EntityId};
+use crate::{render_assets::{BindGroup, Buffer, RenderAsset, RenderAssets}, resources::Resources, system::SystemsContext, world::EntityId};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Transform {
@@ -47,34 +47,30 @@ impl Default for Transform {
 impl RenderAsset<Buffer> for Transform {
     fn create_render_asset(
         &self, 
-        device: 
-        &wgpu::Device, 
-        _: &mut Resources,
+        ctx: &mut SystemsContext,
         _: Option<&EntityId>
     ) -> Buffer {
         let data = self.as_matrix().to_cols_array_2d();
 
         Buffer::new("transform")
-            .create_uniform_buffer(&[data], Some(wgpu::BufferUsages::COPY_DST), device)
+            .create_uniform_buffer(&[data], Some(wgpu::BufferUsages::COPY_DST), ctx.renderer.device())
     }
 }   
 
 impl RenderAsset<BindGroup> for Transform {
     fn create_render_asset(
         &self, 
-        device: 
-        &wgpu::Device, 
-        resources: &mut Resources,
+        ctx: &mut SystemsContext,
         entity_id: Option<&EntityId>
     ) -> BindGroup {
         let id = entity_id.expect("EntityId should be provided for Transform BindGroup");
 
-        let mut buffers = resources.get_mut::<RenderAssets<Buffer>>().unwrap();
-        let buffer = buffers.get_by_entity(id, self, device, resources);
+        let mut buffers = ctx.resources.get_mut::<RenderAssets<Buffer>>().unwrap();
+        let buffer = buffers.get_by_entity(id, self, ctx);
         let uniform_buffer = buffer.uniform.as_ref().expect("Transform buffer should be uniform");
 
-        BindGroup::build("transform", device)
+        BindGroup::build("transform")
             .add_uniform_buffer(uniform_buffer, wgpu::ShaderStages::VERTEX)
-            .finish()
+            .finish(ctx)
     }
 }

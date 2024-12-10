@@ -1,21 +1,25 @@
 use std::{any::TypeId, collections::HashMap, ops::Deref};
 
-use crate::{assets::{Assets, Handle}, prelude::Resources, world::EntityId};
+use crate::{assets::{Assets, Handle}, system::SystemsContext, world::EntityId};
 
 use super::RenderHandle;
 
 pub trait RenderAsset<R> {
     fn create_render_asset(
         &self, 
-        device: 
-        &wgpu::Device, 
-        resources: &mut Resources,
+        ctx: &mut SystemsContext,
         entity_id: Option<&EntityId>
     ) -> R;
 }
 
 /// Wrapper for render asset entry to allow multiple mutable borrows for RenderAssets<T>
 pub struct RenderAssetEntry<T>(*const T);
+
+impl<T> Clone for RenderAssetEntry<T> {
+    fn clone(&self) -> Self {
+        RenderAssetEntry(self.0)
+    }
+}
 
 impl<T> Deref for RenderAssetEntry<T> {
     type Target = T;
@@ -82,8 +86,7 @@ impl<T> RenderAssets<T> {
         &mut self, 
         entity_id: &EntityId, 
         component: &A, 
-        device: &wgpu::Device, 
-        resources: &mut Resources
+        ctx: &mut SystemsContext,
     ) -> RenderAssetEntry<T>
     where A: 'static + RenderAsset<T> {
         let entity_component_id = (entity_id, component).into();
@@ -92,10 +95,10 @@ impl<T> RenderAssets<T> {
             Some(key) => {
                 self.storage
                     .entry(key.clone())
-                    .or_insert_with(|| component.create_render_asset(device, resources, Some(entity_id)))
+                    .or_insert_with(|| component.create_render_asset(ctx, Some(entity_id)))
             },
             None => {
-                let key = self.insert(component.create_render_asset(device, resources, Some(entity_id)));
+                let key = self.insert(component.create_render_asset(ctx, Some(entity_id)));
                 self.entity_component_map.insert(entity_component_id, key.clone());
                 self.storage.get(&key).unwrap()
             }
@@ -107,18 +110,17 @@ impl<T> RenderAssets<T> {
     pub fn get_by_handle<A>(
         &mut self, 
         handle: &Handle<A>, 
-        device: &wgpu::Device, 
-        resources: &mut Resources
+        ctx: &mut SystemsContext,
     ) -> RenderAssetEntry<T>
     where A: 'static + RenderAsset<T> {
         let rae = match self.handle_map.get(&handle.into()){
             Some(key) => {
                 self.storage
                     .entry(key.clone())
-                    .or_insert_with(|| Self::create_asset(handle, device, resources))
+                    .or_insert_with(|| Self::create_asset(handle, ctx))
             },
             None => {
-                let key = self.insert(Self::create_asset(handle, device, resources));
+                let key = self.insert(Self::create_asset(handle, ctx));
                 self.handle_map.insert(handle.into(), key.clone());
                 self.storage.get(&key).unwrap()
             }
@@ -127,11 +129,11 @@ impl<T> RenderAssets<T> {
         RenderAssetEntry(rae)
     }
 
-    fn create_asset<A>(handle: &Handle<A>, device: &wgpu::Device, resources: &mut Resources) -> T
+    fn create_asset<A>(handle: &Handle<A>, ctx: &mut SystemsContext) -> T
     where A: 'static + RenderAsset<T> {
-        let assets = resources.get::<Assets<A>>().unwrap();
+        let assets = ctx.resources.get::<Assets<A>>().unwrap();
         let asset = assets.get(handle).unwrap();
-        let render_asset = asset.create_render_asset(device, resources, None);
+        let render_asset = asset.create_render_asset(ctx, None);
 
         render_asset
     }

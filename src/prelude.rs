@@ -4,7 +4,7 @@ pub use super::{
     system::{System, SystemsContext, Commands, SystemStage},
     assets::{Assets, Handle},
     world::EntityId,
-    renderer::{Material, Image, Color, Face, Mesh, Meshable, shapes},
+    renderer::{Material, Texture, Image, Color, Face, Mesh, Meshable, shapes},
     resources::{Resources, Res, ResMut, Time},
     math::{Transform, camera::{Camera, Camera3D, Projection}},
 };

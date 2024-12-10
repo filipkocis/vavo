@@ -4,13 +4,12 @@ mod system;
 mod world;
 mod assets;
 mod window;
-mod renderer;
+pub mod renderer;
 mod resources;
 pub mod render_assets;
 mod math;
 
-pub use renderer::shapes;
-pub use renderer::palette;
+pub use renderer::{shapes, palette};
 pub use app::{input, events};
 
 pub mod prelude;

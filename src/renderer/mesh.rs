@@ -3,7 +3,7 @@ use std::mem;
 pub use wgpu::PrimitiveTopology;
 use wgpu::{VertexAttribute, VertexFormat};
 
-use crate::{prelude::Resources, render_assets::{Buffer, RenderAsset}, renderer::palette, world::EntityId};
+use crate::{prelude::Resources, render_assets::{Buffer, RenderAsset}, renderer::palette, system::SystemsContext, world::EntityId};
 
 use super::Color;
 
@@ -111,11 +111,11 @@ impl Mesh {
 impl RenderAsset<Buffer> for Mesh {
     fn create_render_asset(
         &self, 
-        device: 
-        &wgpu::Device, 
-        _: &mut Resources,
+        ctx: &mut SystemsContext,
         _: Option<&EntityId>
     ) -> Buffer {
+        let device = ctx.renderer.device();
+
         let buffer = Buffer::new("mesh")
             .create_vertex_buffer(&self.vertex_data(), None, device);
 

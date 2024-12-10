@@ -6,7 +6,7 @@ mod mesh;
 pub mod shapes;
 
 pub use material::Material;
-pub use image::Image;
+pub use image::{Texture, Image, DefaultTexture};
 pub use color::Color;
 pub use mesh::{Mesh, Meshable};
 

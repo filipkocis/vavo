@@ -115,9 +115,7 @@ impl Camera {
 impl RenderAsset<Buffer> for Camera {
     fn create_render_asset(
             &self, 
-            device: 
-            &wgpu::Device, 
-            _: &mut crate::prelude::Resources,
+            ctx: &mut crate::prelude::SystemsContext,
             _: Option<&crate::prelude::EntityId>
     ) -> Buffer {
         // TODO: implement some query system for components, for now we use defaults
@@ -145,26 +143,24 @@ impl RenderAsset<Buffer> for Camera {
         };
         
         Buffer::new("camera")
-            .create_uniform_buffer(&[data], Some(wgpu::BufferUsages::COPY_DST), device)
+            .create_uniform_buffer(&[data], Some(wgpu::BufferUsages::COPY_DST), ctx.renderer.device())
     }
 }
 
 impl RenderAsset<BindGroup> for Camera {
     fn create_render_asset(
             &self, 
-            device: 
-            &wgpu::Device, 
-            resources: &mut crate::prelude::Resources,
+            ctx: &mut crate::prelude::SystemsContext,
             entity_id: Option<&crate::prelude::EntityId>
     ) -> BindGroup {
         let id = entity_id.expect("EntityId should be provided for Camera BindGroup");
 
-        let mut buffers = resources.get_mut::<RenderAssets<Buffer>>().unwrap();
-        let buffer = buffers.get_by_entity(id, self, device, resources); 
+        let mut buffers = ctx.resources.get_mut::<RenderAssets<Buffer>>().unwrap();
+        let buffer = buffers.get_by_entity(id, self, ctx); 
         let uniform_buffer = buffer.uniform.as_ref().expect("Camera buffer should be uniform");
 
-        BindGroup::build("camera", device)     
+        BindGroup::build("camera")
             .add_uniform_buffer(uniform_buffer, wgpu::ShaderStages::VERTEX_FRAGMENT)
-            .finish()
+            .finish(ctx)
     }
 }
