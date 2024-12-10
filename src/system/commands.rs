@@ -1,6 +1,6 @@
 use std::any::{Any, TypeId};
 
-use crate::world::{World, entities::EntityId};
+use crate::{math::{GlobalTransform, Transform}, world::{entities::EntityId, World}};
 
 enum Command {
     InsertResource(Box<dyn Any>),
@@ -39,11 +39,9 @@ impl<'a> EntityCommands<'a> {
             .push(Command::DespawnEntity(self.entity_id));
     }
 
-    pub fn insert<T: 'static>(self, component: T) -> Self {
-        self.commands.commands.push(Command::InsertComponent(
-            self.entity_id,
-            Box::new(component),
-        ));
+    pub fn insert<T: 'static>(mut self, component: T) -> Self {
+        self.handle_insert_types(&component);
+        self.insert_internal(component);
         self
     }
 
@@ -52,6 +50,28 @@ impl<'a> EntityCommands<'a> {
             .commands
             .push(Command::RemoveComponent(self.entity_id, TypeId::of::<T>()));
         self
+    }
+
+    fn insert_internal<T: 'static>(&mut self, component: T) {
+        self.commands.commands.push(Command::InsertComponent(
+            self.entity_id,
+            Box::new(component),
+        ));
+    }
+
+    fn handle_insert_types<T: 'static>(&mut self, component: &T) {
+        let type_id = TypeId::of::<T>();
+
+        if type_id == TypeId::of::<EntityId>() {
+            panic!("Cannot insert EntityId component");
+        } else if type_id == TypeId::of::<GlobalTransform>() {
+            panic!("Cannot insert GlobalTransform component");
+        }
+
+        if type_id == TypeId::of::<Transform>() {
+            let transform = component as *const T as *const Transform;
+            self.insert_internal(GlobalTransform::from_transform(unsafe { &*transform }));
+        }
     }
 }
 
