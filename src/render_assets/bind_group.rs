@@ -1,7 +1,8 @@
-use crate::renderer::Image;
-use crate::resources::Resources;
-use crate::assets::{Assets, Handle};
+use crate::renderer::{DefaultTexture, Image, Texture};
+use crate::assets::Handle;
+use crate::system::SystemsContext;
 
+use super::render_assets::RenderAssetEntry;
 use super::RenderAssets;
 
 pub struct BindGroup {
@@ -15,52 +16,43 @@ impl<'a> Into<Option<&'a wgpu::BindGroup>> for &'a BindGroup {
 }
 
 impl BindGroup {
-    pub fn build<'a>(label: &'a str, device: &'a wgpu::Device) -> BindGroupBuilder<'a> {
-        BindGroupBuilder::new(label, device)
+    pub fn build<'a>(label: &'a str) -> BindGroupBuilder<'a> {
+        BindGroupBuilder::new(label)
     }
 }
 
 pub struct BindGroupBuilder<'a> {
     label: &'a str,
-    device: &'a wgpu::Device,
     layout_entries: Vec<wgpu::BindGroupLayoutEntry>,
     entries: Vec<wgpu::BindGroupEntry<'a>>,
+
+    textures: Vec<(u32, RenderAssetEntry<Texture>)>,
+    binding: u32,
 }
 
 impl<'a> BindGroupBuilder<'a> {
-    pub fn new(label: &'a str, device: &'a wgpu::Device) -> Self {
+    pub fn new(label: &'a str) -> Self {
         Self {
             label,
-            device,
             layout_entries: Vec::new(),
             entries: Vec::new(),
+
+            textures: Vec::new(),
+            binding: 0,
         }
     }
 
-    pub fn add_texture(mut self, texture: &Option<Handle<Image>>, resources: &mut Resources) -> Self {
+    pub fn add_texture(mut self, texture: &Option<Handle<Image>>, ctx: &mut SystemsContext) -> Self {
         if let Some(texture) = texture {
-            todo!();
-            // let images = resources.get::<Assets<Image>>().unwrap();
-            // let render_images = resources.get::<RenderAssets<Image>>().unwrap();
-            // let texture = render_images.get(texture, &images).unwrap();
-            //
-            // let layout_entry = wgpu::BindGroupLayoutEntry {
-            //     binding: self.entries.len() as u32,
-            //     visibility: wgpu::ShaderStages::FRAGMENT,
-            //     ty: wgpu::BindingType::Texture {
-            //         sample_type: wgpu::TextureSampleType::Float { filterable: true },
-            //         view_dimension: wgpu::TextureViewDimension::D2,
-            //         multisampled: false,
-            //     },
-            //     count: None,
-            // };
-            //
-            // let entry = wgpu::BindGroupEntry {
-            //     binding: layout_entry.binding,
-            //     resource: wgpu::BindingResource::TextureView(&texture.view),
-            // };
+            let mut render_images = ctx.resources.get_mut::<RenderAssets<Texture>>().unwrap();
+            let texture = render_images.get_by_handle(texture, ctx);
+            self.textures.push((self.binding, texture));
+        } else {
+            let default_texture = ctx.resources.get::<DefaultTexture>().unwrap();  
+            self.textures.push((self.binding, default_texture.handle.clone())); 
         }
 
+        self.binding += 2;
         self
     }
 
@@ -78,7 +70,7 @@ impl<'a> BindGroupBuilder<'a> {
 
     fn add_buffer(&mut self, buffer: &'a wgpu::Buffer, visibility: wgpu::ShaderStages, ty: wgpu::BufferBindingType) {
         let layout_entry = wgpu::BindGroupLayoutEntry {
-            binding: self.layout_entries.len() as u32,
+            binding: self.binding,
             visibility,
             ty: wgpu::BindingType::Buffer {
                 ty,
@@ -99,17 +91,68 @@ impl<'a> BindGroupBuilder<'a> {
 
         self.layout_entries.push(layout_entry);                             
         self.entries.push(entry);
+        self.binding += 1;
     }
 
-    pub fn finish(self) -> BindGroup {
-        let layout = self.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            entries: &self.layout_entries,
+    fn texture_layout_entries(&self) -> (Vec<wgpu::BindGroupEntry>, Vec<wgpu::BindGroupLayoutEntry>) {
+        let mut layouts = Vec::new();
+        let mut entries = Vec::new();
+
+        for (binding, texture) in &self.textures {
+            let tle = wgpu::BindGroupLayoutEntry {
+                binding: *binding,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Texture {
+                    sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                    view_dimension: wgpu::TextureViewDimension::D2,
+                    multisampled: false,
+                },
+                count: None,
+            };
+
+            let te = wgpu::BindGroupEntry {
+                binding: tle.binding,
+                resource: wgpu::BindingResource::TextureView(&texture.view)
+            };
+
+            layouts.push(tle);
+            entries.push(te);
+
+            let sle = wgpu::BindGroupLayoutEntry {
+                binding: binding + 1,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                count: None,
+            };
+
+            let se = wgpu::BindGroupEntry {
+                binding: sle.binding,
+                resource: wgpu::BindingResource::Sampler(&texture.sampler)
+            };
+
+            layouts.push(sle);
+            entries.push(se);
+        }
+        
+        (entries, layouts)
+    }
+
+    pub fn finish(self, ctx: &mut SystemsContext) -> BindGroup {
+        let (mut entries, mut layouts) = self.texture_layout_entries();
+        
+        layouts.extend(self.layout_entries.clone());
+        entries.extend(self.entries.clone());
+
+        let device = ctx.renderer.device();
+
+        let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            entries: &layouts,
             label: Some(&format!("{}_bind_group_layout", self.label))
         });
 
-        let bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &layout,
-            entries: &self.entries,
+            entries: &entries,
             label: Some(&format!("{}_bind_group", self.label))
         });
 
