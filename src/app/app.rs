@@ -56,7 +56,8 @@ impl App {
         }
 
         let commands = Commands::build(&self.world);
-        let mut ctx = SystemsContext::new(commands, &mut self.world.resources, &mut self.events, renderer);
+        let world_ptr = &mut self.world as *mut World;
+        let mut ctx = SystemsContext::new(commands, &mut self.world.resources, &mut self.events, renderer, world_ptr);
 
         for system in systems.iter_mut() {
             system.run(&mut ctx, &mut self.world.entities);
