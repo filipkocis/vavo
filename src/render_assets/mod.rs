@@ -1,7 +1,7 @@
 mod render_assets;
 mod buffer;
 mod bind_group;
-mod pipeline;
+pub mod pipeline;
 mod render_handle;
 mod transform_storage;
 

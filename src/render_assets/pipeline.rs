@@ -18,7 +18,7 @@ impl StandardPipeline {
 
 impl Pipeline {
     /// Creates a new instance of PipelineBuilder
-    pub fn build(label: &str) -> PipelineBuilder<'_> {
+    pub fn build(label: &str) -> PipelineBuilder {
         PipelineBuilder::new(label)
     }
 
@@ -28,21 +28,21 @@ impl Pipeline {
     }
 }
 
-pub struct PipelineBuilder<'a> {
-    pub label: &'a str,
-    pub bind_group_layouts: Option<&'a [&'a wgpu::BindGroupLayout]>,
-    pub vertex_buffer_layouts: Option<&'a [wgpu::VertexBufferLayout<'a>]>,
-    pub vertex_shader: Option<(&'a str, &'a str)>,
-    pub fragment_shader: Option<(&'a str, &'a str)>,
+pub struct PipelineBuilder {
+    pub label: String,
+    pub bind_group_layouts: Option<Vec<wgpu::BindGroupLayout>>,
+    pub vertex_buffer_layouts: Option<Vec<wgpu::VertexBufferLayout<'static>>>,
+    pub vertex_shader: Option<(String, String)>,
+    pub fragment_shader: Option<(String, String)>,
     pub color_format: Option<wgpu::TextureFormat>,
     pub depth_format: Option<wgpu::TextureFormat>,
     pub topology: Option<wgpu::PrimitiveTopology>,
 }
 
-impl<'a> PipelineBuilder<'a> {
-    fn new(label: &'a str) -> Self {
+impl PipelineBuilder {
+    fn new(label: &str) -> Self {
         Self {
-            label,
+            label: label.to_string(),
             bind_group_layouts: None,
             vertex_buffer_layouts: None,
             vertex_shader: None,
@@ -57,7 +57,7 @@ impl<'a> PipelineBuilder<'a> {
     ///
     /// # Note
     /// If this is not set, the pipeline layout will be None
-    pub fn set_bind_group_layouts(mut self, layouts: &'a [&'a wgpu::BindGroupLayout]) -> Self {
+    pub fn set_bind_group_layouts(mut self, layouts: Vec<wgpu::BindGroupLayout>) -> Self {
         self.bind_group_layouts = Some(layouts);
         self
     }
@@ -66,7 +66,7 @@ impl<'a> PipelineBuilder<'a> {
     ///
     /// # Note
     /// Default is an empty slice
-    pub fn set_vertex_buffer_layouts(mut self, layouts: &'a [wgpu::VertexBufferLayout<'a>]) -> Self {
+    pub fn set_vertex_buffer_layouts(mut self, layouts: Vec<wgpu::VertexBufferLayout<'static>>) -> Self {
         self.vertex_buffer_layouts = Some(layouts);
         self
     }
@@ -76,8 +76,8 @@ impl<'a> PipelineBuilder<'a> {
     /// # Note
     /// Source should be a string of the shader code, you can use include_str! macro.
     /// This is required.
-    pub fn set_vertex_shader(mut self, source: &'a str, entry_point: &'a str) -> Self {
-        self.vertex_shader = Some((source, entry_point));
+    pub fn set_vertex_shader(mut self, source: &str, entry_point: &str) -> Self {
+        self.vertex_shader = Some((source.to_string(), entry_point.to_string()));
         self
     }
 
@@ -86,8 +86,8 @@ impl<'a> PipelineBuilder<'a> {
     /// # Note
     /// Source should be a string of the shader code, you can use include_str! macro.
     /// If not set, the fragment state will be None
-    pub fn set_fragment_shader(mut self, source: &'a str, entry_point: &'a str) -> Self {
-        self.fragment_shader = Some((source, entry_point));
+    pub fn set_fragment_shader(mut self, source: &str, entry_point: &str) -> Self {
+        self.fragment_shader = Some((source.to_string(), entry_point.to_string()));
         self
     }
 
@@ -118,19 +118,19 @@ impl<'a> PipelineBuilder<'a> {
         self
     }
 
-    fn load_shader(&self, t: &str, source_entry: Option<(&str, &'a str)>, device: &wgpu::Device) -> (wgpu::ShaderModule, &str) {
+    fn load_shader(&self, t: &str, source_entry: &Option<(String, String)>, device: &wgpu::Device) -> (wgpu::ShaderModule, String) {
         self.load_shader_maybe(t, source_entry, device)
             .expect(&format!("{} shader for {} not set", t, self.label))
     }
 
-    fn load_shader_maybe(&self, t: &str, source_entry: Option<(&str, &'a str)>, device: &wgpu::Device) -> Option<(wgpu::ShaderModule, &str)> {
+    fn load_shader_maybe(&self, t: &str, source_entry: &Option<(String, String)>, device: &wgpu::Device) -> Option<(wgpu::ShaderModule, String)> {
         if let Some((source, entry)) = source_entry {
             let shader_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
                 label: Some(&format!("{}_{}_shader", self.label, t)),
                 source: wgpu::ShaderSource::Wgsl(source.into()),
             });
 
-            Some((shader_module, entry))
+            Some((shader_module, entry.to_string()))
         } else {
             None
         }
@@ -138,8 +138,8 @@ impl<'a> PipelineBuilder<'a> {
 
     /// Finish building the pipeline
     pub fn finish(self, device: &wgpu::Device) -> Pipeline {
-        let (vertex_module, vertex_entry) = self.load_shader("vertex", self.vertex_shader, device);
-        let fragment_maybe = self.load_shader_maybe("fragment", self.fragment_shader, device);
+        let (vertex_module, vertex_entry) = self.load_shader("vertex", &self.vertex_shader, device);
+        let fragment_maybe = self.load_shader_maybe("fragment", &self.fragment_shader, device);
 
         let color_targets = vec![self.color_format.map(|format| 
             wgpu::ColorTargetState {
@@ -152,18 +152,18 @@ impl<'a> PipelineBuilder<'a> {
         let layout = self.bind_group_layouts.map(|layouts| {
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some(&format!("{}_layout", self.label)),
-                bind_group_layouts: layouts, 
+                bind_group_layouts: &layouts.iter().collect::<Vec<_>>(), 
                 push_constant_ranges: &[]
             })
         });
 
         let pipeline_desc = wgpu::RenderPipelineDescriptor {
-            label: Some(self.label),
+            label: Some(&self.label),
             layout: layout.as_ref(),
             vertex: wgpu::VertexState {
                 module: &vertex_module,
-                entry_point: Some(vertex_entry),
-                buffers: self.vertex_buffer_layouts.unwrap_or(&[]),
+                entry_point: Some(&vertex_entry),
+                buffers: &self.vertex_buffer_layouts.unwrap_or(vec![]),
                 compilation_options: Default::default(),
             },
             fragment: fragment_maybe.as_ref().map(|(module, entry)| wgpu::FragmentState {
