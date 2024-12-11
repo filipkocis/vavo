@@ -1,5 +1,7 @@
 use std::any::{Any, TypeId};
 
+use crate::world::EntityId;
+
 use super::{Query, filter::{Filters, QueryFilter}};
 
 // pub trait RunQuery<'a, T, U> {
@@ -7,7 +9,7 @@ pub trait RunQuery<'a> {
     type Output;
 
     fn iter_mut(&'a mut self) -> Vec<Self::Output>;
-    // fn iter(&mut self) -> Vec<U>;
+    fn get(&'a mut self, entity_id: EntityId) -> Option<Self::Output>;
 }
 
 trait QueryGetType {
@@ -107,6 +109,51 @@ macro_rules! impl_run_query {
                 }
 
                 result
+            }
+
+            fn get(&'s mut self, entity_id: EntityId) -> Option<($($types),+)> {
+                #[allow(unused_mut)]
+                let mut filters = Filters::new();
+                $(filters.add::<$filter>();)*
+
+
+                let requested_types = vec![$($types::get_type_id()),+];
+
+                for archetype in self.entities.archetypes_filtered(&requested_types, &filters) {
+                    let entity_index = match archetype.get_entity_index(entity_id) {
+                        Some(index) => index,
+                        None => continue,
+                    };
+
+                    // Extract specific component vecs into a $type variable
+                    $(
+                        #[allow(non_snake_case)]
+                        let $types = {
+                            let type_id = $types::get_type_id();
+                            let index = *archetype.types().get(&type_id).expect("type should exist in archetype");
+
+                            if $types::is_mut() {
+                                // Mark components as mutated if $type is &mut T
+                                archetype.mark_mutated(index);
+                            }
+
+                            archetype.components_at_mut(index)
+                        };
+                    )+
+
+                    let component_indices_filter = archetype.get_changed_filter_indices(&filters);
+
+                    if !archetype.check_changed_fields(entity_index, &component_indices_filter) {
+                        return None;
+                    }
+
+                    // SAFETY: We know that the components are of the correct type $type
+                    return Some(($(unsafe { 
+                        $types::get_downcasted(&mut (&mut *$types)[entity_index])
+                    }),+));
+                }
+
+                None
             }
 
             // #[allow(unused_parens)]

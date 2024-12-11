@@ -168,6 +168,16 @@ impl Archetype {
         self.has_type(&TypeId::of::<T>())
     }
 
+    /// Check if archetype has entity_id
+    pub fn has_entity(&self, entity_id: EntityId) -> bool {
+        self.entity_ids.contains(&entity_id)
+    }
+
+    /// Get entity index in entity_ids if it exists
+    pub fn get_entity_index(&self, entity_id: EntityId) -> Option<usize> {
+        self.entity_ids.iter().position(|id| *id == entity_id)
+    }
+
     /// Returns hash of sorted types
     pub(super) fn hash_types(types: Vec<TypeId>) -> ArchetypeId {
         let mut hasher = DefaultHasher::new();

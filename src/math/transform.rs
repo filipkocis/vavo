@@ -33,6 +33,11 @@ impl GlobalTransform {
         }
     }
 
+    /// Update the global transform based on the provided local transform.
+    pub fn update(&mut self, local: &Transform) {
+        self.matrix = local.as_matrix();
+    }
+
     pub fn as_matrix(&self) -> Mat4 {
         self.matrix
     }
