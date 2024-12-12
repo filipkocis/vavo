@@ -137,7 +137,7 @@ impl PipelineBuilder {
     }
 
     /// Finish building the pipeline
-    pub fn finish(self, device: &wgpu::Device) -> Pipeline {
+    pub fn finish(&self, device: &wgpu::Device) -> Pipeline {
         let (vertex_module, vertex_entry) = self.load_shader("vertex", &self.vertex_shader, device);
         let fragment_maybe = self.load_shader_maybe("fragment", &self.fragment_shader, device);
 
@@ -149,7 +149,7 @@ impl PipelineBuilder {
             }
         )];
 
-        let layout = self.bind_group_layouts.map(|layouts| {
+        let layout = self.bind_group_layouts.as_ref().map(|layouts| {
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some(&format!("{}_layout", self.label)),
                 bind_group_layouts: &layouts.iter().collect::<Vec<_>>(), 
@@ -157,13 +157,14 @@ impl PipelineBuilder {
             })
         });
 
+        let v = vec![];
         let pipeline_desc = wgpu::RenderPipelineDescriptor {
             label: Some(&self.label),
             layout: layout.as_ref(),
             vertex: wgpu::VertexState {
                 module: &vertex_module,
                 entry_point: Some(&vertex_entry),
-                buffers: &self.vertex_buffer_layouts.unwrap_or(vec![]),
+                buffers: self.vertex_buffer_layouts.as_ref().unwrap_or(&v),
                 compilation_options: Default::default(),
             },
             fragment: fragment_maybe.as_ref().map(|(module, entry)| wgpu::FragmentState {
