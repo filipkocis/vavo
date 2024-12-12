@@ -131,8 +131,8 @@ impl<T> RenderAssets<T> {
 
     fn create_asset<A>(handle: &Handle<A>, ctx: &mut SystemsContext) -> T
     where A: 'static + RenderAsset<T> {
-        let assets = ctx.resources.get::<Assets<A>>().unwrap();
-        let asset = assets.get(handle).unwrap();
+        let assets = ctx.resources.get::<Assets<A>>().expect("Assets<A> not found");
+        let asset = assets.get(handle).expect("Asset not found, invalid handle");
         let render_asset = asset.create_render_asset(ctx, None);
 
         render_asset

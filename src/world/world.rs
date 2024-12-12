@@ -2,7 +2,7 @@ use crate::resources::{Resources, Time};
 
 use super::entities::Entities;
 
-pub(crate) struct World {
+pub struct World {
     pub entities: Entities,
     pub resources: Resources,
 }

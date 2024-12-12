@@ -36,7 +36,7 @@ impl Sub<u32> for EntityId {
 }
 
 #[derive(Debug)]
-pub(crate) struct Entities {
+pub struct Entities {
     next_entity_id: EntityId,
     archetypes: HashMap<ArchetypeId, Archetype>, // Map archetype ID to its storage
     current_tick: *const u64,

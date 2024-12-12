@@ -1,7 +1,7 @@
 pub use super::{
     app::App,
     query::{Query, RunQuery, filter::{Changed, With, Without}},
-    system::{System, SystemsContext, Commands, SystemStage},
+    system::{System, GraphSystem, SystemsContext, Commands, SystemStage},
     assets::{Assets, Handle},
     world::{EntityId, Parent, Children},
     renderer::{Material, Texture, Image, Color, Face, Mesh, Meshable, shapes},
