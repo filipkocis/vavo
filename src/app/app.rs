@@ -1,5 +1,6 @@
 use winit::keyboard::PhysicalKey;
 
+use crate::core::graph::RenderGraph;
 use crate::system::{Commands, System, SystemHandler, SystemStage, SystemsContext};
 use crate::window::{AppHandler, AppState, RenderContext, Renderer};
 use crate::world::World;
@@ -10,6 +11,7 @@ use super::Events;
 
 pub struct App {
     system_handler: SystemHandler,
+    render_graph: RenderGraph,
 
     world: World,
     events: Events,
@@ -21,6 +23,7 @@ impl App {
     pub fn build() -> Self {
         Self {
             system_handler: SystemHandler::new(),
+            render_graph: RenderGraph::new(),
             world: World::new(),
             events: Events::new(),
         }
@@ -57,11 +60,21 @@ impl App {
 
         let commands = Commands::build(&self.world);
         let world_ptr = &mut self.world as *mut World;
-        let mut ctx = SystemsContext::new(commands, &mut self.world.resources, &mut self.events, renderer, world_ptr);
+        let mut ctx = SystemsContext::new(commands, &mut self.world.resources, &mut self.events, renderer, world_ptr, &mut self.render_graph);
 
         for system in systems.iter_mut() {
             system.run(&mut ctx, &mut self.world.entities);
         }
+
+        ctx.commands.apply(&mut self.world);
+    }
+
+    fn execute_render_graph(&mut self, renderer: Renderer) {
+        let commands = Commands::build(&self.world);
+        let world_ptr = &mut self.world as *mut World;
+        let mut ctx = SystemsContext::new(commands, &mut self.world.resources, &mut self.events, renderer, world_ptr, &mut self.render_graph);
+
+        self.render_graph.execute(&mut ctx, &mut self.world.entities);
 
         ctx.commands.apply(&mut self.world);
     }
@@ -96,12 +109,13 @@ impl App {
         // println!("eq: {} | {} == {}", eq, systems[0].name, systems[1].name);
     }
 
-    /// Render the app and run all render systems
+    /// Render the app and run all render systems, and execute the render graph
     pub(crate) fn render(&mut self, state: &mut AppState) -> Result<(), wgpu::SurfaceError> {
         let mut context = RenderContext::new_render_context(state)?;
 
         self.run_systems(SystemStage::PreRender, context.as_renderer());
         self.run_systems(SystemStage::Render, context.as_renderer());
+        self.execute_render_graph(context.as_renderer());
         self.run_systems(SystemStage::PostRender, context.as_renderer());
 
         self.events.apply();
