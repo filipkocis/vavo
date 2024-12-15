@@ -1,5 +1,7 @@
 use crate::{assets::Assets, render_assets::{RenderAsset, RenderAssetEntry, RenderAssets}, system::SystemsContext};
 
+use super::Color;
+
 pub struct Texture {
     pub texture: wgpu::Texture,
     pub view: wgpu::TextureView,
@@ -12,9 +14,9 @@ pub struct DefaultTexture {
 }
 
 impl DefaultTexture {
-    pub fn create(ctx: &mut SystemsContext) -> Self {
+    pub fn create(ctx: &mut SystemsContext, color: Color) -> Self {
         let image = Image {
-            data: vec![255, 255, 255, 255],
+            data: color.as_rgba_slice_u8().to_vec(),
             size: wgpu::Extent3d {
                 width: 1,
                 height: 1,

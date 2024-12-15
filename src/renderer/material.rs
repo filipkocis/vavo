@@ -53,7 +53,7 @@ impl Default for Material {
             emissive: Color::rgb(0.0, 0.0, 0.0),
             emissive_exposure_weight: 1.0,
             perceptual_roughness: 0.5,
-            metallic: 0.5,
+            metallic: 0.0,
             reflectance: 0.5,
             flip_normal_map_y: false,
             cull_mode: Some(Face::Back),
@@ -83,8 +83,8 @@ impl RenderAsset<BindGroup> for Material {
         let uniform = buffer.uniform.expect("material buffer should be uniform");
 
         BindGroup::build("material")
-            .add_texture(&self.base_color_texture, ctx)
-            .add_texture(&self.normal_map_texture, ctx)
+            .add_texture(&self.base_color_texture, ctx, self.base_color)
+            .add_texture(&self.normal_map_texture, ctx, Color::rgb(0.5, 0.5, 1.0))
             .add_uniform_buffer(&uniform, wgpu::ShaderStages::VERTEX_FRAGMENT)
             .finish(ctx)
     }

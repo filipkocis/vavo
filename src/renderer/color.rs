@@ -1,7 +1,7 @@
 use std::ops::{Add, Div, Mul, Sub};
 
 #[repr(C)]
-#[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Debug, Copy, Clone, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Color {
     pub r: f32,
     pub g: f32,
@@ -20,6 +20,19 @@ impl Color {
 
     pub const fn from_rgb_slice(slice: &[f32; 3]) -> Self {
         Self::rgb(slice[0], slice[1], slice[2])
+    }
+
+    pub fn as_rgba_slice(&self) -> [f32; 4] {
+        [self.r, self.g, self.b, self.a]
+    }
+
+    pub fn as_rgba_slice_u8(&self) -> [u8; 4] {
+        [
+            (self.r * 255.0) as u8,
+            (self.g * 255.0) as u8,
+            (self.b * 255.0) as u8,
+            (self.a * 255.0) as u8,
+        ]
     }
 
     pub fn srgb_value_to_linear(value: f32) -> f32 {

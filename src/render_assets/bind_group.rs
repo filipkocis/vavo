@@ -1,3 +1,4 @@
+use crate::prelude::Color;
 use crate::renderer::{DefaultTexture, Image, Texture};
 use crate::assets::Handle;
 use crate::system::SystemsContext;
@@ -42,14 +43,20 @@ impl<'a> BindGroupBuilder<'a> {
         }
     }
 
-    pub fn add_texture(mut self, texture: &Option<Handle<Image>>, ctx: &mut SystemsContext) -> Self {
+    pub fn add_texture(mut self, texture: &Option<Handle<Image>>, ctx: &mut SystemsContext, default_color: Color) -> Self {
         if let Some(texture) = texture {
             let mut render_images = ctx.resources.get_mut::<RenderAssets<Texture>>().unwrap();
             let texture = render_images.get_by_handle(texture, ctx);
             self.textures.push((self.binding, texture));
         } else {
-            let default_texture = ctx.resources.get::<DefaultTexture>().unwrap();  
-            self.textures.push((self.binding, default_texture.handle.clone())); 
+            // TODO: delete default texture from resources, do not create it in main
+            let default_texture = if default_color == Color::default() {
+                ctx.resources.get::<DefaultTexture>().unwrap().handle.clone()
+            } else {
+                DefaultTexture::create(ctx, default_color).handle
+            };
+
+            self.textures.push((self.binding, default_texture)); 
         }
 
         self.binding += 2;
