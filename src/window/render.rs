@@ -39,7 +39,7 @@ impl<'a> Drop for RenderContext<'a> {
 impl<'a> RenderContext<'a> {
     /// Creates a new render context with a render target and encoder, used in the render stage
     pub(crate) fn new_render_context(state: &'a mut AppState) -> Result<Self, wgpu::SurfaceError> {
-        let target = Some(Self::create_target(&state.surface)?);
+        let target = Some(Self::create_target(&state)?);
         let encoder = Some(Self::create_encoder(&state.device));
 
         Ok(Self {
@@ -63,12 +63,16 @@ impl<'a> RenderContext<'a> {
         Renderer(self)
     } 
 
-    fn create_target(surface: &wgpu::Surface) -> Result<
+    fn create_target(state: &AppState) -> Result<
         (wgpu::SurfaceTexture, wgpu::TextureView),
         wgpu::SurfaceError
     > {
+        let surface = &state.surface;
         let surface_texture = surface.get_current_texture()?;
-        let texture_view = surface_texture.texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let texture_view = surface_texture.texture.create_view(&wgpu::TextureViewDescriptor {
+            format: Some(state.config.format),
+            ..Default::default()
+        });
 
         Ok((surface_texture, texture_view))
     }
