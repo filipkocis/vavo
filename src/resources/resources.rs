@@ -1,6 +1,6 @@
 use std::{any::{Any, TypeId}, collections::HashMap, ops::{Deref, DerefMut}};
 
-use crate::{assets::Assets, input::*, render_assets::{BindGroup, Buffer, Pipeline, RenderAssets}, renderer::{Image, Material, Mesh, Texture}};
+use crate::{assets::{AssetLoader, Assets}, input::*, render_assets::{BindGroup, Buffer, Pipeline, RenderAssets}, renderer::{Image, Material, Mesh, Texture}};
 
 use super::Time;
 
@@ -76,6 +76,7 @@ impl Resources {
         self.insert(Time::new());
         self.insert(Input::<KeyCode>::new());
         self.insert(Input::<MouseButton>::new());
+        self.insert(AssetLoader::new());
     }
 
     /// Update some builtin resources
