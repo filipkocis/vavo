@@ -18,6 +18,10 @@ impl Color {
         Self::new(r, g, b, 1.0)
     }
 
+    pub const fn from_rgb_slice(slice: &[f32; 3]) -> Self {
+        Self::rgb(slice[0], slice[1], slice[2])
+    }
+
     pub fn srgb_value_to_linear(value: f32) -> f32 {
         if value <= 0.04045 {
             value / 12.92
