@@ -39,6 +39,7 @@ impl DefaultTexture {
 }
 
 pub struct Image {
+    /// Image data, if set, will be used to write to the texture during creation
     pub data: Vec<u8>,
     pub size: wgpu::Extent3d,
     pub texture_descriptor: Option<wgpu::TextureDescriptor<'static>>,
@@ -111,10 +112,7 @@ impl RenderAsset<Texture> for Image {
         let view = texture.create_view(self.view_descriptor.as_ref().unwrap_or(&Self::default_view_descriptor()));
         let sampler = device.create_sampler(self.sampler_descriptor.as_ref().unwrap_or(&Self::default_sampler_descriptor()));
 
-        // TODO: fix
-        // TEMPORARY WORKAROUND
-
-        if texture_descriptor.format == wgpu::TextureFormat::Rgba8UnormSrgb {
+        if !self.data.is_empty() {
             queue.write_texture(
                 wgpu::ImageCopyTexture {
                     texture: &texture,
