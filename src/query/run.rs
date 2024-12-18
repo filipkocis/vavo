@@ -87,6 +87,7 @@ macro_rules! impl_run_query {
                             let index = *archetype.types().get(&type_id).expect("type should exist in archetype");
 
                             if $types::is_mut() {
+                                // TODO: do not update every component, some might be filtered out
                                 // Mark components as mutated if $type is &mut T
                                 archetype.mark_mutated(index);
                             }
