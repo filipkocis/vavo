@@ -123,6 +123,10 @@ impl Archetype {
         self.ticks[type_index].iter_mut().for_each(|tick| *tick = current_tick);
     }
 
+    pub(crate) fn mark_mutated_single(&mut self, entity_index: usize, type_index: usize) {
+        self.ticks[type_index][entity_index] = self.current_tick();
+    }
+
     pub(crate) fn components_at_mut(&mut self, index: usize) -> *mut Vec<Box<dyn Any>> {
         &mut self.components[index]
     }
