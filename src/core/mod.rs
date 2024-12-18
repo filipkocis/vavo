@@ -1,4 +1,5 @@
 pub mod graph;
+pub mod standard;
 
 use crate::{math::{GlobalTransform, Transform}, prelude::{Changed, With, Without}, query::{Query, RunQuery}, system::SystemsContext, world::{Children, EntityId, Parent}};
 
