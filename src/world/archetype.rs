@@ -63,7 +63,8 @@ impl Archetype {
         for (type_id, component) in components {
             let component_index = self.types[&type_id];
             self.components[component_index].push(component);
-            self.ticks[component_index].push(0);
+            let current_tick = self.current_tick();
+            self.ticks[component_index].push(current_tick.max(1)); // 0 is during startup
         }
 
         assert!(
