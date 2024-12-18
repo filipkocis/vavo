@@ -1,3 +1,3 @@
-pub mod main;
+pub mod rendering;
 pub mod update;
 pub mod movement;
