@@ -1,5 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
+use winit::dpi::PhysicalSize;
+
 use super::GraphNode;
 
 pub struct RenderGraph { 
@@ -58,5 +60,11 @@ impl RenderGraph {
         }
 
         sorted.push(node);
+    }
+
+    pub(crate) fn resize(&mut self, size: PhysicalSize<u32>) {
+        for node in self.nodes.values_mut() {
+            node.resize(&size);
+        }
     }
 }

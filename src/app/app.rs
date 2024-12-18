@@ -1,3 +1,4 @@
+use winit::dpi::PhysicalSize;
 use winit::keyboard::PhysicalKey;
 
 use crate::core::graph::RenderGraph;
@@ -98,6 +99,11 @@ impl App {
         self.run_systems(SystemStage::PostUpdate, context.as_renderer());
         self.run_systems(SystemStage::Last, context.as_renderer());
     } 
+
+    /// Resize the app
+    pub(crate) fn resize(&mut self, size: PhysicalSize<u32>) {
+        self.render_graph.resize(size);
+    }
 
     /// Run the app
     pub fn run(self) {

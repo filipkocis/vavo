@@ -1,3 +1,5 @@
+use winit::dpi::PhysicalSize;
+
 use crate::{render_assets::pipeline::PipelineBuilder, system::{GraphSystem, System, SystemsContext}};
 
 use super::{NodeColorTarget, NodeData, NodeDepthTarget};
@@ -52,6 +54,28 @@ impl GraphNode {
         self.data.generate_pipeline(ctx, &self.pipeline_builder);
         self.data.generate_color_target(ctx, &self.color_target);
         self.data.generate_depth_target(ctx, &self.depth_target);
+
+        self.data.needs_regen = false;
+    }
+
+    /// Resize the node images, currently only owned depth target is resized, 
+    /// and only if color target is surface
+    pub(crate) fn resize(&mut self, size: &PhysicalSize<u32>) {
+        if !matches!(self.color_target, NodeColorTarget::Surface) {
+            return;
+        }
+
+        if let NodeDepthTarget::Owned(image) = &mut self.depth_target {
+            image.size.width = size.width;
+            image.size.height = size.height;
+
+            if let Some(texture) = &mut image.texture_descriptor {
+                texture.size.width = size.width;
+                texture.size.height = size.height;
+            }
+
+            self.data.needs_regen = true;
+        }
     }
 }
 

@@ -26,8 +26,9 @@ impl AppHandler {
     }
 
     pub fn resize(&mut self, new_size: PhysicalSize<u32>) {
-        self.state.as_mut().unwrap().resize(new_size);
-        self.app.create_event("WindowResized"); // TODO
+        let app_state = self.state.as_mut().unwrap();
+        app_state.resize(new_size);
+        self.app.resize(app_state.size);
     }
 }
 

@@ -1,8 +1,11 @@
+use winit::dpi::PhysicalSize;
+
 use crate::{prelude::Texture, render_assets::{pipeline::PipelineBuilder, Pipeline, RenderAsset, RenderAssetEntry, RenderAssets}, system::SystemsContext};
 
 use super::{NodeColorTarget, NodeDepthTarget};
 
 pub struct NodeData {
+    pub(crate) needs_regen: bool,
     pub pipeline: Option<Pipeline>,
     pub color_target: Option<ColorTargetData>,
     pub depth_target: Option<DepthTargetData>,
@@ -21,6 +24,7 @@ pub enum DepthTargetData {
 impl NodeData {
     pub fn new() -> Self {
         Self {
+            needs_regen: true,
             pipeline: None,
             color_target: None,
             depth_target: None,

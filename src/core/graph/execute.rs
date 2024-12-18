@@ -1,4 +1,4 @@
-use wgpu::{util::RenderEncoder, RenderPass};
+use wgpu::RenderPass;
 
 use crate::{core::graph::NodeColorTarget, system::SystemsContext, world::entities::Entities};
 
@@ -32,7 +32,7 @@ impl RenderGraph {
         let sorted = unsafe { &mut *(self as *mut RenderGraph) }.topological_sort_mut();
 
         for node in sorted {
-            if node.data.pipeline.is_none() {
+            if node.data.needs_regen {
                 node.generate_data(ctx);
             }
 
