@@ -104,6 +104,18 @@ impl Projection {
             }
         }
     }
+
+    /// Resize the projection `aspect ratio` / `area` based on new width and height
+    pub fn resize(&mut self, width: f32, height: f32) {
+        match self {
+            Projection::Perspective(p) => {
+                p.aspect_ratio = width / height;
+            },
+            Projection::Orthographic(o) => {
+                o.area = Rect::new_min_max(-width / 2.0, -height / 2.0, width / 2.0, height / 2.0);
+            }
+        }
+    }
 }
 
 impl Camera {
