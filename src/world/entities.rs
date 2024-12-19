@@ -4,7 +4,7 @@ use std::{
 
 use crate::query::filter::Filters;
 
-use super::archetype::{Archetype, ArchetypeId};
+use super::{archetype::{Archetype, ArchetypeId}, Children, Parent};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct EntityId(u32);
@@ -184,6 +184,56 @@ impl Entities {
 
         if let Some(id) = emptied_archetype {
             self.archetypes.remove(&id);
+        }
+    }
+
+    /// Get component
+    pub(crate) fn get_component_mut<T: 'static>(&mut self, entity_id: EntityId) -> Option<&mut T> {
+        let type_id = TypeId::of::<T>();
+        for archetype in self.archetypes.values_mut() {
+            let entity_index = match archetype.get_entity_index(entity_id) {
+                Some(index) => index,
+                None => continue,
+            };
+
+            if let Some(component_index) = archetype.types.get(&type_id) {
+                let component_index = *component_index;
+                archetype.mark_mutated_single(entity_index, component_index);
+                let component = &mut archetype.components[component_index][entity_index];
+                return component.downcast_mut::<T>();
+            } else {
+                return None
+            }
+        }
+
+        None
+    }
+
+    /// Add child to parent's Children component, and add Parent component to child
+    ///
+    /// # Panics
+    /// Panics if parent or child does not exist, or if child == parent
+    pub(crate) fn add_child(&mut self, parent_id: EntityId, child_id: EntityId) {
+        assert_ne!(parent_id, child_id, "Parent and child cannot be the same entity");
+        assert!(self.archetypes.values().any(|a| a.entity_ids.contains(&parent_id)), "Parent entity does not exist");
+        assert!(self.archetypes.values().any(|a| a.entity_ids.contains(&child_id)), "Child entity does not exist");
+
+        if let Some(children) = self.get_component_mut::<Children>(parent_id) {
+            children.add(child_id);
+        } else {
+            self.insert_component(parent_id, Box::new(Children::new(vec![child_id])));
+        }
+
+        self.insert_component(child_id, Box::new(Parent::new(parent_id)));
+    }
+
+    /// Remove child from parent's Children component, and remove Parent component from child
+    pub(crate) fn remove_child(&mut self, parent_id: EntityId, child_id: EntityId) {
+        if let Some(children) = self.get_component_mut::<Children>(parent_id) {
+            if children.ids.contains(&child_id) {
+                children.remove(child_id);
+                self.remove_component(child_id, TypeId::of::<Parent>());
+            }
         }
     }
 }

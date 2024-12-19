@@ -9,6 +9,8 @@ enum Command {
     DespawnEntity(EntityId),
     InsertComponent(EntityId, Box<dyn Any>),
     RemoveComponent(EntityId, TypeId),
+    AddChild(EntityId, EntityId),
+    RemoveChild(EntityId, EntityId),
 }
 
 pub struct Commands {
@@ -19,6 +21,32 @@ pub struct Commands {
 pub struct EntityCommands<'a> {
     entity_id: EntityId,
     commands: &'a mut Commands,
+}
+
+pub struct ParentCommands<'a> {
+    parent_id: EntityId,
+    commands: &'a mut Commands,
+}
+
+impl<'a> ParentCommands<'a> {
+    fn new(parent_id: EntityId, commands: &'a mut Commands) -> Self {
+        Self { 
+            parent_id,
+            commands,
+        }
+    }
+
+    pub fn spawn_empty(&mut self) -> EntityCommands {
+        let child_id = self.commands.spawn_empty().entity_id;
+
+        self.commands
+            .commands
+            .push(Command::AddChild(self.parent_id, child_id));
+
+        let mut child = EntityCommands::new(self.commands);
+        child.set_entity_id(child_id);
+        child
+    }
 }
 
 impl<'a> EntityCommands<'a> {
@@ -49,6 +77,30 @@ impl<'a> EntityCommands<'a> {
         self.commands
             .commands
             .push(Command::RemoveComponent(self.entity_id, TypeId::of::<T>()));
+        self
+    }
+
+    pub fn with_children<F: FnOnce(&mut ParentCommands)>(mut self, f: F) -> Self {
+        let mut parent_commands = ParentCommands::new(self.entity_id, &mut self.commands);
+        f(&mut parent_commands);
+        self
+    }
+
+    pub fn remove_children(self, children: Vec<EntityId>) -> Self {
+        for child_id in children {
+            self.commands
+                .commands
+                .push(Command::RemoveChild(self.entity_id, child_id));
+        }
+        self
+    }
+
+    pub fn insert_children(self, children: Vec<EntityId>) -> Self {
+        for child_id in children {
+            self.commands
+                .commands
+                .push(Command::AddChild(self.entity_id, child_id));
+        }
         self
     }
 
@@ -129,6 +181,12 @@ impl Commands {
                 }
                 Command::RemoveComponent(entity_id, type_id) => {
                     world.entities.remove_component(entity_id, type_id);
+                }
+                Command::AddChild(parent_id, child_id) => {
+                    world.entities.add_child(parent_id, child_id);
+                }
+                Command::RemoveChild(parent_id, child_id) => {
+                    world.entities.remove_child(parent_id, child_id);
                 }
             }
         }
