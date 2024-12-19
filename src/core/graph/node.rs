@@ -1,6 +1,6 @@
 use winit::dpi::PhysicalSize;
 
-use crate::{render_assets::pipeline::PipelineBuilder, system::{GraphSystem, System, SystemsContext}};
+use crate::{palette, render_assets::pipeline::PipelineBuilder, system::{GraphSystem, SystemsContext}};
 
 use super::{NodeColorTarget, NodeData, NodeDepthTarget};
 
@@ -12,6 +12,8 @@ pub struct GraphNode {
     pub system: GraphSystem,
     pub color_target: NodeColorTarget,
     pub depth_target: NodeDepthTarget,
+    pub color_ops: wgpu::Operations<wgpu::Color>,
+    pub depth_ops: Option<wgpu::Operations<f32>>,
     pub dependencies: Vec<String>,
     pub data: NodeData,
 }
@@ -30,6 +32,14 @@ impl GraphNode {
             system,
             color_target,
             depth_target,
+            color_ops: wgpu::Operations {
+                load: wgpu::LoadOp::Clear(palette::BLACK.into()),
+                store: wgpu::StoreOp::Store,
+            },
+            depth_ops: Some(wgpu::Operations {
+                load: wgpu::LoadOp::Clear(1.0),
+                store: wgpu::StoreOp::Store,
+            }),
             dependencies: Vec::new(),
             data: NodeData::new(),
         }
@@ -86,6 +96,8 @@ pub struct GraphNodeBuilder {
     system: Option<GraphSystem>,
     color_target: Option<NodeColorTarget>,
     depth_target: Option<NodeDepthTarget>,
+    color_ops: wgpu::Operations<wgpu::Color>,
+    depth_ops: Option<wgpu::Operations<f32>>,
     dependencies: Vec<String>,
 }
 
@@ -97,6 +109,14 @@ impl GraphNodeBuilder {
             system: None,
             color_target: None,
             depth_target: None,
+            color_ops: wgpu::Operations {
+                load: wgpu::LoadOp::Clear(palette::BLACK.into()),
+                store: wgpu::StoreOp::Store,
+            },
+            depth_ops: Some(wgpu::Operations {
+                load: wgpu::LoadOp::Clear(1.0),
+                store: wgpu::StoreOp::Store,
+            }),
             dependencies: Vec::new(),
         }
     }
@@ -116,8 +136,18 @@ impl GraphNodeBuilder {
         self
     }
 
+    pub fn set_color_ops(mut self, ops: wgpu::Operations<wgpu::Color>) -> Self {
+        self.color_ops = ops;
+        self
+    }
+
     pub fn set_depth_target(mut self, depth_target: NodeDepthTarget) -> Self {
         self.depth_target = Some(depth_target);
+        self
+    }
+
+    pub fn set_depth_ops(mut self, dept_ops: Option<wgpu::Operations<f32>>) -> Self {
+        self.depth_ops = dept_ops;
         self
     }
 
@@ -137,6 +167,8 @@ impl GraphNodeBuilder {
             system: self.system.expect(&err("System")),
             color_target: self.color_target.expect(&err("ColorTarget")),
             depth_target: self.depth_target.expect(&err("DepthTarget")),
+            color_ops: self.color_ops,
+            depth_ops: self.depth_ops,
             dependencies: self.dependencies,
             data: NodeData::new(),
         }

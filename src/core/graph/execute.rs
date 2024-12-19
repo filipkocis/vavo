@@ -80,12 +80,12 @@ impl RenderGraph {
                         let graph = self as *const RenderGraph;
                         let graph = unsafe { &*graph };
 
-                        let node = graph.get(name).expect(&format!("Node '{}' not found, but it is a color target for '{}'", name, node.name));
-                        let color_attachment = self.get_color_attachment(node, ctx)
+                        let target_node = graph.get(name).expect(&format!("Node '{}' not found, but it is a color target for '{}'", name, node.name));
+                        let mut color_attachment = self.get_color_attachment(target_node, ctx)
                             .expect(&format!("Node '{}' has no color attachment, but it is a color target for '{}'", name, node.name));
 
-                        return Some(color_attachment)
-                        
+                        color_attachment.ops = node.color_ops;
+                        return Some(color_attachment) 
                     },
                     target => panic!("'{}' reached unexpected branch, it should have been generated and handled in NodeData", target)
                 }
@@ -95,10 +95,7 @@ impl RenderGraph {
         Some(wgpu::RenderPassColorAttachment {
             view,
             resolve_target: None,
-            ops: wgpu::Operations {
-                load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
-                store: wgpu::StoreOp::Store,
-            }
+            ops: node.color_ops,
         })
     }
 
@@ -117,10 +114,11 @@ impl RenderGraph {
                         let graph = self as *const RenderGraph;
                         let graph = unsafe { &*graph };
 
-                        let node = graph.get(name).expect(&format!("Node '{}' not found, but it is a color target for '{}'", name, node.name));
-                        let depth_attachment = self.get_depth_attachment(node, ctx)
+                        let target_node = graph.get(name).expect(&format!("Node '{}' not found, but it is a color target for '{}'", name, node.name));
+                        let mut depth_attachment = self.get_depth_attachment(target_node, ctx)
                             .expect(&format!("Node '{}' has no color attachment, but it is a color target for '{}'", name, node.name));
 
+                        depth_attachment.depth_ops = node.depth_ops;
                         return Some(depth_attachment)
                         
                     },
@@ -131,10 +129,7 @@ impl RenderGraph {
 
         Some(wgpu::RenderPassDepthStencilAttachment {
             view,
-            depth_ops: Some(wgpu::Operations {
-                load: wgpu::LoadOp::Clear(1.0),
-                store: wgpu::StoreOp::Store,
-            }),
+            depth_ops: node.depth_ops,
             stencil_ops: None,
         })
     }
