@@ -1,34 +1,36 @@
+use std::ops::{Deref, DerefMut};
+
 use bytemuck::{AnyBitPattern, NoUninit};
 
 use crate::system::SystemsContext;
 
 use super::{BindGroup, Buffer};
 
-
 /// Special kind of RenderAsset which is stored as a global Resource
 /// Contains a buffer with instanced transform data, and the bind group
-pub struct TransformStorage {
+pub struct Storage {
+    name: String,
     /// Size of the buffer in bytes
     size: usize,
     buffer: Buffer,
     bind_group: BindGroup,
 }
 
-impl TransformStorage {
-    /// Create a new TransformStorage with n transforms of size bytes
-    pub fn new(n: usize, size: usize, ctx: &mut SystemsContext) -> Self {
+impl Storage {
+    /// Create a new Storage with n transforms of size bytes
+    pub fn new(name: &str, n: usize, size: usize, ctx: &mut SystemsContext) -> Self {
         let data = vec![0u8; n * size];
 
         let buffer = Buffer::new("transform_storage")
             .create_storage_buffer(&data, Some(wgpu::BufferUsages::COPY_DST), ctx.renderer.device());
 
         let storage_buffer = buffer.storage.as_ref()
-            .expect("TransformStorage buffer should be storage");
-        let bind_group = BindGroup::build("transform_storage")
+            .expect("Storage buffer should be storage");
+        let bind_group = BindGroup::build(&format!("{}_storage", name))
             .add_storage_buffer(storage_buffer, wgpu::ShaderStages::VERTEX, true)
             .finish(ctx);
 
-        Self { buffer, bind_group, size: n * size }
+        Self { name: name.to_string(), buffer, bind_group, size: n * size }
     }
 
     /// Set new size for the buffer
@@ -37,7 +39,7 @@ impl TransformStorage {
             return;
         }
 
-        let new = Self::new(n, size, ctx);
+        let new = Self::new(&self.name, n, size, ctx);
 
         self.buffer = new.buffer;
         self.bind_group = new.bind_group;
@@ -60,11 +62,54 @@ impl TransformStorage {
 
     /// Return the storage buffer
     pub fn buffer(&self) -> &wgpu::Buffer {
-        self.buffer.storage.as_ref().expect("TransformStorage buffer should be storage")
+        self.buffer.storage.as_ref().expect("Storage buffer should be storage")
     }
 
     /// Return the bind group
     pub fn bind_group(&self) -> &wgpu::BindGroup {
         &self.bind_group.inner
+    }
+}
+
+pub struct TransformStorage(Storage);
+pub struct LightStorage(Storage);
+
+impl TransformStorage {
+    pub fn new(n: usize, size: usize, ctx: &mut SystemsContext) -> Self {
+        Self(Storage::new("transform", n, size, ctx))
+    }
+}
+
+impl LightStorage {
+    pub fn new(n: usize, size: usize, ctx: &mut SystemsContext) -> Self {
+        Self(Storage::new("light", n, size, ctx))
+    }
+}
+
+impl Deref for TransformStorage {
+    type Target = Storage;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl Deref for LightStorage {
+    type Target = Storage;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for TransformStorage {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl DerefMut for LightStorage {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
     }
 }
