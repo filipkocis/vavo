@@ -121,7 +121,7 @@ fn main_render_system<'a>(
         let mesh_buffer = buffers.get_by_handle(mesh, ctx); 
         if last_mesh != Some(mesh) {
             render_pass.set_vertex_buffer(0, mesh_buffer.vertex.as_ref()
-                .expect("material should have vertex buffer").slice(..));
+                .expect("mesh should have vertex buffer").slice(..));
         }
 
         // draw
