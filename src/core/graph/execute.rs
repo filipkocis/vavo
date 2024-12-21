@@ -46,7 +46,8 @@ impl RenderGraph {
 
             let mut render_pass = unsafe { &mut *encoder }.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some(&format!("{} render pass", node.name)),
-                color_attachments: &[color_attachment],
+                // color_attachments: &[color_attachment],
+                color_attachments: &vec![color_attachment].into_iter().filter(|x| x.is_some()).collect::<Vec<_>>(),
                 depth_stencil_attachment: depth_attachment,
                 occlusion_query_set: None,
                 timestamp_writes: None,
