@@ -1,6 +1,6 @@
 mod transform;
 pub mod camera;
-mod light;
+pub mod light;
 
 use glam::Vec2;
 pub use transform::{Transform, GlobalTransform};
