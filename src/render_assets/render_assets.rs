@@ -1,6 +1,6 @@
 use std::{any::TypeId, collections::HashMap, ops::Deref};
 
-use crate::{assets::{Assets, Handle}, system::SystemsContext, world::EntityId};
+use crate::{assets::{Assets, Handle}, prelude::Res, system::SystemsContext, world::EntityId};
 
 use super::RenderHandle;
 
@@ -29,6 +29,10 @@ impl<T> Deref for RenderAssetEntry<T> {
     }
 }
 
+/// ID for a resource
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+struct ResourceId(TypeId);
+
 /// Generic handle for Asset of any type
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct AssetHandleId(TypeId, u64);
@@ -36,6 +40,12 @@ struct AssetHandleId(TypeId, u64);
 /// ID combining entity id and component type id
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct EntityComponentId(u32, TypeId);
+
+impl<T: 'static> Into<ResourceId> for &Res<T> {
+    fn into(self) -> ResourceId {
+        ResourceId(TypeId::of::<T>())
+    }
+}
 
 impl<T: 'static> Into<AssetHandleId> for &Handle<T> {
     fn into(self) -> AssetHandleId {
@@ -53,6 +63,7 @@ pub struct RenderAssets<T> {
     storage: HashMap<RenderHandle<T>, T>,
     handle_map: HashMap<AssetHandleId, RenderHandle<T>>,
     entity_component_map: HashMap<EntityComponentId, RenderHandle<T>>,
+    resource_map: HashMap<ResourceId, RenderHandle<T>>,
     next_id: u64,
 }
 
@@ -62,6 +73,7 @@ impl<T> RenderAssets<T> {
             storage: HashMap::new(),
             handle_map: HashMap::new(),
             entity_component_map: HashMap::new(),
+            resource_map: HashMap::new(),
             next_id: 0,
         }
     }
@@ -113,7 +125,9 @@ impl<T> RenderAssets<T> {
         ctx: &mut SystemsContext,
     ) -> RenderAssetEntry<T>
     where A: 'static + RenderAsset<T> {
-        let rae = match self.handle_map.get(&handle.into()){
+        let asset_handle_id = handle.into();
+
+        let rae = match self.handle_map.get(&asset_handle_id){
             Some(key) => {
                 self.storage
                     .entry(key.clone())
@@ -121,7 +135,36 @@ impl<T> RenderAssets<T> {
             },
             None => {
                 let key = self.insert(Self::create_asset(handle, ctx));
-                self.handle_map.insert(handle.into(), key.clone());
+                self.handle_map.insert(asset_handle_id, key.clone());
+                self.storage.get(&key).unwrap()
+            }
+        };
+
+        RenderAssetEntry(rae)
+    }
+
+    pub fn get_by_resource<A>(
+        &mut self,
+        resource: &Res<A>,
+        ctx: &mut SystemsContext,
+        replace: bool,
+    ) -> RenderAssetEntry<T>
+    where A: 'static + RenderAsset<T> {
+        let resource_id = resource.into();
+
+        let rae = match self.resource_map.get(&resource_id){
+            Some(key) => {
+                if replace {
+                    self.storage.remove(key);
+                }
+
+                self.storage
+                    .entry(key.clone())
+                    .or_insert_with(|| resource.create_render_asset(ctx, None))
+            },
+            None => {
+                let key = self.insert(resource.create_render_asset(ctx, None));
+                self.resource_map.insert(resource_id, key.clone());
                 self.storage.get(&key).unwrap()
             }
         };
