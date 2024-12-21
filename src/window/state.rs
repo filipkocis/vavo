@@ -71,20 +71,23 @@ impl AppState {
             force_fallback_adapter: false,
         };
 
-        instance.request_adapter(&adapter_options).block_on().unwrap()
+        instance.request_adapter(&adapter_options).block_on().expect("Failed to create adapter")
     }
 
     fn create_device(adapter: &wgpu::Adapter) -> (wgpu::Device, wgpu::Queue) {
         let device_descriptor = wgpu::DeviceDescriptor {
-            required_features: wgpu::Features::empty(),
-            required_limits: wgpu::Limits::default(),
+            required_features: wgpu::Features::PUSH_CONSTANTS,
+            required_limits: wgpu::Limits {
+                max_push_constant_size: 128,
+                ..wgpu::Limits::default()
+            },
             label: None,
             memory_hints: Default::default(),
         };
 
         adapter.request_device(&device_descriptor, None)
             .block_on()
-            .unwrap()
+            .expect("Failed to create device")
     }
 
     fn create_surface_config(capabilities: wgpu::SurfaceCapabilities, size: PhysicalSize<u32>) -> wgpu::SurfaceConfiguration {
