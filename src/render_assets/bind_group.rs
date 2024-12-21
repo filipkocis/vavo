@@ -27,7 +27,7 @@ pub struct BindGroupBuilder<'a> {
     layout_entries: Vec<wgpu::BindGroupLayoutEntry>,
     entries: Vec<wgpu::BindGroupEntry<'a>>,
 
-    textures: Vec<(u32, RenderAssetEntry<Texture>)>,
+    textures: Vec<(u32, RenderAssetEntry<Texture>, Option<wgpu::TextureSampleType>, Option<wgpu::SamplerBindingType>)>,
     binding: u32,
 }
 
@@ -43,11 +43,11 @@ impl<'a> BindGroupBuilder<'a> {
         }
     }
 
-    pub fn add_texture(mut self, texture: &Option<Handle<Image>>, ctx: &mut SystemsContext, default_color: Color) -> Self {
+    pub fn add_texture(mut self, texture: &Option<Handle<Image>>, ctx: &mut SystemsContext, default_color: Color, sample_type: Option<wgpu::TextureSampleType>, sampler_bind: Option<wgpu::SamplerBindingType>) -> Self {
         if let Some(texture) = texture {
             let mut render_images = ctx.resources.get_mut::<RenderAssets<Texture>>().unwrap();
             let texture = render_images.get_by_handle(texture, ctx);
-            self.textures.push((self.binding, texture));
+            self.textures.push((self.binding, texture, sample_type, sampler_bind));
         } else {
             // TODO: delete default texture from resources, do not create it in main
             let default_texture = if default_color == Color::default() {
@@ -56,7 +56,7 @@ impl<'a> BindGroupBuilder<'a> {
                 DefaultTexture::create(ctx, default_color).handle
             };
 
-            self.textures.push((self.binding, default_texture)); 
+            self.textures.push((self.binding, default_texture, sample_type, sampler_bind)); 
         }
 
         self.binding += 2;
@@ -105,12 +105,12 @@ impl<'a> BindGroupBuilder<'a> {
         let mut layouts = Vec::new();
         let mut entries = Vec::new();
 
-        for (binding, texture) in &self.textures {
+        for (binding, texture, sample_type, sampler_bind) in &self.textures {
             let tle = wgpu::BindGroupLayoutEntry {
                 binding: *binding,
                 visibility: wgpu::ShaderStages::FRAGMENT,
                 ty: wgpu::BindingType::Texture {
-                    sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                    sample_type: sample_type.unwrap_or(wgpu::TextureSampleType::Float { filterable: true }),
                     view_dimension: wgpu::TextureViewDimension::D2,
                     multisampled: false,
                 },
@@ -128,7 +128,7 @@ impl<'a> BindGroupBuilder<'a> {
             let sle = wgpu::BindGroupLayoutEntry {
                 binding: binding + 1,
                 visibility: wgpu::ShaderStages::FRAGMENT,
-                ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                ty: wgpu::BindingType::Sampler(sampler_bind.unwrap_or(wgpu::SamplerBindingType::Filtering)),
                 count: None,
             };
 

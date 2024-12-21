@@ -1,4 +1,4 @@
-use crate::{assets::Handle, prelude::Resources, render_assets::{BindGroup, Buffer, RenderAsset}, system::SystemsContext, world::EntityId};
+use crate::{assets::Handle, render_assets::{BindGroup, Buffer, RenderAsset}, system::SystemsContext, world::EntityId};
 
 use super::{Color, Face, Image};
 
@@ -83,8 +83,8 @@ impl RenderAsset<BindGroup> for Material {
         let uniform = buffer.uniform.expect("material buffer should be uniform");
 
         BindGroup::build("material")
-            .add_texture(&self.base_color_texture, ctx, self.base_color)
-            .add_texture(&self.normal_map_texture, ctx, Color::rgb(0.5, 0.5, 1.0))
+            .add_texture(&self.base_color_texture, ctx, self.base_color, None, None)
+            .add_texture(&self.normal_map_texture, ctx, Color::rgb(0.5, 0.5, 1.0), None, None)
             .add_uniform_buffer(&uniform, wgpu::ShaderStages::VERTEX_FRAGMENT)
             .finish(ctx)
     }
