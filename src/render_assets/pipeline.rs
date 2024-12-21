@@ -31,12 +31,13 @@ impl Pipeline {
 pub struct PipelineBuilder {
     pub label: String,
     pub bind_group_layouts: Option<Vec<wgpu::BindGroupLayout>>,
-    pub vertex_buffer_layouts: Option<Vec<wgpu::VertexBufferLayout<'static>>>,
+    pub vertex_buffer_layouts: Vec<wgpu::VertexBufferLayout<'static>>,
     pub vertex_shader: Option<(String, String)>,
     pub fragment_shader: Option<(String, String)>,
     pub color_format: Option<wgpu::TextureFormat>,
     pub depth_format: Option<wgpu::TextureFormat>,
     pub topology: Option<wgpu::PrimitiveTopology>,
+    pub push_constant_ranges: Vec<wgpu::PushConstantRange>,
 }
 
 impl PipelineBuilder {
@@ -44,12 +45,13 @@ impl PipelineBuilder {
         Self {
             label: label.to_string(),
             bind_group_layouts: None,
-            vertex_buffer_layouts: None,
+            vertex_buffer_layouts: Vec::new(),
             vertex_shader: None,
             fragment_shader: None,
             color_format: None,
             depth_format: None,
             topology: None,
+            push_constant_ranges: Vec::new(),
         }
     }
 
@@ -67,7 +69,7 @@ impl PipelineBuilder {
     /// # Note
     /// Default is an empty slice
     pub fn set_vertex_buffer_layouts(mut self, layouts: Vec<wgpu::VertexBufferLayout<'static>>) -> Self {
-        self.vertex_buffer_layouts = Some(layouts);
+        self.vertex_buffer_layouts = layouts;
         self
     }
 
@@ -118,6 +120,12 @@ impl PipelineBuilder {
         self
     }
 
+    /// Set push constant ranges for pipeline layout
+    pub fn set_push_constant_ranges(mut self, ranges: Vec<wgpu::PushConstantRange>) -> Self {
+        self.push_constant_ranges = ranges;
+        self
+    }
+
     fn load_shader(&self, t: &str, source_entry: &Option<(String, String)>, device: &wgpu::Device) -> (wgpu::ShaderModule, String) {
         self.load_shader_maybe(t, source_entry, device)
             .expect(&format!("{} shader for {} not set", t, self.label))
@@ -153,18 +161,17 @@ impl PipelineBuilder {
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some(&format!("{}_layout", self.label)),
                 bind_group_layouts: &layouts.iter().collect::<Vec<_>>(), 
-                push_constant_ranges: &[]
+                push_constant_ranges: &self.push_constant_ranges,
             })
         });
 
-        let v = vec![];
         let pipeline_desc = wgpu::RenderPipelineDescriptor {
             label: Some(&self.label),
             layout: layout.as_ref(),
             vertex: wgpu::VertexState {
                 module: &vertex_module,
                 entry_point: Some(&vertex_entry),
-                buffers: self.vertex_buffer_layouts.as_ref().unwrap_or(&v),
+                buffers: self.vertex_buffer_layouts.as_ref(),
                 compilation_options: Default::default(),
             },
             fragment: fragment_maybe.as_ref().map(|(module, entry)| wgpu::FragmentState {
