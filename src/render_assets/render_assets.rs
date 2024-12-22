@@ -1,4 +1,4 @@
-use std::{any::TypeId, collections::HashMap, ops::Deref};
+use std::{any::TypeId, collections::HashMap, ops::Deref, rc::Rc};
 
 use crate::{assets::{Assets, Handle}, prelude::Res, system::SystemsContext, world::EntityId};
 
@@ -13,11 +13,11 @@ pub trait RenderAsset<R> {
 }
 
 /// Wrapper for render asset entry to allow multiple mutable borrows for RenderAssets<T>
-pub struct RenderAssetEntry<T>(*const T);
+pub struct RenderAssetEntry<T>(Rc<T>);
 
 impl<T> Clone for RenderAssetEntry<T> {
     fn clone(&self) -> Self {
-        RenderAssetEntry(self.0)
+        RenderAssetEntry(self.0.clone())
     }
 }
 
@@ -25,7 +25,7 @@ impl<T> Deref for RenderAssetEntry<T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
-        unsafe { &*self.0 }   
+        &self.0
     }
 }
 
@@ -60,7 +60,7 @@ impl<T: 'static> Into<EntityComponentId> for (&EntityId, &T) {
 }
 
 pub struct RenderAssets<T> {
-    storage: HashMap<RenderHandle<T>, T>,
+    storage: HashMap<RenderHandle<T>, Rc<T>>,
     handle_map: HashMap<AssetHandleId, RenderHandle<T>>,
     entity_component_map: HashMap<EntityComponentId, RenderHandle<T>>,
     resource_map: HashMap<ResourceId, RenderHandle<T>>,
@@ -86,12 +86,12 @@ impl<T> RenderAssets<T> {
 
     pub fn insert(&mut self, asset: T) -> RenderHandle<T> {
         let id = self.step_id();
-        self.storage.insert(id.clone(), asset);
+        self.storage.insert(id.clone(), Rc::new(asset));
         id
     }
 
-    pub fn get(&self, handle: &RenderHandle<T>) -> Option<&T> {
-        self.storage.get(&handle)
+    pub fn get(&self, handle: &RenderHandle<T>) -> Option<Rc<T>> {
+        self.storage.get(&handle).cloned()
     }
 
     pub fn get_by_entity<A>(
@@ -107,7 +107,7 @@ impl<T> RenderAssets<T> {
             Some(key) => {
                 self.storage
                     .entry(key.clone())
-                    .or_insert_with(|| component.create_render_asset(ctx, Some(entity_id)))
+                    .or_insert_with(|| Rc::new(component.create_render_asset(ctx, Some(entity_id))))
             },
             None => {
                 let key = self.insert(component.create_render_asset(ctx, Some(entity_id)));
@@ -116,7 +116,7 @@ impl<T> RenderAssets<T> {
             }
         };
 
-        RenderAssetEntry(rae)
+        RenderAssetEntry(rae.clone())
     }
 
     pub fn get_by_handle<A>(
@@ -131,7 +131,7 @@ impl<T> RenderAssets<T> {
             Some(key) => {
                 self.storage
                     .entry(key.clone())
-                    .or_insert_with(|| Self::create_asset(handle, ctx))
+                    .or_insert_with(|| Rc::new(Self::create_asset(handle, ctx)))
             },
             None => {
                 let key = self.insert(Self::create_asset(handle, ctx));
@@ -140,7 +140,7 @@ impl<T> RenderAssets<T> {
             }
         };
 
-        RenderAssetEntry(rae)
+        RenderAssetEntry(rae.clone())
     }
 
     pub fn get_by_resource<A>(
@@ -160,7 +160,7 @@ impl<T> RenderAssets<T> {
 
                 self.storage
                     .entry(key.clone())
-                    .or_insert_with(|| resource.create_render_asset(ctx, None))
+                    .or_insert_with(|| Rc::new(resource.create_render_asset(ctx, None)))
             },
             None => {
                 let key = self.insert(resource.create_render_asset(ctx, None));
@@ -169,7 +169,7 @@ impl<T> RenderAssets<T> {
             }
         };
 
-        RenderAssetEntry(rae)
+        RenderAssetEntry(rae.clone())
     }
 
     fn create_asset<A>(handle: &Handle<A>, ctx: &mut SystemsContext) -> T
@@ -181,7 +181,7 @@ impl<T> RenderAssets<T> {
         render_asset
     }
 
-    pub fn remove<A: 'static>(&mut self, handle: &Handle<A>) -> Option<T> {
+    pub fn remove<A: 'static>(&mut self, handle: &Handle<A>) -> Option<Rc<T>> {
         // TODO: should we remove both the handle and the asset? 
         let key = self.handle_map.remove(&handle.into())?;
         self.storage.remove(&key)
