@@ -1,4 +1,4 @@
-use std::ops::BitOr;
+use std::ops::{BitOr, BitOrAssign};
 
 use glam::{Mat4, Quat, Vec3};
 
@@ -27,6 +27,12 @@ impl BitOr for LightFlags {
 
     fn bitor(self, rhs: Self) -> Self::Output {
         1 << self as u32 | 1 << rhs as u32
+    }
+}
+
+impl BitOrAssign<LightFlags> for u32 {
+    fn bitor_assign(&mut self, rhs: LightFlags) {
+        *self |= 1 << rhs as u32; 
     }
 }
 
@@ -120,7 +126,7 @@ impl DirectionalLight {
     pub fn as_light(&self, view_projection_matrix: Mat4) -> Light {
         let mut flags = LightFlags::Visible | LightFlags::Directional;
         if self.shadow {
-            flags |= LightFlags::CastShadow as u32 
+            flags |= LightFlags::CastShadow 
         }
         
         Light {
@@ -173,7 +179,7 @@ impl PointLight {
     pub fn as_light(&self, view_projection_matrix: Mat4) -> Light {
         let mut flags = LightFlags::Visible | LightFlags::Point;
         if self.shadow { 
-            flags |= LightFlags::CastShadow as u32 
+            flags |= LightFlags::CastShadow 
         }
         
         Light {
@@ -227,7 +233,7 @@ impl SpotLight {
     pub fn as_light(&self, view_projection_matrix: Mat4) -> Light {
         let mut flags = LightFlags::Visible | LightFlags::Spot;
         if self.shadow { 
-            flags |= LightFlags::CastShadow as u32 
+            flags |= LightFlags::CastShadow 
         }
 
         Light {
