@@ -66,8 +66,8 @@ fn shadow_render_system<'a>(
 
         light_data.push(light.as_light(view_projection_matrix))
     }
-    let mut directional_query = query.cast::<(&GlobalTransform, &SpotLight), ()>();
-    for (global_transform, light) in directional_query.iter_mut() {
+    let mut spot_query = query.cast::<(&GlobalTransform, &SpotLight), ()>();
+    for (global_transform, light) in spot_query.iter_mut() {
         if !light.shadow {
             continue;
         }
@@ -129,9 +129,8 @@ fn shadow_render_system<'a>(
     transforms_storage.update(&transforms, ctx);
     render_pass.set_bind_group(0, transforms_storage.bind_group(), &[]);
     
-    // Set transforms storage
+    // Set lights storage
     let mut lights_storage = ctx.resources.get_mut::<LightStorage>().unwrap();
-    // let lights = light_data.iter().map(|l| l.to_bytes()).flatten().collect::<Vec<u8>>();
     lights_storage.update(&light_data, ctx);
     render_pass.set_bind_group(1, lights_storage.bind_group(), &[]);
 
