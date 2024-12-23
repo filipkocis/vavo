@@ -45,7 +45,7 @@ pub struct Light {
     pub range: f32,
     pub inner_angle: f32,
     pub outer_angle: f32,
-    _padding: [f32; 3],
+    position: [f32; 3], // padding, but used as position in main pipeline shader
     pub view_proj: [[f32; 4]; 4],
 } 
 
@@ -85,6 +85,25 @@ pub struct SpotLight {
     pub outer_angle: f32,
 }
 
+impl Light {
+    pub fn with_point(mut self, position: Vec3) -> Self {
+        self.position = position.into();
+        self
+    }
+
+    pub fn with_spot(mut self, position: Vec3, direction: Vec3) -> Self {
+        // TODO: implement spot light forward spot vector
+        self.position = position.into();
+        self
+    }
+
+    pub fn with_directional(mut self, direction: Vec3) -> Self {
+        // TODO: implement directional light dir vector
+        self.position = direction.into();
+        self
+    }
+}
+
 impl Default for Light {
     fn default() -> Self {
         Self {
@@ -96,7 +115,7 @@ impl Default for Light {
             outer_angle: 0.0,
             view_proj: Mat4::IDENTITY.to_cols_array_2d(),
 
-            _padding: [0.0; 3],
+            position: [0.0; 3],
         }
     }
 }
@@ -138,7 +157,7 @@ impl DirectionalLight {
         }
     }
 
-    pub fn view_matrix(&self, camera_position: Vec3, rotation: Quat) -> Mat4 {
+    pub fn view_matrix(&self, camera_position: Vec3, rotation: Quat) -> (Mat4, Vec3) {
         // Local space light direction (-Y) and up vector (-Z)
         let local_direction = Vec3::new(0.0, -1.0, 0.0);
         let local_up = Vec3::new(0.0, 0.0, -1.0);
@@ -150,18 +169,26 @@ impl DirectionalLight {
         // Offset camera's position by the direction to track the camera
         let light_position = camera_position - world_direction * 10.0;
 
-        Mat4::look_at_rh(light_position, camera_position, world_up)
+        (
+            Mat4::look_at_rh(light_position, camera_position, world_up),
+            world_direction,
+        )
     }
 
     pub fn projection_matrix(&self, size: f32, near_plane: f32, far_plane: f32) -> Mat4 {
         Mat4::orthographic_rh(-size, size, -size, size, near_plane, far_plane)
     }
 
-    pub fn view_projection_matrix(&self, size: f32, near_plane: f32, far_plane: f32, camera_position: Vec3, global_transform: Mat4) -> Mat4 {
+    /// In addition to the viewproj matrix, this function also returns the light direction vector
+    pub fn view_projection_matrix(&self, size: f32, near_plane: f32, far_plane: f32, camera_position: Vec3, global_transform: Mat4) -> (Mat4, Vec3) {
         // Extract the rotation from the global transform
         let rotation = global_transform.to_scale_rotation_translation().1;
+        let (view_matrix, direction) = self.view_matrix(camera_position, rotation);
 
-        self.projection_matrix(size, near_plane, far_plane) * self.view_matrix(camera_position, rotation)
+        (
+            self.projection_matrix(size, near_plane, far_plane) * view_matrix, 
+            direction
+        )
     }
 }
 
@@ -248,7 +275,7 @@ impl SpotLight {
         }
     }
 
-    pub fn view_matrix(&self, position: Vec3, rotation: Quat) -> Mat4 {
+    pub fn view_matrix(&self, position: Vec3, rotation: Quat) -> (Mat4, Vec3) {
         // Local space light direction (-Y) and up vector (-Z)
         let local_direction = Vec3::new(0.0, -1.0, 0.0);
         let local_up = Vec3::new(0.0, 0.0, -1.0);
@@ -257,7 +284,10 @@ impl SpotLight {
         let world_direction = rotation * local_direction;
         let world_up = rotation * local_up;
 
-        Mat4::look_at_rh(position, position + world_direction, world_up)
+        (
+            Mat4::look_at_rh(position, position + world_direction, world_up),
+            world_direction
+        )
     }
 
     pub fn projection_matrix(&self, aspect: f32, near_plane: f32) -> Mat4 {
@@ -269,11 +299,16 @@ impl SpotLight {
         )
     }
 
-    pub fn view_projection_matrix(&self, aspect: f32, near_plane: f32, global_transform: Mat4) -> Mat4 {
+    /// In addition to the viewproj matrix, this function also returns the spot direction vector
+    pub fn view_projection_matrix(&self, aspect: f32, near_plane: f32, global_transform: Mat4) -> (Mat4, Vec3) {
         // Extract the position and rotation from the global transform
         let (_, rotation, position) = global_transform.to_scale_rotation_translation();
+        let (view_matrix, spot_direction) = self.view_matrix(position, rotation);
 
-        self.projection_matrix(aspect, near_plane) * self.view_matrix(position, rotation)
+        (
+            self.projection_matrix(aspect, near_plane) * view_matrix,
+            spot_direction,
+        )
     }
 }
 

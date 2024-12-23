@@ -62,7 +62,7 @@ fn shadow_render_system<'a>(
             continue;
         }
 
-        let view_projection_matrix = light.view_projection_matrix(50.0, 0.1, 100.0, camera_position, global_transform.matrix);
+        let (view_projection_matrix, _) = light.view_projection_matrix(10.0, 0.1, 50.0, camera_position, global_transform.matrix);
 
         light_data.push(light.as_light(view_projection_matrix))
     }
@@ -72,7 +72,7 @@ fn shadow_render_system<'a>(
             continue;
         }
 
-        let view_projection_matrix = light.view_projection_matrix(1.0, 0.1, global_transform.matrix);
+        let (view_projection_matrix, _) = light.view_projection_matrix(1.0, 0.1, global_transform.matrix);
 
         light_data.push(light.as_light(view_projection_matrix))
     }
