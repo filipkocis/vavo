@@ -102,6 +102,22 @@ impl Light {
         self.position = direction.into();
         self
     }
+
+    pub fn is_ambient(&self) -> bool {
+        self.flags & (1 << LightFlags::Ambient as u32) != 0
+    }
+
+    pub fn is_directional(&self) -> bool {
+        self.flags & (1 << LightFlags::Directional as u32) != 0
+    }
+
+    pub fn is_spot(&self) -> bool {
+        self.flags & (1 << LightFlags::Spot as u32) != 0
+    }
+
+    pub fn is_point(&self) -> bool {
+        self.flags & (1 << LightFlags::Point as u32) != 0
+    }
 }
 
 impl Default for Light {
