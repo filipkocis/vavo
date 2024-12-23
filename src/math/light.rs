@@ -39,14 +39,27 @@ impl BitOrAssign<LightFlags> for u32 {
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Light {
-    pub color: [f32; 4],
+    pub view_proj: [[f32; 4]; 4],
+    pub color: [f32; 4], // required alignment of 16 bytes
+
     pub intensity: f32,
-    pub flags: u32,
     pub range: f32,
     pub inner_angle: f32,
     pub outer_angle: f32,
-    position: [f32; 3], // padding, but used as position in main pipeline shader
-    pub view_proj: [[f32; 4]; 4],
+
+    pub flags: u32,
+    shadow_map_index: u32,
+    padding_u32: [u32; 2],
+
+    /// Optional position for point light or spot light.
+    /// Defined by `with_point` or `with_spot` methods
+    position: [f32; 3],
+    padding_pos: f32,
+
+    /// Optional direction for directional light or forward spot direction.
+    /// Defined by `with_spot` or `with_directional` methods
+    direction: [f32; 3],
+    padding_dir: f32,
 } 
 
 /// Ambient light source affecting all objects in the scene equally, set as a resource
@@ -92,14 +105,13 @@ impl Light {
     }
 
     pub fn with_spot(mut self, position: Vec3, direction: Vec3) -> Self {
-        // TODO: implement spot light forward spot vector
+        self.direction = direction.into();
         self.position = position.into();
         self
     }
 
     pub fn with_directional(mut self, direction: Vec3) -> Self {
-        // TODO: implement directional light dir vector
-        self.position = direction.into();
+        self.direction = direction.into();
         self
     }
 
@@ -123,15 +135,23 @@ impl Light {
 impl Default for Light {
     fn default() -> Self {
         Self {
+            view_proj: Mat4::IDENTITY.to_cols_array_2d(),
             color: palette::WHITE.as_rgba_slice(),
+
             intensity: 1.0,
-            flags: LightFlags::Visible | LightFlags::Ambient,  
             range: 0.0,
             inner_angle: 0.0,
             outer_angle: 0.0,
-            view_proj: Mat4::IDENTITY.to_cols_array_2d(),
+
+            flags: LightFlags::Visible | LightFlags::Ambient,  
+            shadow_map_index: 0,
+            padding_u32: [0; 2],
 
             position: [0.0; 3],
+            padding_pos: 0.0,
+
+            direction: [0.0; 3],
+            padding_dir: 0.0,
         }
     }
 }

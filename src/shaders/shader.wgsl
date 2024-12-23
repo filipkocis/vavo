@@ -60,13 +60,19 @@ struct Material {
 @group(0) @binding(4) var<uniform> material: Material;
 
 struct LightData {
+  view_proj: mat4x4<f32>,
   color: vec4<f32>,
+
   intensity: f32,
-  flags: u32,
   range: f32,
   inner_angle: f32,
-  outer_angle_with_pos: vec4<f32>, // outer_angle, xyz positioin (using array padding)
-  view_proj: mat4x4<f32>,
+  outer_angle: f32,
+
+  flags: u32,
+  shadow_map_index: u32,
+
+  pos: vec3<f32>,
+  direction: vec3<f32>,
 }
 
 struct PushConstant {
@@ -116,25 +122,28 @@ fn calculate_attenuation(light_distance: f32, range: f32, flags: u32) -> f32 {
 
 fn calculate_spotlight_intensity(light_dir: vec3<f32>, light: LightData) -> f32 {
   // TODO: implement spotlight intensity
+  if ((light.flags & SPOT) == 0) {
+    return 1.0;
+  }
+
   return 1.0;
+
 }
 
-fn calc_light_dir(light_pos: vec3<f32>, world_pos: vec3<f32>, flags: u32) -> vec3<f32> {
+fn calc_light_dir(light: LightData, world_pos: vec3<f32>, flags: u32) -> vec3<f32> {
   if ((flags & AMBIENT) != 0) {
     return vec3<f32>(0.0);
   }
 
   if ((flags & DIRECTIONAL) != 0) {
-    return normalize(-light_pos); // TODO: currently assuming light_pos is the direction, later we should use dir field (also spot_dir)
+    return normalize(-light.direction);
   }
 
-  return normalize(light_pos - world_pos);
+  return normalize(light.pos - world_pos);
 }
 
 fn calculate_light_contribution(material_color: vec3<f32>, in: Output, light_i: u32) -> vec3<f32> {
   let light = lights[light_i];
-  let light_outer_angle = light.outer_angle_with_pos.x;
-  let light_pos = light.outer_angle_with_pos.yzw;
 
   // Check if light is visible
   if ((light.flags & VISIBLE) == 0) {
@@ -150,9 +159,9 @@ fn calculate_light_contribution(material_color: vec3<f32>, in: Output, light_i: 
   }
 
   // Light direction and attenuation
-  let light_dir = calc_light_dir(light_pos, in.world, light.flags);
-  // let distance = length(light_pos - in.world);
-  let light_distance = distance(light_pos, in.world);
+  let light_dir = calc_light_dir(light, in.world, light.flags);
+  // let distance = length(light.pos - in.world);
+  let light_distance = distance(light.pos, in.world);
   let attenuation = calculate_attenuation(light_distance, light.range, light.flags);
 
   // Diffuse contribution

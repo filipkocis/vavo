@@ -6,13 +6,12 @@ struct Input {
 }
 
 struct LightData {
-  color: vec4<f32>,
-  intensity: f32,
-  flags: f32,
-  range: f32,
-  inner_angle: f32,
-  outer_angle: f32,
   view_proj: mat4x4<f32>,
+  fields_c: vec4<f32>,
+  fields_f: vec4<f32>,
+  fields_u: vec4<u32>,
+  fields_p: vec4<f32>,
+  fields_d: vec4<f32>,
 }
 
 @group(0) @binding(0) var<storage, read> transform: array<mat4x4<f32>>; 
