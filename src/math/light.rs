@@ -302,7 +302,10 @@ impl PointLight {
         Mat4::perspective_rh(fov, aspect, 0.1, self.range)
     }
 
-    pub fn view_proj_matrix_for_face(&self, position: Vec3, face: CubeMapFace) -> Mat4 {
+    pub fn view_proj_matrix_for_face(&self, global_transform: Mat4, face: CubeMapFace) -> Mat4 {
+        // Extract the position from the global transform
+        let (_, _, position) = global_transform.to_scale_rotation_translation();
+
         self.projection_matrix() * self.view_matrix_for_face(position, face)
     }
 }
