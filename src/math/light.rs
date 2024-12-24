@@ -99,6 +99,10 @@ pub struct SpotLight {
 }
 
 impl Light {
+    pub fn set_shadow_map_index(&mut self, index: usize) {
+        self.shadow_map_index = index as u32;
+    }
+
     pub fn with_point(mut self, position: Vec3) -> Self {
         self.position = position.into();
         self
@@ -113,6 +117,14 @@ impl Light {
     pub fn with_directional(mut self, direction: Vec3) -> Self {
         self.direction = direction.into();
         self
+    }
+
+    pub fn is_visible(&self) -> bool {
+        self.flags & (1 << LightFlags::Visible as u32) != 0
+    }
+
+    pub fn is_shadowed(&self) -> bool {
+        self.flags & (1 << LightFlags::CastShadow as u32) != 0
     }
 
     pub fn is_ambient(&self) -> bool {
