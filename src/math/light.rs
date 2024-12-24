@@ -117,6 +117,10 @@ impl Light {
         self.shadow_map_index = index as u32;
     }
 
+    pub fn shadow_map_index(&self) -> u32 {
+        self.shadow_map_index
+    }
+
     pub fn with_point(mut self, position: Vec3) -> Self {
         self.position = position.into();
         self
