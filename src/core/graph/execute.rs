@@ -4,6 +4,12 @@ use crate::{core::graph::NodeColorTarget, system::SystemsContext, world::entitie
 
 use super::{data::{ColorTargetData, DepthTargetData}, GraphNode, NodeDepthTarget, RenderGraph};
 
+/// Same as `RenderGraphContext`, but without a render_pass, used for custom render systems
+pub struct CustomRenderGraphContext {
+    pub node: *mut GraphNode,
+    pub graph: *mut RenderGraph,
+}
+
 pub struct RenderGraphContext<'a> {
     /// Current render pass, should be used to issue draw calls etc.
     pub pass: &'a mut RenderPass<'a>,
@@ -41,12 +47,22 @@ impl RenderGraph {
             // SAFETY: Since encoder is derived from ctx, we just bypass the borrow checker
             let encoder = ctx.renderer.encoder().inner;
 
+            if node.custom_system.is_some() {
+                let graph_ctx = CustomRenderGraphContext {
+                    node,
+                    graph: self,
+                };
+                
+                node.custom_system.as_mut().unwrap().run(graph_ctx, ctx, entities);
+                continue;
+            }
+
+
             let color_attachment = self.get_color_attachment(node, ctx);
             let depth_attachment = self.get_depth_attachment(node, ctx_copy);
 
             let mut render_pass = unsafe { &mut *encoder }.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some(&format!("{} render pass", node.name)),
-                // color_attachments: &[color_attachment],
                 color_attachments: &vec![color_attachment].into_iter().filter(|x| x.is_some()).collect::<Vec<_>>(),
                 depth_stencil_attachment: depth_attachment,
                 occlusion_query_set: None,

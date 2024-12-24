@@ -8,4 +8,4 @@ pub use graph::RenderGraph;
 pub use node::{GraphNode, GraphNodeBuilder};
 pub use data::NodeData;
 pub use targets::{NodeDepthTarget, NodeColorTarget};
-pub use execute::RenderGraphContext;
+pub use execute::{RenderGraphContext, CustomRenderGraphContext};

@@ -1,6 +1,6 @@
 use winit::dpi::PhysicalSize;
 
-use crate::{palette, render_assets::pipeline::PipelineBuilder, system::{GraphSystem, SystemsContext}};
+use crate::{palette, render_assets::pipeline::PipelineBuilder, system::{CustomGraphSystem, GraphSystem, SystemsContext}};
 
 use super::{NodeColorTarget, NodeData, NodeDepthTarget};
 
@@ -10,6 +10,7 @@ pub struct GraphNode {
     pub name: String,
     pub pipeline_builder: PipelineBuilder,
     pub system: GraphSystem,
+    pub custom_system: Option<CustomGraphSystem>,
     pub color_target: NodeColorTarget,
     pub depth_target: NodeDepthTarget,
     pub color_ops: wgpu::Operations<wgpu::Color>,
@@ -30,6 +31,7 @@ impl GraphNode {
             name: name.to_string(),
             pipeline_builder,
             system,
+            custom_system: None,
             color_target,
             depth_target,
             color_ops: wgpu::Operations {
@@ -94,6 +96,7 @@ pub struct GraphNodeBuilder {
     name: String,
     pipeline_builder: Option<PipelineBuilder>,
     system: Option<GraphSystem>,
+    custom_system: Option<CustomGraphSystem>,
     color_target: Option<NodeColorTarget>,
     depth_target: Option<NodeDepthTarget>,
     color_ops: wgpu::Operations<wgpu::Color>,
@@ -107,6 +110,7 @@ impl GraphNodeBuilder {
             name: name.to_string(),
             pipeline_builder: None,
             system: None,
+            custom_system: None,
             color_target: None,
             depth_target: None,
             color_ops: wgpu::Operations {
@@ -128,6 +132,13 @@ impl GraphNodeBuilder {
 
     pub fn set_system(mut self, system: GraphSystem) -> Self {
         self.system = Some(system);
+        self
+    }
+
+    /// Setting a custom system will clear the depth_ops, color and depth targets, and replace the system with
+    /// an empty system
+    pub fn set_custom_system(mut self, custom_system: CustomGraphSystem) -> Self {
+        self.custom_system = Some(custom_system);
         self
     }
 
@@ -158,13 +169,22 @@ impl GraphNodeBuilder {
         self
     }
 
-    pub fn build(self) -> GraphNode {
+    pub fn build(mut self) -> GraphNode {
         let err = |field: &str| format!("Field '{}' for '{}' graph node is required", field, self.name);
+        
+        if self.custom_system.is_some() {
+            let name = format!("CLEARED_{}", self.name);
+            self.system = Some(GraphSystem::new(&name, |_, _, _: crate::prelude::Query<()>| {}));
+            self.color_target = Some(NodeColorTarget::None);
+            self.depth_target = Some(NodeDepthTarget::None);
+            self.depth_ops = None;
+        }
 
         GraphNode {
             name: self.name.clone(),
             pipeline_builder: self.pipeline_builder.expect(&err("PipelineBuilder")),
             system: self.system.expect(&err("System")),
+            custom_system: self.custom_system,
             color_target: self.color_target.expect(&err("ColorTarget")),
             depth_target: self.depth_target.expect(&err("DepthTarget")),
             color_ops: self.color_ops,

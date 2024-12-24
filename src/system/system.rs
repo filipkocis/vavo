@@ -1,4 +1,4 @@
-use crate::{core::graph::RenderGraphContext, query::Query, world::entities::Entities};
+use crate::{core::graph::{CustomRenderGraphContext, RenderGraphContext}, query::Query, world::entities::Entities};
 
 use super::SystemsContext;
 
@@ -44,6 +44,29 @@ impl GraphSystem {
     }
 
     pub(crate) fn run(&mut self, graph_ctx: RenderGraphContext, ctx: &mut SystemsContext, entities: &mut Entities) {
+        (self.exec)(graph_ctx, ctx, entities);
+    }
+}
+
+pub struct CustomGraphSystem {
+    name: String,
+    func_ptr: *const (),
+    exec: Box<dyn FnMut(CustomRenderGraphContext, &mut SystemsContext, &mut Entities)>,
+}
+
+impl CustomGraphSystem {
+    pub fn new<T: 'static, F: 'static>(name: &str, func: fn(CustomRenderGraphContext, &mut SystemsContext, Query<T, F>)) -> Self {
+        Self {
+            name: name.to_string(),
+            func_ptr: func as *const (),
+            exec: Box::new(move |graph_ctx, ctx, entities| {
+                let query = Query::new(entities);
+                func(graph_ctx, ctx, query);
+            }),
+        }
+    }
+
+    pub(crate) fn run(&mut self, graph_ctx: CustomRenderGraphContext, ctx: &mut SystemsContext, entities: &mut Entities) {
         (self.exec)(graph_ctx, ctx, entities);
     }
 }
