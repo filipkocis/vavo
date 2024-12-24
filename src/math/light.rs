@@ -13,6 +13,20 @@ pub enum CubeMapFace {
     NegZ,
 }
 
+impl CubeMapFace {
+    pub fn from_index(index: usize) -> Self {
+        match index {
+            0 => CubeMapFace::PosX,
+            1 => CubeMapFace::NegX,
+            2 => CubeMapFace::PosY,
+            3 => CubeMapFace::NegY,
+            4 => CubeMapFace::PosZ,
+            5 => CubeMapFace::NegZ,
+            _ => panic!("Invalid cube map face index"),
+        }
+    }
+}
+
 enum LightFlags {
     Ambient = 0,
     Directional = 1,
