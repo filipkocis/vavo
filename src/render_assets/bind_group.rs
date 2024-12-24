@@ -1,3 +1,5 @@
+use std::num::NonZero;
+
 use crate::prelude::Color;
 use crate::renderer::{DefaultTexture, Image, Texture};
 use crate::assets::Handle;
@@ -42,6 +44,26 @@ impl<'a> BindGroupBuilder<'a> {
             binding: 0,
         }
     }
+
+     pub fn add_custom(mut self, visibility: wgpu::ShaderStages, ty: wgpu::BindingType, count: Option<u32>, resource: wgpu::BindingResource<'a>) -> Self {
+        let layout_entry = wgpu::BindGroupLayoutEntry {
+            binding: self.binding,
+            visibility,
+            ty,
+            count: count.map(|c| NonZero::new(c).expect("Count must be greater than zezro")),
+        };
+
+        let entry = wgpu::BindGroupEntry {
+            binding: layout_entry.binding,
+            resource,
+        };
+
+        self.layout_entries.push(layout_entry);
+        self.entries.push(entry);
+        self.binding += 1;
+        self
+    }
+
 
     pub fn add_texture(mut self, texture: &Option<Handle<Image>>, ctx: &mut SystemsContext, default_color: Color, sample_type: Option<wgpu::TextureSampleType>, sampler_bind: Option<wgpu::SamplerBindingType>) -> Self {
         if let Some(texture) = texture {
