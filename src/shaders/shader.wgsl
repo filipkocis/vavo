@@ -77,14 +77,14 @@ struct LightData {
 
 struct PushConstant {
   light_count: u32,
-  atlas_cols: u32,
-  atlas_rows: u32,
 }
-
 var<push_constant> pc: PushConstant;
+
 @group(3) @binding(0) var<storage, read> lights: array<LightData>;
-@group(4) @binding(0) var shadow_atlas: texture_depth_2d;
-@group(4) @binding(1) var shadow_atlas_sampler: sampler_comparison;
+@group(3) @binding(1) var directional_shadow_map: texture_depth_2d_array;
+@group(3) @binding(2) var point_shadow_map: texture_depth_cube_array;
+@group(3) @binding(3) var spot_shadow_map: texture_depth_2d_array;
+@group(3) @binding(4) var shadow_map_sampler: sampler_comparison;
 
 @fragment 
 fn fs_main(in: Output) -> @location(0) vec4<f32> {
@@ -228,21 +228,26 @@ fn calculate_shadow(light: LightData, in: Output, light_i: u32, light_dir: vec3<
   let slope_bias = mix(max_bias, min_bias, n_dot_l);
   let depth = homogeneous_coords.z - slope_bias;
 
-  // no shadow if the surface is 90 degrees to the light
+  // no light if the surface is 90 degrees to the light
   if n_dot_l <= 0.0 {
     return 0.0;
   }
 
-  // Transform uv to shadow atlas space
-  let tile_size = vec2<f32>(
-    1.0 / f32(pc.atlas_rows),
-    1.0 / f32(pc.atlas_cols),
-  );
-  let atlas_tile = vec2<f32>(
-    f32(light_i % pc.atlas_cols),
-    f32(light_i / pc.atlas_cols),
-  );
-  let atlas_local = tile_size * (atlas_tile + light_local);
+  let layer = light.shadow_map_index;
+
+  if ((light.flags & DIRECTIONAL) != 0) {
+    return textureSampleCompareLevel(directional_shadow_map, shadow_map_sampler, light_local, layer, depth * proj_correction);
+  }
+
+  if ((light.flags & POINT) != 0) {
+    let coords = vec3<f32>(light_local, f32(light.shadow_map_index % 6));
+    return textureSampleCompareLevel(point_shadow_map, shadow_map_sampler, coords, layer, depth * proj_correction);
+  }
+
+  if ((light.flags & SPOT) != 0) {
+    return textureSampleCompareLevel(spot_shadow_map, shadow_map_sampler, light_local, layer, depth * proj_correction);
+  }
   
-  return textureSampleCompareLevel(shadow_atlas, shadow_atlas_sampler, atlas_local, depth * proj_correction);
+  // no shadow, should be unreachable
+  return 1.0;
 }
