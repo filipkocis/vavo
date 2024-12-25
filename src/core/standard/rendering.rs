@@ -1,10 +1,9 @@
-use glam::{Mat4, Vec3, Vec4Swizzles};
 use pipeline::PipelineBuilder;
 use wgpu::TextureFormat;
 
-use crate::{core::graph::*, prelude::*, render_assets::*};
+use crate::{core::{graph::*, lighting::LightAndShadowManager}, prelude::*, render_assets::*};
 
-use super::{atlas::ShadowMapAtlas, debug::debug_shadow_map_node, shadows::standard_shadow_node};
+use super::shadows::standard_shadow_node;
 
 pub fn register_standard_graph(ctx: &mut SystemsContext, _: Query<()>) {
     let graph = unsafe { &mut *ctx.graph }; 
@@ -40,9 +39,6 @@ pub fn register_standard_graph(ctx: &mut SystemsContext, _: Query<()>) {
 
     let shadow_node = standard_shadow_node(ctx);
     graph.add(shadow_node);
-
-    // let debug_shadow_node = debug_shadow_map_node(ctx);
-    // graph.add(debug_shadow_node);
 }
 
 fn main_render_system(
@@ -55,12 +51,10 @@ fn main_render_system(
     let mut bind_groups = ctx.resources.get_mut::<RenderAssets<BindGroup>>().unwrap();
 
     // Camera
-    let mut camera_query = query.cast::<(&EntityId, &Camera, &GlobalTransform), (With<Projection>, With<Camera3D>)>(); 
-    let active_camera = camera_query.iter_mut().into_iter().filter(|(_, c, _)| c.active).take(1).next();
+    let mut camera_query = query.cast::<(&EntityId, &Camera), (With<Transform>, With<Projection>, With<Camera3D>)>(); 
+    let active_camera = camera_query.iter_mut().into_iter().filter(|(_, c)| c.active).take(1).next();
     let camera_bind_group;
-    let camera_position;
-    if let Some((id, camera, global_transform)) = active_camera {
-        camera_position = global_transform.matrix.w_axis.xyz();
+    if let Some((id, camera)) = active_camera {
         camera_bind_group = bind_groups.get_by_entity(id, camera, ctx);
     } else {
         return;
@@ -71,18 +65,15 @@ fn main_render_system(
     // Camera setup
     render_pass.set_bind_group(2, &*camera_bind_group, &[]);
 
-    // Bind shadow map atlas
-    let shadow_map_atlas = ctx.resources.get::<ShadowMapAtlas>().expect("ShadowMapAtlas resource not found");
-    let atlas_bind_group = bind_groups.get_by_resource(&shadow_map_atlas, ctx, false);
-    render_pass.set_bind_group(4, &*atlas_bind_group, &[]);
-    
-    // Prepare light storage
-    let (light_count, lights_storage) = prepare_light_storage(camera_position, ctx, query.cast());
-    render_pass.set_bind_group(3, lights_storage.bind_group(), &[]);
+    // Bind light and shadow manager
+    let manager = ctx.resources.get::<LightAndShadowManager>().expect("LightAndShadowManager not found");
+    // TODO: currently we have to regen every time, because manager views got updated
+    let manager_bind_group = bind_groups.get_by_resource(&manager, ctx, true);
+    render_pass.set_bind_group(3, &*manager_bind_group, &[]);
 
-    // Set push constants
+    // Set light count push constant
     render_pass.set_push_constants(wgpu::ShaderStages::FRAGMENT, 0, bytemuck::cast_slice(&[
-        light_count, shadow_map_atlas.cols, shadow_map_atlas.rows,
+        manager.storage.count() as u32
     ]));
 
     // Prepare grouped instances
@@ -118,70 +109,6 @@ fn main_render_system(
         last_material = Some(material);
         last_mesh = Some(mesh);
     }
-}
-
-fn prepare_light_storage(
-    camera_position: Vec3,
-    ctx: &mut SystemsContext,
-    mut query: Query<()>,
-) -> (u32, ResMut<LightStorage>) {
-    let mut light_data = Vec::new();
-
-    // Directional lights
-    let mut directional_query = query.cast::<(&GlobalTransform, &DirectionalLight), ()>();
-    for (global_transform, light) in directional_query.iter_mut() {
-        // if !light.shadow {
-        //     continue;
-        // }
-
-        let (view_projection_matrix, direction) = light.view_projection_matrix(50.0, 0.1, 100.0, camera_position, global_transform.matrix);
-
-        light_data.push(light
-            .as_light(view_projection_matrix)
-            .with_directional(direction)
-        )
-    }
-
-    // Spot lights
-    let mut spot_query = query.cast::<(&GlobalTransform, &SpotLight), ()>();
-    for (global_transform, light) in spot_query.iter_mut() {
-        // if !light.shadow {
-        //     continue;
-        // }
-
-        let (view_projection_matrix, spot_direction) = light.view_projection_matrix(1.0, 0.1, global_transform.matrix);
-
-        light_data.push(light
-            .as_light(view_projection_matrix)
-            .with_spot(global_transform.matrix.w_axis.xyz(), spot_direction)
-        )
-    }
-
-    // // Point lights
-    // let mut point_query = query.cast::<(&GlobalTransform, &PointLight), ()>();
-    // for (global_transform, light) in point_query.iter_mut() {
-    //     // if !light.shadow {
-    //     //     continue;
-    //     // }
-    //
-    //     let view_projection_matrix = light.viview_projection_matrix(1.0, 0.1, global_transform.matrix);
-    //
-    //     light_data.push(light
-    //         .as_light(view_projection_matrix)
-    //         .with_point(global_transform.matrix.w_axis.xyz())
-    //     )
-    // }
-
-    // Ambient light
-    if let Some(light) = ctx.resources.get::<AmbientLight>() {
-        light_data.push(light.as_light(Mat4::IDENTITY))
-    };
-    
-    // Set lights storage
-    let mut lights_storage = ctx.resources.get_mut::<LightStorage>().unwrap();
-    lights_storage.update(&light_data, ctx);
-
-    (light_data.len() as u32, lights_storage)
 }
 
 fn get_grouped_instances<'a>(
@@ -233,11 +160,12 @@ fn get_grouped_instances<'a>(
 
     // Set transforms storage
     let mut transforms_storage = ctx.resources.get_mut::<TransformStorage>().unwrap();
-    transforms_storage.update(&transforms, ctx);
+    transforms_storage.update(&transforms, transforms.len(), ctx);
 
     (grouped, transforms_storage)
 }
 
+// TODO: add a better way to generate/get bind group layouts
 fn create_main_pipeline_builder(device: &wgpu::Device, color_format: TextureFormat) -> PipelineBuilder {
     // Material bind group layout for texture and uniform buffer
     let material_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -325,39 +253,57 @@ fn create_main_pipeline_builder(device: &wgpu::Device, color_format: TextureForm
         ]
     });
 
-    // Light bind group layout for storage buffer
-    let lights_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-        label: Some("lights_bind_group_layout"),
+    // Light and shadow manager
+    let manager_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        label: Some("light_and_shadow_manager_layout"),
         entries: &[
+            // lights storage buffer
             wgpu::BindGroupLayoutEntry {
                 binding: 0,
                 visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
                 ty: wgpu::BindingType::Buffer { 
                     ty: wgpu::BufferBindingType::Storage { read_only: true },
-                    has_dynamic_offset: false,
-                    min_binding_size: None
+                    has_dynamic_offset: false, 
+                    min_binding_size: None 
                 },
                 count: None
             },
-        ]
-    });
-
-    // Shadow map bind group layout for texture and sampler
-    let shadow_map_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-        label: Some("shadow_map_bind_group_layout"),
-        entries: &[
-            wgpu::BindGroupLayoutEntry {
-                binding: 0,
-                visibility: wgpu::ShaderStages::FRAGMENT,
-                ty: wgpu::BindingType::Texture { 
-                    sample_type: wgpu::TextureSampleType::Depth,
-                    view_dimension: wgpu::TextureViewDimension::D2, 
-                    multisampled: false,
-                },
-                count: None
-            },
+            // directional shadow map
             wgpu::BindGroupLayoutEntry {
                 binding: 1,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Texture { 
+                    sample_type: wgpu::TextureSampleType::Depth, 
+                    view_dimension: wgpu::TextureViewDimension::D2Array,
+                    multisampled: false
+                },
+                count: None
+            },
+            // point shadow map
+            wgpu::BindGroupLayoutEntry {
+                binding: 2,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Texture { 
+                    sample_type: wgpu::TextureSampleType::Depth, 
+                    view_dimension: wgpu::TextureViewDimension::CubeArray,
+                    multisampled: false
+                },
+                count: None
+            },
+            // spot shadow map
+            wgpu::BindGroupLayoutEntry {
+                binding: 3,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Texture { 
+                    sample_type: wgpu::TextureSampleType::Depth, 
+                    view_dimension: wgpu::TextureViewDimension::D2Array,
+                    multisampled: false
+                },
+                count: None
+            },
+            // shadow map sampler
+            wgpu::BindGroupLayoutEntry {
+                binding: 4,
                 visibility: wgpu::ShaderStages::FRAGMENT,
                 ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Comparison),
                 count: None
@@ -367,7 +313,7 @@ fn create_main_pipeline_builder(device: &wgpu::Device, color_format: TextureForm
 
     // Create builder
     Pipeline::build("main_pipeline")
-        .set_bind_group_layouts(vec![material_layout, transform_layout, camera_layout, lights_layout, shadow_map_layout])
+        .set_bind_group_layouts(vec![material_layout, transform_layout, camera_layout, manager_layout])
         .set_vertex_buffer_layouts(vec![Mesh::vertex_descriptor()])
         .set_vertex_shader(include_str!("../../shaders/shader.wgsl"), "vs_main")
         .set_fragment_shader(include_str!("../../shaders/shader.wgsl"), "fs_main")
@@ -375,6 +321,6 @@ fn create_main_pipeline_builder(device: &wgpu::Device, color_format: TextureForm
         .set_depth_format(wgpu::TextureFormat::Depth32Float)
         .set_push_constant_ranges(vec![wgpu::PushConstantRange {
             stages: wgpu::ShaderStages::FRAGMENT,
-            range: 0..4 * 3,
+            range: 0..4,
         }])
 }
