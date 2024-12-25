@@ -4,3 +4,6 @@ pub mod movement;
 pub mod shadows;
 pub mod debug;
 pub mod atlas;
+pub mod grouped;
+pub mod prepare;
+pub mod light_data;
