@@ -1,4 +1,4 @@
-use super::{mesh::Meshable, Mesh};
+use super::{mesh::Meshable, sphere::SphereKind, Mesh};
 
 pub struct Cuboid {
     pub width: f32, 
@@ -12,8 +12,7 @@ pub struct Cube {
 
 pub struct Sphere {
     pub radius: f32,
-    pub rings: usize,
-    pub sectors: usize,
+    pub kind: SphereKind,
 }
 
 pub struct Cylinder {
@@ -36,9 +35,9 @@ pub struct Torus {
 }
 
 pub struct Plane {
-    pub normal: [f32; 3],
     pub width: f32,
     pub height: f32,
+    pub face_down: bool,
 }
 
 pub struct Triangle {
@@ -165,5 +164,90 @@ impl Meshable for Cube {
             height: self.size,
             depth: self.size,
         }.mesh()
+    }
+}
+
+impl Sphere {
+    /// Generate a new icosphere with 3 subdivisions
+    pub fn new(radius: f32) -> Self {
+        Self {
+            radius,
+            kind: SphereKind::Icosphere(3),
+        }
+    }
+
+    pub fn ico(radius: f32, subdivisions: u32) -> Self {
+        Self {
+            radius,
+            kind: SphereKind::Icosphere(subdivisions),
+        }
+    }
+
+    pub fn uv(radius: f32, rings: u32, sectors: u32) -> Self {
+        Self {
+            radius,
+            kind: SphereKind::UVSphere(rings, sectors), 
+        }
+    }
+}
+
+impl Meshable for Sphere {
+    fn mesh(&self) -> Mesh {
+        let (positions, uvs, normals, indices) = match self.kind {
+            SphereKind::Icosphere(subdivisions) => {
+                Self::generate_icosphere(self.radius, subdivisions)
+            },
+            SphereKind::UVSphere(rings, sectors) => {
+                Self::generate_uv_sphere(self.radius, rings, sectors)
+            }
+        };
+
+        Mesh::new(
+            wgpu::PrimitiveTopology::TriangleList,
+            None,
+            positions,
+            Some(normals),
+            Some(uvs),
+            Some(indices),
+        )
+    }
+}
+
+impl Plane {
+    pub fn new(width: f32, height: f32, face_down: bool) -> Self {
+        Self {
+            width,
+            height,
+            face_down,
+        } 
+    }
+}
+
+impl Meshable for Plane {
+    fn mesh(&self) -> Mesh {
+        let hw = self.width / 2.0;
+        let hh = self.height / 2.0;
+
+        let vertices = &[
+            ([-hw, 0.0, hh], [0.0, 1.0, 0.0], [0.0, 0.0]),
+            ([hw, 0.0, hh], [0.0, 1.0, 0.0], [1.0, 0.0]),
+            ([hw, 0.0, -hh], [0.0, 1.0, 0.0], [1.0, 1.0]),
+            ([-hw, 0.0, -hh], [0.0, 1.0, 0.0], [0.0, 1.0]),
+        ];
+
+        let positions: Vec<_> = vertices.iter().map(|(p, _, _)| *p).collect();
+        let normals: Vec<_> = vertices.iter().map(|(_, n, _)| *n).collect();
+        let uvs: Vec<_> = vertices.iter().map(|(_, _, uv)| *uv).collect();
+
+        let indices = vec![0, 1, 2, 2, 3, 0];
+
+        Mesh::new(
+            wgpu::PrimitiveTopology::TriangleList,
+            None,
+            positions,
+            Some(normals),
+            Some(uvs),
+            Some(indices)
+        )
     }
 }
