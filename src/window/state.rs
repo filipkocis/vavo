@@ -78,7 +78,6 @@ impl AppState {
         let device_descriptor = wgpu::DeviceDescriptor {
             required_features: wgpu::Features::PUSH_CONSTANTS,
             required_limits: wgpu::Limits {
-                max_bind_groups: 8, // TODO: try to reduce this later
                 max_push_constant_size: 128,
                 ..wgpu::Limits::default()
             },
