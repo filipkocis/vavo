@@ -3,11 +3,11 @@ use wgpu::TextureFormat;
 
 use crate::{core::{graph::*, lighting::LightAndShadowManager}, prelude::*, render_assets::*};
 
-use super::{grouped::GroupedInstances, shadows::standard_shadow_node};
+use super::grouped::GroupedInstances;
 
-pub fn register_standard_graph(ctx: &mut SystemsContext, _: Query<()>) {
-    let graph = unsafe { &mut *ctx.graph }; 
-
+/// Creates a node for standard main render pass
+pub fn standard_main_node(ctx: &mut SystemsContext) -> GraphNode {
+    // Create pipeline builder
     let main_pipeline_builder = create_main_pipeline_builder(
         ctx.renderer.device(), 
         ctx.renderer.config().format
@@ -27,18 +27,13 @@ pub fn register_standard_graph(ctx: &mut SystemsContext, _: Query<()>) {
     depth_image.texture_descriptor.as_mut().unwrap().usage = wgpu::TextureUsages::RENDER_ATTACHMENT; 
     depth_image.view_descriptor.as_mut().unwrap().format = Some(wgpu::TextureFormat::Depth32Float);
 
-    let node = GraphNodeBuilder::new("main")
+    GraphNodeBuilder::new("main")
         .set_pipeline(main_pipeline_builder)
         .set_system(GraphSystem::new("main_render_system", main_render_system))
         .set_color_target(NodeColorTarget::Surface)
         .set_depth_target(NodeDepthTarget::Owned(depth_image))
         .add_dependency("shadow")
-        .build();
-    
-    graph.add(node);
-
-    let shadow_node = standard_shadow_node(ctx);
-    graph.add(shadow_node);
+        .build()
 }
 
 fn main_render_system(

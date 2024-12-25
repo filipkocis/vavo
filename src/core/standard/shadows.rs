@@ -4,6 +4,7 @@ use crate::{core::{graph::*, lighting::LightAndShadowManager}, prelude::*, rende
 
 use super::{grouped::GroupedInstances, light_data::PreparedLightData};
 
+/// Creates a node for standard shadow pass
 pub fn standard_shadow_node(ctx: &mut SystemsContext) -> GraphNode {
     // Create pipeline builder
     let shadow_pipeline_builder = create_shadow_pipeline_builder(ctx.renderer.device());
