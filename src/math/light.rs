@@ -4,28 +4,7 @@ use glam::{Mat4, Quat, Vec3};
 
 use crate::{palette, prelude::Color};
 
-pub enum CubeMapFace {
-    PosX,
-    NegX,
-    PosY,
-    NegY,
-    PosZ,
-    NegZ,
-}
-
-impl CubeMapFace {
-    pub fn from_index(index: usize) -> Self {
-        match index {
-            0 => CubeMapFace::PosX,
-            1 => CubeMapFace::NegX,
-            2 => CubeMapFace::PosY,
-            3 => CubeMapFace::NegY,
-            4 => CubeMapFace::PosZ,
-            5 => CubeMapFace::NegZ,
-            _ => panic!("Invalid cube map face index"),
-        }
-    }
-}
+use super::CubeFace;
 
 enum LightFlags {
     Ambient = 0,
@@ -113,8 +92,8 @@ pub struct SpotLight {
 }
 
 impl Light {
-    pub fn set_shadow_map_index(&mut self, index: usize) {
-        self.shadow_map_index = index as u32;
+    pub fn set_shadow_map_index(&mut self, index: u32) {
+        self.shadow_map_index = index;
     }
 
     pub fn shadow_map_index(&self) -> u32 {
@@ -285,15 +264,15 @@ impl PointLight {
         }
     }
 
-    pub fn view_matrix_for_face(&self, position: Vec3, face: CubeMapFace) -> Mat4 {
+    pub fn view_matrix_for_face(&self, position: Vec3, face: CubeFace) -> Mat4 {
         // Look direction for each cube map face.
         let (eye, direction, up) = match face {
-            CubeMapFace::PosX => (position, position + Vec3::X, Vec3::Y),
-            CubeMapFace::NegX => (position, position - Vec3::X, Vec3::Y),
-            CubeMapFace::PosY => (position, position + Vec3::Y, Vec3::NEG_Z),
-            CubeMapFace::NegY => (position, position - Vec3::Y, Vec3::Z),
-            CubeMapFace::PosZ => (position, position + Vec3::Z, Vec3::Y),
-            CubeMapFace::NegZ => (position, position - Vec3::Z, Vec3::Y),
+            CubeFace::PosX => (position, position + Vec3::X, Vec3::Y),
+            CubeFace::NegX => (position, position - Vec3::X, Vec3::Y),
+            CubeFace::PosY => (position, position + Vec3::Y, Vec3::NEG_Z),
+            CubeFace::NegY => (position, position - Vec3::Y, Vec3::Z),
+            CubeFace::PosZ => (position, position + Vec3::Z, Vec3::Y),
+            CubeFace::NegZ => (position, position - Vec3::Z, Vec3::Y),
         };
 
         Mat4::look_at_rh(eye, direction, up)
@@ -306,7 +285,7 @@ impl PointLight {
         Mat4::perspective_rh(fov, aspect, 0.1, self.range)
     }
 
-    pub fn view_proj_matrix_for_face(&self, global_transform: Mat4, face: CubeMapFace) -> Mat4 {
+    pub fn view_proj_matrix_for_face(&self, global_transform: Mat4, face: CubeFace) -> Mat4 {
         // Extract the position from the global transform
         let (_, _, position) = global_transform.to_scale_rotation_translation();
 
