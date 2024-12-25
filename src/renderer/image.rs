@@ -9,12 +9,16 @@ pub struct Texture {
 }
 
 #[derive(Clone)]
-pub struct DefaultTexture {
+/// Texture render asset which represents a 1x1 texture with a single rgba color. 
+/// Created with default image descriptors.
+///
+/// Internally, it creates a new image asset and creates a render asset texture from it
+pub struct SingleColorTexture {
     pub handle: RenderAssetEntry<Texture>,
 }
 
-impl DefaultTexture {
-    pub fn create(ctx: &mut SystemsContext, color: Color) -> Self {
+impl SingleColorTexture {
+    pub fn new(ctx: &mut SystemsContext, color: Color) -> Self {
         let image = Image {
             data: color.as_rgba_slice_u8().to_vec(),
             size: wgpu::Extent3d {
@@ -29,8 +33,11 @@ impl DefaultTexture {
 
         let mut images = ctx.resources.get_mut::<Assets<Image>>().unwrap();
         let image = images.add(image);
+
         let mut textures = ctx.resources.get_mut::<RenderAssets<Texture>>().unwrap();
         let texture = textures.get_by_handle(&image, ctx);
+
+        // TODO add optimization to not create a new texture if similar texture already exists
 
         Self {
             handle: texture,

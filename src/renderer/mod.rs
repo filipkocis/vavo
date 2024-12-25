@@ -7,7 +7,7 @@ pub mod shapes;
 pub mod sphere;
 
 pub use material::Material;
-pub use image::{Texture, Image, DefaultTexture};
+pub use image::{Texture, Image, SingleColorTexture};
 pub use color::Color;
 pub use mesh::{Mesh, Meshable};
 

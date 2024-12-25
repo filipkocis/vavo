@@ -1,7 +1,7 @@
 use std::num::NonZero;
 
 use crate::prelude::Color;
-use crate::renderer::{DefaultTexture, Image, Texture};
+use crate::renderer::{Image, SingleColorTexture, Texture};
 use crate::assets::Handle;
 use crate::system::SystemsContext;
 
@@ -71,13 +71,7 @@ impl<'a> BindGroupBuilder<'a> {
             let texture = render_images.get_by_handle(texture, ctx);
             self.textures.push((self.binding, texture, sample_type, sampler_bind));
         } else {
-            // TODO: delete default texture from resources, do not create it in main
-            let default_texture = if default_color == Color::default() {
-                ctx.resources.get::<DefaultTexture>().unwrap().handle.clone()
-            } else {
-                DefaultTexture::create(ctx, default_color).handle
-            };
-
+            let default_texture = SingleColorTexture::new(ctx, default_color).handle;
             self.textures.push((self.binding, default_texture, sample_type, sampler_bind)); 
         }
 
