@@ -3,7 +3,7 @@ use wgpu::TextureFormat;
 
 use crate::{core::{graph::*, lighting::LightAndShadowManager}, prelude::*, render_assets::*};
 
-use super::shadows::standard_shadow_node;
+use super::{grouped::GroupedInstances, shadows::standard_shadow_node};
 
 pub fn register_standard_graph(ctx: &mut SystemsContext, _: Query<()>) {
     let graph = unsafe { &mut *ctx.graph }; 
@@ -50,6 +50,11 @@ fn main_render_system(
     let mut buffers = ctx.resources.get_mut::<RenderAssets<Buffer>>().unwrap();
     let mut bind_groups = ctx.resources.get_mut::<RenderAssets<BindGroup>>().unwrap();
 
+    // Resources
+    let manager = ctx.resources.get::<LightAndShadowManager>().expect("LightAndShadowManager not found");
+    let grouped = ctx.resources.get::<GroupedInstances>().expect("GroupedInstances resource not found");
+    let transforms_storage = ctx.resources.get::<TransformStorage>().expect("TransformStorage resource not found");
+
     // Camera
     let mut camera_query = query.cast::<(&EntityId, &Camera), (With<Transform>, With<Projection>, With<Camera3D>)>(); 
     let active_camera = camera_query.iter_mut().into_iter().filter(|(_, c)| c.active).take(1).next();
@@ -62,28 +67,29 @@ fn main_render_system(
 
     let render_pass = graph_ctx.pass;
 
-    // Camera setup
-    render_pass.set_bind_group(2, &*camera_bind_group, &[]);
-
-    // Bind light and shadow manager
-    let manager = ctx.resources.get::<LightAndShadowManager>().expect("LightAndShadowManager not found");
-    // TODO: currently we have to regen every time, because manager views got updated
-    let manager_bind_group = bind_groups.get_by_resource(&manager, ctx, true);
-    render_pass.set_bind_group(3, &*manager_bind_group, &[]);
-
     // Set light count push constant
     render_pass.set_push_constants(wgpu::ShaderStages::FRAGMENT, 0, bytemuck::cast_slice(&[
         manager.storage.count() as u32
     ]));
 
-    // Prepare grouped instances
-    let (grouped, transforms_storage) = get_grouped_instances(ctx, query.cast());
+    // TODO: currently we have to regen every time, because manager views got updated
+    let manager_bind_group = bind_groups.get_by_resource(&manager, ctx, true);
+
+    // Set bind groups
     render_pass.set_bind_group(1, transforms_storage.bind_group(), &[]);
+    render_pass.set_bind_group(2, &*camera_bind_group, &[]);
+    render_pass.set_bind_group(3, &*manager_bind_group, &[]);
 
     // Instanced draw loop
     let mut last_material = None;
     let mut last_mesh = None;
-    for (material, mesh, instance_count, instance_offset) in grouped {
+    // for (material, mesh, instance_count, instance_offset) in grouped {
+    for group in &grouped.groups {
+        let material = &group.material;
+        let mesh = &group.mesh;
+        let instance_count = group.instance_count;
+        let instance_offset = group.instance_offset;
+
         // bind material
         if last_material != Some(material) {
             let material_bind_group = bind_groups.get_by_handle(material, ctx); 
@@ -109,60 +115,6 @@ fn main_render_system(
         last_material = Some(material);
         last_mesh = Some(mesh);
     }
-}
-
-fn get_grouped_instances<'a>(
-    ctx: &mut SystemsContext,
-    mut query: Query<'a, (&'a Handle<Material>, &'a Handle<Mesh>, &'a GlobalTransform)>,
-) -> (Vec<(&'a Handle<Material>, &'a Handle<Mesh>, u32, u32)>, ResMut<TransformStorage>) {
-    // Prepare sorted storage
-    let mut transforms = Vec::new();
-    let mut sorted = Vec::<(&Handle<Material>, &Handle<Mesh>, &GlobalTransform)>::new();
-    for (mat, mesh, global_transform) in query.iter_mut() {
-        sorted.push((mat, mesh, global_transform));
-    }
-
-    // Sort by material and mesh
-    sorted.sort_by(|a, b| {
-        let material_cmp = a.0.id().cmp(&b.0.id());
-        if material_cmp != std::cmp::Ordering::Equal {
-            return material_cmp;
-        }
-        a.1.id().cmp(&b.1.id()) // mesh comparison
-    });
-
-    // Group by material and mesh
-    let last_index = sorted.len() - 1;
-    let mut last_entry = None;
-    let mut instance_count = 0;
-    let mut instance_offset = 0;
-    let mut grouped = Vec::<(&Handle<Material>, &Handle<Mesh>, u32, u32)>::new();
-    for (i, (material, mesh, global_transform)) in sorted.into_iter().enumerate() {
-        if let Some((last_material, last_mesh, last_instance_count)) = last_entry {
-            if last_material == material && last_mesh == mesh {
-                instance_count += 1;
-            } else {
-                grouped.push((last_material, last_mesh, last_instance_count, instance_offset));
-                instance_offset += last_instance_count;
-                instance_count = 1;
-            }
-        } else {
-            instance_count = 1;
-        }
-
-        if i == last_index {
-            grouped.push((material, mesh, instance_count, instance_offset));
-        }
-
-        last_entry = Some((material, mesh, instance_count));
-        transforms.push(global_transform.as_matrix().to_cols_array_2d());
-    }
-
-    // Set transforms storage
-    let mut transforms_storage = ctx.resources.get_mut::<TransformStorage>().unwrap();
-    transforms_storage.update(&transforms, transforms.len(), ctx);
-
-    (grouped, transforms_storage)
 }
 
 // TODO: add a better way to generate/get bind group layouts
