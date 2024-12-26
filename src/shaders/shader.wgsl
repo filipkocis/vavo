@@ -120,14 +120,31 @@ fn calculate_attenuation(light_distance: f32, range: f32, flags: u32) -> f32 {
   return 1.0;
 }
 
-fn calculate_spotlight_intensity(light_dir: vec3<f32>, light: LightData) -> f32 {
-  // TODO: implement spotlight intensity
+fn calculate_spotlight_intensity(in: Output, light: LightData) -> f32 {
   if ((light.flags & SPOT) == 0) {
+    // Not a spotlight
     return 1.0;
   }
 
-  return 1.0;
+  let light_to_frag = normalize(in.world - light.pos);
+  let cos_angle = dot(light.direction, light_to_frag);
 
+  let cos_inner_cone = cos(radians(light.inner_angle));
+  let cos_outer_cone = cos(radians(light.outer_angle));
+
+  if cos_angle >= cos_inner_cone {
+    // Inside the inner cone, full intensity
+    return 1.0;
+  }
+  
+  if cos_angle >= cos_outer_cone {
+    // Inside the outer cone, interpolate intensity
+    let factor = smoothstep(cos_outer_cone, cos_inner_cone, cos_angle);
+    return factor;
+  }
+
+  // Outside the outer cone
+  return 0.0;
 }
 
 fn calc_light_dir(light: LightData, world_pos: vec3<f32>, flags: u32) -> vec3<f32> {
@@ -178,8 +195,13 @@ fn calculate_light_contribution(material_color: vec3<f32>, in: Output, light_i: 
   let specular_color = mix(vec3<f32>(material.reflectance), material_color, material.metallic);
 
   // Intensity
-  let spotlight_intensity = calculate_spotlight_intensity(light_dir, light);
+  let spotlight_intensity = calculate_spotlight_intensity(in, light);
   let intensity = light.intensity * spotlight_intensity;
+
+  if intensity <= 0.0 {
+    // spotlight is outside the cone or intensity is 0, no need for shadow calculations
+    return vec3<f32>(0.0);
+  }
 
   // Shadow
   let shadow = calculate_shadow(light, in, light_i, light_dir);
@@ -211,10 +233,8 @@ fn calculate_shadow(light: LightData, in: Output, light_i: u32, light_dir: vec3<
   let proj_correction = 1.0 / homogeneous_coords.w;
   let light_local = homogeneous_coords.xy * flip_correction * proj_correction + vec2<f32>(0.5, 0.5);
 
-  let distance_from_center = length(light_local - vec2(0.5, 0.5));
-
-  if (homogeneous_coords.w <= 0.0 || distance_from_center > 0.5) {
-    // light is behind the camera || outside the light cone
+  if (homogeneous_coords.w <= 0.0) {
+    // light is behind the camera
     return 0.0;
   } else if (light_local.x < 0.0 || light_local.x > 1.0 || light_local.y < 0.0 || light_local.y > 1.0) {
     // light is outside the light frustum
@@ -228,7 +248,7 @@ fn calculate_shadow(light: LightData, in: Output, light_i: u32, light_dir: vec3<
   let slope_bias = mix(max_bias, min_bias, n_dot_l);
   let depth = homogeneous_coords.z - slope_bias;
 
-  // no light if the surface is 90 degrees to the light
+  // full shadow if the surface is 90 degrees to the light
   if n_dot_l <= 0.0 {
     return 0.0;
   }
