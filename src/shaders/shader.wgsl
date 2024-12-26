@@ -260,8 +260,8 @@ fn calculate_shadow(light: LightData, in: Output, light_i: u32, light_dir: vec3<
   }
 
   if ((light.flags & POINT) != 0) {
-    let coords = vec3<f32>(light_local, f32(light.shadow_map_index % 6));
-    return textureSampleCompareLevel(point_shadow_map, shadow_map_sampler, coords, layer, depth * proj_correction);
+    let coords = get_cube_map_coords(light_local * 2.0 - 1.0, light.shadow_map_index % 6);
+    return textureSampleCompareLevel(point_shadow_map, shadow_map_sampler, coords, layer / 6, depth * proj_correction);
   }
 
   if ((light.flags & SPOT) != 0) {
@@ -270,4 +270,13 @@ fn calculate_shadow(light: LightData, in: Output, light_i: u32, light_dir: vec3<
   
   // no shadow, should be unreachable
   return 1.0;
+}
+
+fn get_cube_map_coords(mapped_uv: vec2<f32>, face_index: u32) -> vec3<f32> {
+    if (face_index == 0u) { return vec3(1.0, -mapped_uv.y, -mapped_uv.x); }  // +X face
+    if (face_index == 1u) { return vec3(-1.0, -mapped_uv.y, mapped_uv.x); }  // -X face
+    if (face_index == 2u) { return vec3(mapped_uv.x, 1.0, mapped_uv.y); }  // +Y face
+    if (face_index == 3u) { return vec3(mapped_uv.x, -1.0, -mapped_uv.y); } // -Y face
+    if (face_index == 4u) { return vec3(mapped_uv.x, -mapped_uv.y, 1.0); }  // +Z face
+    return vec3(-mapped_uv.x, -mapped_uv.y, -1.0); // -Z face
 }
