@@ -367,7 +367,7 @@ impl Default for SpotLight {
             intensity: 1.0,
             shadow: true,
             range: 50.0,
-            inner_angle: 15.0,
+            inner_angle: 37.5,
             outer_angle: 45.0,
         }
     }
