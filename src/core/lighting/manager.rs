@@ -104,6 +104,28 @@ impl LightAndShadowManager {
             panic!("Could not create view, light type not supported for shadow mapping");
         }
     }
+
+    /// Create a texture view for the shadow map at any given index, with light type: 
+    /// 0 - Directional, 1 - Point, 2 - Spot
+    ///
+    /// # Note
+    /// Unsafe primarily to discourage use of this method, use `create_view` with lights created
+    /// from `PreparedLightData` resource.
+    ///
+    /// # Safety
+    /// Does ont check if shadow map index is valid
+    pub unsafe fn unsafe_create_view(&self, shadow_map_index: u32, light_type: u32) -> wgpu::TextureView {
+        let layer = shadow_map_index;
+        let count = Some(1);
+        let dimension = Some(wgpu::TextureViewDimension::D2);
+
+        match light_type {
+            0 => self.directional_shadow_map.create_view(layer, count, dimension),
+            1 => self.point_shadow_map.create_view(layer, count, dimension),
+            2 => self.spot_shadow_map.create_view(layer, count, dimension),
+            _ => panic!("Could not create view, invalid light type: {:#?}", light_type) 
+        }
+    }
 }
 
 impl RenderAsset<BindGroup> for LightAndShadowManager {
