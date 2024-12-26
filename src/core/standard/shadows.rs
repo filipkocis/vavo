@@ -1,13 +1,13 @@
 use pipeline::PipelineBuilder;
 
-use crate::{core::{graph::*, lighting::LightAndShadowManager}, prelude::*, render_assets::*, system::CustomGraphSystem};
+use crate::{assets::ShaderLoader, core::{graph::*, lighting::LightAndShadowManager}, prelude::*, render_assets::*, system::CustomGraphSystem};
 
 use super::{grouped::GroupedInstances, light_data::PreparedLightData};
 
 /// Creates a node for standard shadow pass
 pub fn standard_shadow_node(ctx: &mut SystemsContext) -> GraphNode {
     // Create pipeline builder
-    let shadow_pipeline_builder = create_shadow_pipeline_builder(ctx.renderer.device());
+    let shadow_pipeline_builder = create_shadow_pipeline_builder(ctx);
 
     // Create light and shadow manager
     let manager = LightAndShadowManager::new(ctx);
@@ -126,7 +126,9 @@ fn per_light_render_pass(
     }
 }
 
-fn create_shadow_pipeline_builder(device: &wgpu::Device) -> PipelineBuilder {
+fn create_shadow_pipeline_builder(ctx: &mut SystemsContext) -> PipelineBuilder {
+    let device = ctx.renderer.device();
+
     // Transform bind group layout for storage buffer
     let transforms_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
         label: Some("transforms_bind_group_layout"), 
@@ -161,11 +163,17 @@ fn create_shadow_pipeline_builder(device: &wgpu::Device) -> PipelineBuilder {
         ]
     });
 
+    
+    // Load shader modules
+    ctx.resources.get_mut::<ShaderLoader>().expect("ShaderLoader resource not found")
+        .load("shadow", include_str!("../../shaders/shadow.wgsl"), device)
+        .expect("Shader with label 'shadow' already exists");
+
     // Create builder
     Pipeline::build("shadows_pipeline")
         .set_bind_group_layouts(vec![transforms_layout, lights_layout])
         .set_vertex_buffer_layouts(vec![Mesh::vertex_descriptor()])
-        .set_vertex_shader(include_str!("../../shaders/shadow.wgsl"), "vs_main")
+        .set_vertex_shader("shadow", "vs_main")
         .set_depth_format(wgpu::TextureFormat::Depth32Float)
         .set_push_constant_ranges(vec![wgpu::PushConstantRange {
             stages: wgpu::ShaderStages::VERTEX,

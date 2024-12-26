@@ -30,7 +30,7 @@ impl NodeData {
     }
 
     pub fn generate_pipeline(&mut self, ctx: &mut SystemsContext, pipeline_builder: &PipelineBuilder) {
-        self.pipeline = Some(pipeline_builder.finish(ctx.renderer.device()));
+        self.pipeline = Some(pipeline_builder.finish(ctx));
     }
 
     pub fn generate_color_target(&mut self, ctx: &mut SystemsContext, color_target: &NodeColorTarget) {

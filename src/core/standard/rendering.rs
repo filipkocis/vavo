@@ -1,17 +1,13 @@
 use pipeline::PipelineBuilder;
-use wgpu::TextureFormat;
 
-use crate::{core::{graph::*, lighting::LightAndShadowManager}, prelude::*, render_assets::*};
+use crate::{assets::ShaderLoader, core::{graph::*, lighting::LightAndShadowManager}, prelude::*, render_assets::*};
 
 use super::grouped::GroupedInstances;
 
 /// Creates a node for standard main render pass
 pub fn standard_main_node(ctx: &mut SystemsContext) -> GraphNode {
     // Create pipeline builder
-    let main_pipeline_builder = create_main_pipeline_builder(
-        ctx.renderer.device(), 
-        ctx.renderer.config().format
-    );
+    let main_pipeline_builder = create_main_pipeline_builder(ctx);
 
     // Create depth image
     let size = ctx.renderer.window().inner_size();
@@ -113,7 +109,10 @@ fn main_render_system(
 }
 
 // TODO: add a better way to generate/get bind group layouts
-fn create_main_pipeline_builder(device: &wgpu::Device, color_format: TextureFormat) -> PipelineBuilder {
+fn create_main_pipeline_builder(ctx: &mut SystemsContext) -> PipelineBuilder {
+    let device = ctx.renderer.device();
+    let color_format = ctx.renderer.config().format;
+
     // Material bind group layout for texture and uniform buffer
     let material_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
         label: Some("material_bind_group_layout"), 
@@ -258,12 +257,17 @@ fn create_main_pipeline_builder(device: &wgpu::Device, color_format: TextureForm
         ]
     });
 
+    // Load shader modules
+    ctx.resources.get_mut::<ShaderLoader>().expect("ShaderLoader resource not found")
+        .load("main", include_str!("../../shaders/shader.wgsl"), device)
+        .expect("Shader with label 'main' already exists");
+
     // Create builder
     Pipeline::build("main_pipeline")
         .set_bind_group_layouts(vec![material_layout, transform_layout, camera_layout, manager_layout])
         .set_vertex_buffer_layouts(vec![Mesh::vertex_descriptor()])
-        .set_vertex_shader(include_str!("../../shaders/shader.wgsl"), "vs_main")
-        .set_fragment_shader(include_str!("../../shaders/shader.wgsl"), "fs_main")
+        .set_vertex_shader("main", "vs_main")
+        .set_fragment_shader("main", "fs_main")
         .set_color_format(color_format)
         .set_depth_format(wgpu::TextureFormat::Depth32Float)
         .set_push_constant_ranges(vec![wgpu::PushConstantRange {

@@ -1,3 +1,5 @@
+use crate::{assets::ShaderLoader, system::SystemsContext};
+
 use super::RenderHandle;
 
 pub struct Pipeline {
@@ -73,23 +75,23 @@ impl PipelineBuilder {
         self
     }
 
-    /// Set wgsl vertex shader
+    /// Set a vertex shader
     ///
     /// # Note
-    /// Source should be a string of the shader code, you can use include_str! macro.
+    /// Label is the name of a loaded shader in ShaderLoader.
     /// This is required.
-    pub fn set_vertex_shader(mut self, source: &str, entry_point: &str) -> Self {
-        self.vertex_shader = Some((source.to_string(), entry_point.to_string()));
+    pub fn set_vertex_shader(mut self, label: &str, entry_point: &str) -> Self {
+        self.vertex_shader = Some((label.to_string(), entry_point.to_string()));
         self
     }
 
-    /// Set wgsl fragment shader
+    /// Set a fragment shader
     ///
     /// # Note
-    /// Source should be a string of the shader code, you can use include_str! macro.
+    /// Label is the name of a loaded shader in ShaderLoader.
     /// If not set, the fragment state will be None
-    pub fn set_fragment_shader(mut self, source: &str, entry_point: &str) -> Self {
-        self.fragment_shader = Some((source.to_string(), entry_point.to_string()));
+    pub fn set_fragment_shader(mut self, label: &str, entry_point: &str) -> Self {
+        self.fragment_shader = Some((label.to_string(), entry_point.to_string()));
         self
     }
 
@@ -126,28 +128,26 @@ impl PipelineBuilder {
         self
     }
 
-    fn load_shader(&self, t: &str, source_entry: &Option<(String, String)>, device: &wgpu::Device) -> (wgpu::ShaderModule, String) {
-        self.load_shader_maybe(t, source_entry, device)
-            .expect(&format!("{} shader for {} not set", t, self.label))
+    fn load_shader<'a>(&self, label_entry: &Option<(String, String)>, shader_loader: &'a ShaderLoader) -> (&'a wgpu::ShaderModule, String) {
+        self.load_shader_maybe(label_entry, shader_loader)
+            .expect(&format!("{} shader for {} not set", label_entry.as_ref().unwrap().0, self.label))
     }
 
-    fn load_shader_maybe(&self, t: &str, source_entry: &Option<(String, String)>, device: &wgpu::Device) -> Option<(wgpu::ShaderModule, String)> {
-        if let Some((source, entry)) = source_entry {
-            let shader_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: Some(&format!("{}_{}_shader", self.label, t)),
-                source: wgpu::ShaderSource::Wgsl(source.into()),
-            });
-
-            Some((shader_module, entry.to_string()))
+    fn load_shader_maybe<'a>(&self, label_entry: &Option<(String, String)>, shader_loader: &'a ShaderLoader) -> Option<(&'a wgpu::ShaderModule, String)> {
+        if let Some((label, entry)) = label_entry {
+            let shader_module = shader_loader.get(label);
+            Some((&shader_module.module, entry.to_string()))
         } else {
             None
         }
     }
 
     /// Finish building the pipeline
-    pub fn finish(&self, device: &wgpu::Device) -> Pipeline {
-        let (vertex_module, vertex_entry) = self.load_shader("vertex", &self.vertex_shader, device);
-        let fragment_maybe = self.load_shader_maybe("fragment", &self.fragment_shader, device);
+    pub fn finish(&self, ctx: &SystemsContext) -> Pipeline {
+        let device = ctx.renderer.device();
+        let shader_loader = ctx.resources.get::<ShaderLoader>().expect("ShaderLoader resource not found");
+        let (vertex_module, vertex_entry) = self.load_shader(&self.vertex_shader, &shader_loader);
+        let fragment_maybe = self.load_shader_maybe(&self.fragment_shader, &shader_loader);
 
         let color_targets = vec![self.color_format.map(|format| 
             wgpu::ColorTargetState {
