@@ -1,4 +1,4 @@
-use crate::resources::{Resources, Time};
+use crate::resources::Resources;
 
 use super::entities::Entities;
 
@@ -12,11 +12,8 @@ impl World {
         let mut resources = Resources::new();
         resources.insert_default_resources();
 
-        let time = resources.get::<Time>().unwrap();
-        let entities = Entities::new(time.tick_raw());
-
         Self {
-            entities,
+            entities: Entities::new(),
             resources,
         }
     }

@@ -46,12 +46,18 @@ pub struct Entities {
 // TODO: Implement the correct removal and transfer of ticks, not just components
 
 impl Entities {
-    pub fn new(current_tick: *const u64) -> Self {
+    /// Create new `Entities` manager with uninitialized tick pointer
+    pub fn new() -> Self {
         Self {
             next_entity_id: EntityId(0),
             archetypes: HashMap::new(),
-            current_tick,
+            current_tick: std::ptr::null(),
         }
+    }
+
+    /// Initialize tick pointer, necessary for entity creation. Done in `TimePlugin`
+    pub fn initialize_tick(&mut self, current_tick: *const u64) {
+        self.current_tick = current_tick
     }
 
     /// Step next entity ID counter

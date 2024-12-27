@@ -8,10 +8,12 @@ pub struct Resources {
     resources: HashMap<TypeId, Box<dyn Any>>,
 }
 
-/// Immutable resource reference
+/// Immutable resource reference. 
+/// Holds a raw pointer to the resource.
 pub struct Res<T>(pub(crate) *const T);
 
-/// Mutable resource reference
+/// Mutable resource reference.
+/// Holds a raw mutable pointer to the resource.
 pub struct ResMut<T>(pub(crate) *mut T);
 
 impl<T> Deref for Res<T> {
