@@ -29,6 +29,8 @@ pub(crate) struct Archetype {
 
 impl Archetype {
     pub fn new(types: Vec<TypeId>, current_tick: *const u64) -> Self {
+        assert!(!current_tick.is_null(), "Cannot create archetype, current_tick pointer is null");
+
         let original_len = types.len();
         let types = Self::sort_types(types);
         let types = types.into_iter().enumerate()
