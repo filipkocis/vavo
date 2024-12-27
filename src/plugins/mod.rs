@@ -1,14 +1,24 @@
-use crate::{app::{App, Plugin}, core::standard::{movement::movement_system, prepare::graph_prerender_preparation_system, startup::{add_render_resources, register_standard_graph}, update::{update_camera_buffers, update_global_transforms}}, system::{System, SystemStage}};
+use winit::{event::MouseButton, keyboard::KeyCode};
 
+use crate::{app::{App, Plugin}, core::standard::{movement::movement_system, prepare::graph_prerender_preparation_system, startup::{add_render_resources, register_standard_graph}, update::{update_camera_buffers, update_global_transforms}}, input::Input, prelude::Time, system::{System, SystemStage}};
+
+/// Default plugins which are necessary for the app to run, includes:
+/// - `RenderPlugin` 
+/// - `TimePlugin`
+/// - `InputPlugin`
 pub struct DefaultPlugin;
 
 impl Plugin for DefaultPlugin {
     fn build(&self, app: &mut App) {
         app
-            .add_plugin(RenderPlugin);
+            .add_plugin(RenderPlugin)
+            .add_plugin(TimePlugin)
+            .add_plugin(InputPlugin);
     }
 }
 
+/// Provides rendering functionality to the app, with standard render graph and other necessary
+/// systems.
 pub struct RenderPlugin;
 
 impl Plugin for RenderPlugin {
@@ -22,11 +32,35 @@ impl Plugin for RenderPlugin {
     }
 }
 
+/// Provides default camera movement functionality, good when no proper movement system is implemented yet.
 pub struct NoclipMovementPlugin;
 
 impl Plugin for NoclipMovementPlugin {
     fn build(&self, app: &mut App) {
         app
             .add_system(System::new("movement_system", movement_system));
+    }
+}
+
+/// Adds time functionality to the app via the `Time` resource.
+pub struct TimePlugin;
+
+impl Plugin for TimePlugin {
+    fn build(&self, app: &mut App) {
+        app.world.resources.insert(Time::new());
+    }
+}
+
+/// Adds `Input<KeyCode>` and `Input<MouseButton>` resources to enable keyboard and mouse input
+/// handling.
+///
+/// # Note
+/// These can also be handled through events, by using `KeyboardInput` and `MouseInput` event types.
+pub struct InputPlugin;
+
+impl Plugin for InputPlugin {
+    fn build(&self, app: &mut App) {
+        app.world.resources.insert(Input::<KeyCode>::new());
+        app.world.resources.insert(Input::<MouseButton>::new());
     }
 }

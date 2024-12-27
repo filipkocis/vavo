@@ -73,9 +73,6 @@ impl Resources {
         self.insert(RenderAssets::<Texture>::new());
 
         // resources
-        self.insert(Time::new());
-        self.insert(Input::<KeyCode>::new());
-        self.insert(Input::<MouseButton>::new());
         self.insert(AssetLoader::new());
         self.insert(ShaderLoader::new());
     }

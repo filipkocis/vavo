@@ -14,7 +14,7 @@ pub struct App {
     system_handler: SystemHandler,
     render_graph: RenderGraph,
 
-    world: World,
+    pub world: World,
     events: Events,
     // plugins: Plugins,
 }
