@@ -2,4 +2,4 @@ mod resources;
 mod time;
 
 pub use resources::*;
-pub use time::Time;
+pub use time::{Time, Timer, TimerVariant};

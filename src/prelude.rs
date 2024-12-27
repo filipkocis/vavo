@@ -5,7 +5,7 @@ pub use super::{
     assets::{Assets, Handle, AssetLoader},
     world::{EntityId, Parent, Children},
     renderer::{Material, Texture, Image, Color, Face, Mesh, Meshable, shapes},
-    resources::{Resources, Res, ResMut, Time},
+    resources::{Resources, Res, ResMut, Time, Timer, TimerVariant},
     math::{Transform, GlobalTransform, camera::{Camera, Camera3D, Projection}, light::{Light, AmbientLight, DirectionalLight, PointLight, SpotLight}},
     plugins::{DefaultPlugin},
 };
