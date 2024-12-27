@@ -5,7 +5,7 @@ pub struct Time {
     tick: u64,
     /// Application startup time
     start: Instant,
-    /// The exact time the last fraem was rendered
+    /// The exact time the last frame was rendered
     last_frame: Instant,
     /// Duration since the last frame
     delta: f32,
@@ -63,6 +63,59 @@ impl Time {
             std::thread::sleep(std::time::Duration::from_secs_f32(1.0 / fps_target - self.delta));
         }
         self.update();
+    }
+}
+
+/// Resource used for fixed time step updates. It will try to run the systems on average at a fixed
+/// rate, therefore it may run multiple times or zero times during udpate loop depending on the frame rate.
+pub struct FixedTime {
+    time: Time,
+    fixed_delta: f32,
+    accumulator: f32,
+}
+
+impl FixedTime {
+    pub fn new(fixed_delta: f32) -> Self {
+        let time = Time::new();
+        let accumulator = 0.0;
+        
+        Self {
+            time,
+            fixed_delta,
+            accumulator,
+        }
+    }
+
+    /// Create a new `FixedTime` with time step of `1.0 / hz`
+    pub fn from_hz(hz: f32) -> Self {
+        Self::new(1.0 / hz)
+    }
+
+    /// Increment the accumulator by the internal time's delta time
+    pub(crate) fn update(&mut self) {
+        self.time.update();
+        self.accumulator += self.time.delta();
+    }
+
+    pub fn set_fixed_delta(&mut self, fixed_delta: f32) {
+        self.fixed_delta = fixed_delta;
+    }
+
+    pub fn fixed_delta(&self) -> f32 {
+        self.fixed_delta
+    }
+
+    /// Consume the accumulator and return the number of iterations necessary to reach the fixed
+    /// time average
+    pub fn iter(&mut self) -> usize {
+        let mut iter = 0;
+
+        while self.accumulator >= self.fixed_delta {
+            iter += 1;
+            self.accumulator -= self.fixed_delta;
+        }
+
+        iter
     }
 }
 

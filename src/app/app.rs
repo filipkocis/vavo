@@ -2,6 +2,7 @@ use winit::dpi::PhysicalSize;
 use winit::keyboard::PhysicalKey;
 
 use crate::core::graph::RenderGraph;
+use crate::prelude::FixedTime;
 use crate::system::{Commands, System, SystemHandler, SystemStage, SystemsContext};
 use crate::window::{AppHandler, AppState, RenderContext, Renderer};
 use crate::world::World;
@@ -60,7 +61,7 @@ impl App {
     }
 
     fn run_systems(&mut self, stage: SystemStage, renderer: Renderer) {
-        let systems = self.system_handler.get_systems(stage);
+        let systems = self.system_handler.get_systems(&stage);
         if systems.is_empty() {
             return;
         }
@@ -69,8 +70,18 @@ impl App {
         let world_ptr = &mut self.world as *mut World;
         let mut ctx = SystemsContext::new(commands, &mut self.world.resources, &mut self.events, renderer, world_ptr, &mut self.render_graph);
 
-        for system in systems.iter_mut() {
-            system.run(&mut ctx, &mut self.world.entities);
+        let iterations = if stage.has_fixed_time() {
+            let mut fixed_time = ctx.resources.get_mut::<FixedTime>()
+                .expect("FixedTime resource not found");
+            fixed_time.iter()
+        } else {
+            1
+        };
+
+        for _ in 0..iterations {
+            for system in systems.iter_mut() {
+                system.run(&mut ctx, &mut self.world.entities);
+            }
         }
 
         ctx.commands.apply(&mut self.world);
@@ -101,6 +112,7 @@ impl App {
         self.world.resources.update();
 
         self.run_systems(SystemStage::PreUpdate, context.as_renderer());
+        self.run_systems(SystemStage::FixedUpdate, context.as_renderer());
         self.run_systems(SystemStage::Update, context.as_renderer());
         self.run_systems(SystemStage::PostUpdate, context.as_renderer());
         self.run_systems(SystemStage::Last, context.as_renderer());

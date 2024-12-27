@@ -1,6 +1,6 @@
 use winit::{event::MouseButton, keyboard::KeyCode};
 
-use crate::{app::{App, Plugin}, core::standard::{movement::movement_system, prepare::graph_prerender_preparation_system, startup::{add_render_resources, register_standard_graph}, update::{update_camera_buffers, update_global_transforms}}, input::Input, prelude::Time, system::{System, SystemStage}};
+use crate::{app::{App, Plugin}, core::standard::{movement::movement_system, prepare::graph_prerender_preparation_system, startup::{add_render_resources, register_standard_graph}, update::{update_camera_buffers, update_global_transforms}}, input::Input, prelude::{FixedTime, Time}, system::{System, SystemStage}};
 
 /// Default plugins which are necessary for the app to run, includes:
 /// - `RenderPlugin` 
@@ -48,6 +48,8 @@ pub struct TimePlugin;
 impl Plugin for TimePlugin {
     fn build(&self, app: &mut App) {
         app.world.resources.insert(Time::new());
+        app.world.resources.insert(FixedTime::from_hz(60.0));
+
         let time = app.world.resources.get::<Time>().unwrap();
         app.world.entities.initialize_tick(time.tick_raw());
     }

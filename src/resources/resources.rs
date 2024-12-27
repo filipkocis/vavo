@@ -2,7 +2,7 @@ use std::{any::{Any, TypeId}, collections::HashMap, ops::{Deref, DerefMut}};
 
 use crate::{assets::{AssetLoader, Assets, ShaderLoader}, input::*, render_assets::{BindGroup, Buffer, Pipeline, RenderAssets}, renderer::{Image, Material, Mesh, Texture}};
 
-use super::Time;
+use super::{FixedTime, Time};
 
 pub struct Resources {
     resources: HashMap<TypeId, Box<dyn Any>>,
@@ -82,6 +82,8 @@ impl Resources {
     /// Update some builtin resources
     pub(crate) fn update(&mut self) {
         self.get_mut::<Time>().unwrap().update();
+        self.get_mut::<FixedTime>().unwrap().update();
+
         self.get_mut::<Input<KeyCode>>().unwrap().clear_just_pressed();
         self.get_mut::<Input<MouseButton>>().unwrap().clear_just_pressed();
     }
