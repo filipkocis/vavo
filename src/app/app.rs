@@ -53,6 +53,12 @@ impl App {
         self
     }
 
+    /// Add a plugin to the app
+    pub fn add_plugin(&mut self, plugin: impl Plugin) -> &mut Self {
+        plugin.build(self);
+        self
+    }
+
     fn run_systems(&mut self, stage: SystemStage, renderer: Renderer) {
         let systems = self.system_handler.get_systems(stage);
         if systems.is_empty() {

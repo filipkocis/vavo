@@ -1,5 +1,5 @@
 pub use super::{
-    app::App,
+    app::{App, Plugin},
     query::{Query, RunQuery, filter::{Changed, With, Without}},
     system::{System, GraphSystem, SystemsContext, Commands, SystemStage},
     assets::{Assets, Handle, AssetLoader},
