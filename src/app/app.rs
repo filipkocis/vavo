@@ -8,7 +8,7 @@ use crate::world::World;
 
 use super::events::{KeyboardInput, MouseInput};
 use super::input::Input;
-use super::Events;
+use super::{Events, Plugin};
 
 pub struct App {
     system_handler: SystemHandler,
@@ -36,19 +36,19 @@ impl App {
     }
 
     /// Add a system to the startup stage
-    pub fn add_startup_system(mut self, system: System) -> Self {
+    pub fn add_startup_system(&mut self, system: System) -> &mut Self {
         self.system_handler.register_system(system, SystemStage::Startup);
         self
     }
 
     /// Add a system to the update stage
-    pub fn add_system(mut self, system: System) -> Self {
+    pub fn add_system(&mut self, system: System) -> &mut Self {
         self.system_handler.register_system(system, SystemStage::Update);
         self
     }
 
     /// Register a system to a specific stage
-    pub fn register_system(mut self, system: System, stage: SystemStage) -> Self {
+    pub fn register_system(&mut self, system: System, stage: SystemStage) -> &mut Self {
         self.system_handler.register_system(system, stage);
         self
     }
@@ -106,7 +106,7 @@ impl App {
     }
 
     /// Run the app
-    pub fn run(self) {
+    pub fn run(&mut self) {
         let (event_loop, mut app) = AppHandler::init(self);
         event_loop.run_app(&mut app).unwrap();
 

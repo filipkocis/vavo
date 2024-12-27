@@ -7,13 +7,13 @@ use crate::{app::App, events::{CursorMoved, MouseMotion, MouseWheel}};
 
 use super::AppState;
 
-pub struct AppHandler {
-    app: App,
+pub struct AppHandler<'a> {
+    app: &'a mut App,
     state: Option<AppState>
 }
 
-impl AppHandler {
-    pub fn init(app: App) -> (EventLoop<()>, Self) {
+impl<'a> AppHandler<'a> {
+    pub fn init(app: &'a mut App) -> (EventLoop<()>, Self) {
         let app = Self {
             app,
             state: None
@@ -32,7 +32,7 @@ impl AppHandler {
     }
 }
 
-impl ApplicationHandler for AppHandler {
+impl<'a> ApplicationHandler for AppHandler<'a> {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         let window_attrs = Window::default_attributes()
             .with_title("Game");
