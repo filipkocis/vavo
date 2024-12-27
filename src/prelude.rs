@@ -7,6 +7,7 @@ pub use super::{
     renderer::{Material, Texture, Image, Color, Face, Mesh, Meshable, shapes},
     resources::{Resources, Res, ResMut, Time},
     math::{Transform, GlobalTransform, camera::{Camera, Camera3D, Projection}, light::{Light, AmbientLight, DirectionalLight, PointLight, SpotLight}},
+    plugins::{DefaultPlugin},
 };
 
 pub use super::math::camera;
