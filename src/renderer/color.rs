@@ -64,6 +64,24 @@ impl Into<wgpu::Color> for Color {
     }
 }
 
+impl Into<glyphon::Color> for Color {
+    fn into(self) -> glyphon::Color {
+        let color = self.as_rgba_slice_u8();
+        glyphon::Color::rgba(color[0], color[1], color[2], color[3])
+    }
+}
+
+impl Into<Color> for glyphon::Color {
+    fn into(self) -> Color {
+        Color::new(
+            self.r() as f32 / 255.0,
+            self.g() as f32 / 255.0,
+            self.b() as f32 / 255.0,
+            self.a() as f32 / 255.0,
+        )
+    }
+}
+
 impl Default for Color {
     fn default() -> Self {
         Self::new(1.0, 1.0, 1.0, 1.0)
