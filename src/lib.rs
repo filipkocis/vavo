@@ -10,6 +10,7 @@ pub mod render_assets;
 mod math;
 pub mod core;
 pub mod plugins;
+pub mod ui;
 
 pub use renderer::{shapes, palette};
 pub use app::{input, events};

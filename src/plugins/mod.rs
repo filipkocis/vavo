@@ -1,11 +1,12 @@
 use winit::{event::MouseButton, keyboard::KeyCode};
 
-use crate::{app::{App, Plugin}, core::standard::{movement::movement_system, prepare::graph_prerender_preparation_system, startup::{add_render_resources, register_standard_graph}, update::{update_camera_buffers, update_global_transforms}}, input::Input, prelude::{FixedTime, Time}, system::{System, SystemStage}};
+use crate::{app::{App, Plugin}, core::standard::{movement::movement_system, prepare::graph_prerender_preparation_system, startup::{add_render_resources, register_standard_graph}, update::{update_camera_buffers, update_global_transforms}}, input::Input, prelude::{FixedTime, Time}, system::{System, SystemStage}, ui::graph::UiPlugin};
 
 /// Default plugins which are necessary for the app to run, includes:
 /// - `RenderPlugin` 
 /// - `TimePlugin`
 /// - `InputPlugin`
+/// - `UiPlugin`
 pub struct DefaultPlugin;
 
 impl Plugin for DefaultPlugin {
@@ -13,7 +14,8 @@ impl Plugin for DefaultPlugin {
         app
             .add_plugin(RenderPlugin)
             .add_plugin(TimePlugin)
-            .add_plugin(InputPlugin);
+            .add_plugin(InputPlugin)
+            .add_plugin(UiPlugin);
     }
 }
 
