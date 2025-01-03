@@ -26,7 +26,7 @@ impl Plugin for RenderPlugin {
         app
             .add_startup_system(System::new("add_render_resources", add_render_resources))
             .add_startup_system(System::new("register_standard_graph", register_standard_graph))
-            .register_system(System::new("update_global_transforms", update_global_transforms), SystemStage::PostUpdate)
+            .register_system(System::new("update_global_transforms", update_global_transforms), SystemStage::Last)
             .register_system(System::new("update_camera_buffers", update_camera_buffers), SystemStage::PreRender)
             .register_system(System::new("prepare_render_resources", graph_prerender_preparation_system), SystemStage::PreRender);
     }

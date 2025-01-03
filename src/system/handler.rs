@@ -7,10 +7,10 @@ pub enum SystemStage {
     FixedUpdate,
     Update,
     PostUpdate,
-    PreRender,     
+    Last,
+    PreRender,
     Render,
     PostRender,
-    Last,
 }
 
 impl SystemStage {
@@ -61,10 +61,10 @@ impl SystemHandler {
             SystemStage::FixedUpdate => self.fixed_update.push(system),
             SystemStage::Update => self.update.push(system),
             SystemStage::PostUpdate => self.post_update.push(system),
+            SystemStage::Last => self.last.push(system),
             SystemStage::PreRender => self.pre_render.push(system),
             SystemStage::Render => self.render.push(system),
             SystemStage::PostRender => self.post_render.push(system),
-            SystemStage::Last => self.last.push(system),
         }
     }
 
@@ -77,10 +77,10 @@ impl SystemHandler {
             SystemStage::FixedUpdate => &mut self.fixed_update,
             SystemStage::Update => &mut self.update,
             SystemStage::PostUpdate => &mut self.post_update,
+            SystemStage::Last => &mut self.last,
             SystemStage::PreRender => &mut self.pre_render,
             SystemStage::Render => &mut self.render,
             SystemStage::PostRender => &mut self.post_render,
-            SystemStage::Last => &mut self.last,
         }
     }
 }
