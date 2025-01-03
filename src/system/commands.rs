@@ -61,6 +61,10 @@ impl<'a> EntityCommands<'a> {
         self.entity_id = entity_id;
     }
 
+    pub fn entity_id(&self) -> EntityId {
+        self.entity_id
+    }
+
     pub fn despawn(self) {
         self.commands
             .commands
