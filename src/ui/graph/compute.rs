@@ -61,14 +61,12 @@ impl TempNode<'_> {
                             offset.x += 
                                 child.computed.width.border + 
                                 child.computed.margin.horizontal() +
-                                child.computed.border.horizontal() +
                                 self.computed.column_gap;
                         },
                         FlexDirection::Column | FlexDirection::ColumnReverse => {
                             offset.y += 
                                 child.computed.height.border + 
                                 child.computed.margin.vertical() +
-                                child.computed.border.vertical() +
                                 self.computed.row_gap;
                         }
                     }
@@ -80,8 +78,7 @@ impl TempNode<'_> {
 
                     offset.y += 
                         child.computed.height.border + 
-                        child.computed.margin.vertical() +
-                        child.computed.border.vertical();
+                        child.computed.margin.vertical();
                 } 
             },
             Display::Grid => {

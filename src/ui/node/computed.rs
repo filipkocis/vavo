@@ -1,9 +1,4 @@
-use glam::{Vec2, Vec3};
-use winit::dpi::PhysicalSize;
-
-use crate::{prelude::Color, system::SystemsContext};
-
-use super::{Node, Rect, Val};
+use crate::prelude::Color;
 
 #[derive(Default, Debug, Clone, Copy)]
 pub struct ComputedRect {
