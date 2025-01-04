@@ -153,6 +153,7 @@ pub struct Node {
     /// None - inherit
     /// Some - override
     pub color: Option<Color>,
+    pub border_color: Color,
 
     pub display: Display,
     pub position: Position,

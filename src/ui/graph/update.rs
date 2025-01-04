@@ -105,18 +105,31 @@ pub fn update_ui_mesh_and_transforms(ctx: &mut SystemsContext, mut query: Query<
 
         // add node to mesh
         if node.background_color != palette::TRANSPARENT && node.display != Display::None {
-            ui_mesh.add_rect(
-                // transform.translation.x,
-                0.0,
-                // size.height as f32 - transform.translation.y,
-                0.0,
-                computed.z_index as f32,
-                computed.width.border,
-                // -computed.height,
-                computed.height.border,
-                node.background_color,
-                transform_index,
-            );
+            let horizontal = computed.border.horizontal();
+            let vertical = computed.border.vertical();
+
+            // x, y, w, h, color
+            let quads = [
+                // content + padding
+                (computed.border.left, computed.border.top, computed.width.border - horizontal, computed.height.border - vertical, node.background_color),
+                // top border
+                (0.0, 0.0, computed.width.border, computed.border.top, node.border_color),
+                // left border
+                (0.0, 0.0, computed.border.left, computed.height.border, node.border_color),
+                // right border
+                (computed.width.border - computed.border.right, 0.0, computed.border.right, computed.height.border, node.border_color),
+                // bottom border
+                (0.0, computed.height.border - computed.border.bottom, computed.width.border, computed.border.bottom, node.border_color),
+            ];
+
+            // add quad with borders to mesh
+            for (x, y, w, h, color) in quads {
+                if w > 0.0 && h > 0.0 {
+                    ui_mesh.add_rect(x, y, computed.z_index as f32, w, h, color, transform_index);
+                } else {
+                    println!("skipping sizes {:?}", id);
+                }
+            }
         }
         
         // entitie's transform
