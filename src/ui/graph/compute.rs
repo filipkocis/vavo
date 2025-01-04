@@ -146,6 +146,15 @@ impl TempNode<'_> {
         let height = self.compute_height(parent, ctx); 
         self.computed.height = height;
 
+        // text color
+        self.computed.color = match self.node.color {
+            Some(color) => color,
+            None => match parent {
+                Some(parent) => unsafe { &*parent }.computed.color,
+                None => color::BLACK,
+            }
+        };
+
         // compute grid, TODO: grid layout
         let template_columns = self.node.grid_template_columns.iter().map(|val| val.compute_val(width.content, ctx));
         let template_rows = self.node.grid_template_rows.iter().map(|val| val.compute_val(height.content, ctx));

@@ -133,7 +133,6 @@ pub fn update_ui_mesh_and_transforms(ctx: &mut SystemsContext, mut query: Query<
                 translation.y + computed.height.offset(),
             );
 
-            // TODO: computed.color
             text_areas.push(TextArea {
                 buffer: &text.buffer,
                 left: content_translation.x,
@@ -145,7 +144,7 @@ pub fn update_ui_mesh_and_transforms(ctx: &mut SystemsContext, mut query: Query<
                     right: (content_translation.x + computed.width.content) as i32,
                     bottom: (content_translation.y + computed.height.content) as i32,
                 },
-                default_color: palette::WHITE.into(),
+                default_color: computed.color.into(),
                 custom_glyphs: &[],
             })
         }

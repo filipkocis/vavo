@@ -143,7 +143,9 @@ pub enum AlignItems {
 #[derive(Default, Debug, Clone)]
 pub struct Node {
     pub background_color: Color,
-    pub color: Color,
+    /// None - inherit
+    /// Some - override
+    pub color: Option<Color>,
 
     pub display: Display,
     pub position: Position,
