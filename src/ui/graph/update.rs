@@ -1,3 +1,4 @@
+use glam::Vec2;
 use glyphon::{FontSystem, Resolution, SwashCache, TextArea, TextAtlas, TextBounds, TextRenderer, Viewport};
 
 use crate::{palette, prelude::*};
@@ -93,9 +94,9 @@ pub fn update_ui_mesh_and_transforms(ctx: &mut SystemsContext, mut query: Query<
                 // size.height as f32 - transform.translation.y,
                 0.0,
                 computed.z_index as f32,
-                computed.width,
+                computed.width.border,
                 // -computed.height,
-                computed.height,
+                computed.height.border,
                 node.background_color,
                 transform_index,
             );
@@ -109,17 +110,23 @@ pub fn update_ui_mesh_and_transforms(ctx: &mut SystemsContext, mut query: Query<
 
         // prepare text node for rendering
         if let Some(text) = text {
+            // translation width the content box offset
+            let content_translation = Vec2::new(
+                translation.x + computed.width.offset(),
+                translation.y + computed.height.offset(),
+            );
+
             // TODO: computed.color
             text_areas.push(TextArea {
                 buffer: &text.buffer,
-                left: translation.x,
-                top: translation.y,
+                left: content_translation.x,
+                top: content_translation.y,
                 scale: 1.0,
                 bounds: TextBounds {
-                    left: translation.x as i32,
-                    top: translation.y as i32,
-                    right: (translation.x + computed.width) as i32,
-                    bottom: (translation.y + computed.height) as i32,
+                    left: content_translation.x as i32,
+                    top: content_translation.y as i32,
+                    right: (content_translation.x + computed.width.content) as i32,
+                    bottom: (content_translation.y + computed.height.content) as i32,
                 },
                 default_color: palette::WHITE.into(),
                 custom_glyphs: &[],

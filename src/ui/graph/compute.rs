@@ -1,11 +1,8 @@
 use glam::Vec3;
 
-use crate::{prelude::*, ui::node::{ComputedRect, Display, FlexDirection, Rect, Val}};
+use crate::{prelude::*, ui::node::{ComputedBox, ComputedRect, Display, FlexDirection, Rect, Val}};
 
 use super::build_temp::{nodes_to_temp_graph, TempNode};
-
-// TODO: split width/height in computed node into struct of 3 variants, content, box, contentbox to
-// differentiate between the right values to use for layout calculations and relative percentages
 
 /// Post update system to compute ui nodes and update their transforms
 pub fn compute_nodes_and_transforms(ctx: &mut SystemsContext, mut q: Query<()>) {
@@ -63,14 +60,14 @@ impl TempNode<'_> {
                     match self.node.flex_direction {
                         FlexDirection::Row | FlexDirection::RowReverse => {
                             offset.x += 
-                                child.computed.width + 
+                                child.computed.width.border + 
                                 child.computed.margin.horizontal() +
                                 child.computed.border.horizontal() +
                                 self.computed.column_gap;
                         },
                         FlexDirection::Column | FlexDirection::ColumnReverse => {
                             offset.y += 
-                                child.computed.height + 
+                                child.computed.height.border + 
                                 child.computed.margin.vertical() +
                                 child.computed.border.vertical() +
                                 self.computed.row_gap;
@@ -83,7 +80,7 @@ impl TempNode<'_> {
                     child.compute_translation(offset, ctx);
 
                     offset.y += 
-                        child.computed.height + 
+                        child.computed.height.border + 
                         child.computed.margin.vertical() +
                         child.computed.border.vertical();
                 } 
@@ -144,29 +141,21 @@ impl TempNode<'_> {
         // extract parent width
         let window_size = ctx.renderer.size();
         let parent_width = match parent {
-            Some(parent) => unsafe { &*parent }.computed.width,
+            Some(parent) => unsafe { &*parent }.computed.width.border,
             None => window_size.width as f32,
         };
 
-        // compute padding, margin
-        let margin = self.node.margin.compute_rect(parent_width, ctx);
-        self.computed.margin = margin;
-
-        // width depends on padding, margin
-        let width = self.compute_width(parent, ctx); 
+        // width and box calculations
+        let width = self.compute_width_and_box(parent, ctx); 
         self.computed.width = width;
 
         // height depends on width and its calculations
         let height = self.compute_height(parent, ctx); 
         self.computed.height = height;
-        
-        // border depends on self width
-        let border = self.node.border.compute_rect(width, ctx);
-        self.computed.border = border;
 
         // compute grid, TODO: grid layout
-        let template_columns = self.node.grid_template_columns.iter().map(|val| val.compute_val(width, ctx));
-        let template_rows = self.node.grid_template_rows.iter().map(|val| val.compute_val(height, ctx));
+        let template_columns = self.node.grid_template_columns.iter().map(|val| val.compute_val(width.content, ctx));
+        let template_rows = self.node.grid_template_rows.iter().map(|val| val.compute_val(height.content, ctx));
         self.computed.grid_template_columns = template_columns.collect();
         self.computed.grid_template_rows = template_rows.collect();
 
@@ -180,11 +169,11 @@ impl TempNode<'_> {
     /// Returns the computed height of the node
     ///
     /// # Note
-    /// Requires padding to be computed
-    fn compute_height(&mut self, parent: Option<*const TempNode>, ctx: &mut SystemsContext) -> f32 {
+    /// Requires padding, border and margin to be computed
+    fn compute_height(&mut self, parent: Option<*const TempNode>, ctx: &mut SystemsContext) -> ComputedBox {
         let screen_size = ctx.renderer.size();
         let parent_height = match parent {
-            Some(parent) => unsafe { &*parent }.computed.height,
+            Some(parent) => unsafe { &*parent }.computed.height.content,
             None => screen_size.height as f32,
         };
 
@@ -197,7 +186,14 @@ impl TempNode<'_> {
             Val::Auto => self.compute_auto_height(parent, ctx),
         };
 
-        content + self.computed.padding.vertical() 
+        let border = content + self.computed.padding.vertical() + self.computed.border.vertical(); 
+        let total = border + self.computed.margin.vertical();
+
+        ComputedBox {
+            content,
+            border,
+            total,
+        }
     }
 
     /// Returns the computed height of the node when the height is set to auto
@@ -212,7 +208,7 @@ impl TempNode<'_> {
         let mut max_height: f32 = 0.0;
         let self_as_parent = self as *const TempNode;
         for child in &mut self.children {
-            let h = child.compute_height(Some(self_as_parent), ctx);
+            let h = child.compute_height(Some(self_as_parent), ctx).total;
             height += h;
             max_height = max_height.max(h);
         }
@@ -245,14 +241,15 @@ impl TempNode<'_> {
         height
     }
 
-    /// Returns the computed width of the node
+    /// Returns the computed width box of the node
     ///
     /// # Note
-    /// Will also compute and set padding, column_gap, row_gap
-    fn compute_width(&mut self, parent: Option<*const TempNode>, ctx: &mut SystemsContext) -> f32 {
+    /// Requires margin to be computed
+    /// Will also compute and set margin, padding, border, column_gap, row_gap
+    fn compute_width_and_box(&mut self, parent: Option<*const TempNode>, ctx: &mut SystemsContext) -> ComputedBox {
         let screen_size = ctx.renderer.size();
         let parent_width = match parent {
-            Some(parent) => unsafe { &*parent }.computed.width,
+            Some(parent) => unsafe { &*parent }.computed.width.content,
             None => screen_size.width as f32,
         };
 
@@ -272,11 +269,28 @@ impl TempNode<'_> {
             Val::Auto => self.compute_auto_width(parent, ctx),
         };
 
+        // margin
+        let margin = self.node.margin.compute_rect(parent_width, ctx);
+        self.computed.margin = margin;
+
         // padding
         let padding = self.node.padding.compute_rect(parent_width, ctx);
         self.computed.padding = padding;
+
+        // border
+        // TODO: does not work for percentage values in children, because that would require this
+        // to be calculated before `content` width
+        let border = self.node.border.compute_rect(content, ctx);
+        self.computed.border = border;
+
+        // border box
+        let border = content + self.computed.padding.horizontal() + self.computed.border.horizontal();
         
-        content + self.computed.padding.horizontal()
+        ComputedBox {
+            content,
+            border,
+            total: border + self.computed.margin.horizontal(), 
+        }
     }
 
     /// Returns the computed width of the node when the width is set to auto
@@ -291,7 +305,7 @@ impl TempNode<'_> {
         let mut max_width: f32 = 0.0;
         let self_as_parent = self as *const TempNode;
         for child in &mut self.children {
-            let w = child.compute_width(Some(self_as_parent), ctx);
+            let w = child.compute_width_and_box(Some(self_as_parent), ctx).total;
             width += w;
             max_width = max_width.max(w);
         }

@@ -13,6 +13,26 @@ pub struct ComputedRect {
     pub bottom: f32,
 }
 
+#[derive(Default, Debug, Clone, Copy)]
+pub struct ComputedBox {
+    /// Content size, in css:
+    /// `box-sizing: content-box`
+    pub content: f32,
+    /// Content + padding + border size, in css:
+    /// `box-sizing: border-box`
+    pub border: f32,
+    /// Total size, including margin, no css equivalent
+    pub total: f32,
+}
+
+impl ComputedBox {
+    /// Returns the content offset relative to the border-box
+    /// `(border - content) / 2 = offset`
+    pub fn offset(&self) -> f32 {
+        (self.border - self.content) / 2.0
+    }
+}
+
 #[derive(Default, Debug, Clone)]
 pub struct ComputedNode {
     pub color: Color,
@@ -28,8 +48,8 @@ pub struct ComputedNode {
     pub margin: ComputedRect,
     pub border: ComputedRect,
 
-    pub width: f32,
-    pub height: f32,
+    pub width: ComputedBox,
+    pub height: ComputedBox,
 }
 
 // impl ComputedNode {
