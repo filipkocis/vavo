@@ -38,7 +38,7 @@ impl TempNode<'_> {
     ///
     /// # Note
     /// Requires node and z_index to be computed
-    pub fn compute_translation(&mut self, mut offset: Vec3, ctx: &mut SystemsContext) {
+    pub fn compute_translation(&mut self, offset: Vec3, ctx: &mut SystemsContext) {
         let padding = &self.computed.padding;
         let border = &self.computed.border;
         let mut translation = offset;
@@ -48,23 +48,26 @@ impl TempNode<'_> {
         translation.y += self.computed.margin.top;
 
         // apply self offset
-        offset.x += padding.left + border.left;
-        offset.y += padding.top + border.top;
+        let mut child_offset = Vec3::new(
+            padding.left + border.left,
+            padding.top + border.top,
+            0.0,
+        );
 
         match self.node.display {
             Display::Flex => {
                 for child in &mut self.children {
-                    child.compute_translation(offset, ctx);
+                    child.compute_translation(child_offset, ctx);
 
                     match self.node.flex_direction {
                         FlexDirection::Row | FlexDirection::RowReverse => {
-                            offset.x += 
+                            child_offset.x += 
                                 child.computed.width.border + 
                                 child.computed.margin.horizontal() +
                                 self.computed.column_gap;
                         },
                         FlexDirection::Column | FlexDirection::ColumnReverse => {
-                            offset.y += 
+                            child_offset.y += 
                                 child.computed.height.border + 
                                 child.computed.margin.vertical() +
                                 self.computed.row_gap;
@@ -74,9 +77,9 @@ impl TempNode<'_> {
             },
             Display::Block => {
                 for child in &mut self.children {
-                    child.compute_translation(offset, ctx);
+                    child.compute_translation(child_offset, ctx);
 
-                    offset.y += 
+                    child_offset.y += 
                         child.computed.height.border + 
                         child.computed.margin.vertical();
                 } 
