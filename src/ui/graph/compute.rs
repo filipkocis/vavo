@@ -138,13 +138,6 @@ impl ComputedRect {
 impl TempNode<'_> {
     /// Computes the node and its children
     pub fn compute(&mut self, parent: Option<*const TempNode>, ctx: &mut SystemsContext) {
-        // extract parent width
-        let window_size = ctx.renderer.size();
-        let parent_width = match parent {
-            Some(parent) => unsafe { &*parent }.computed.width.border,
-            None => window_size.width as f32,
-        };
-
         // width and box calculations
         let width = self.compute_width_and_box(parent, ctx); 
         self.computed.width = width;

@@ -1,5 +1,6 @@
 use glam::Vec2;
 use glyphon::{FontSystem, Resolution, SwashCache, TextArea, TextAtlas, TextBounds, TextRenderer, Viewport};
+use winit::event::WindowEvent;
 
 use crate::{palette, prelude::*};
 use crate::render_assets::RenderAssets;
@@ -22,8 +23,23 @@ pub fn update_glyphon_viewport(ctx: &mut SystemsContext, _: Query<()>) {
     })
 }
 
+/// Utility function to check for a window resize event.
+fn has_resized(ctx: &SystemsContext) -> bool {
+    ctx.event_reader.read::<WindowEvent>().iter().any(|event| {
+        if let WindowEvent::Resized(_) = event {
+            true
+        } else {
+            false
+        }
+    })
+}
+
 /// System to update the UI mesh and UI transform storage, runs only if some nodes have `Changed<Transform>` filter.
 /// The filter should return true after `compute_node` system which runs on `Changed<Node>` filter and updates transforms.
+///
+/// # Resize
+/// It will run on window resize even if no nodes have changed. That is because glyphon text gets
+/// automatically clipped so we need to update prepared text areas.
 ///
 /// # Note
 /// Applies z-index to the z component of the global transfrom pushed to the transform storage.
@@ -43,7 +59,8 @@ pub fn update_ui_mesh_and_transforms(ctx: &mut SystemsContext, mut query: Query<
     let ui_nodes = nodes_query.iter_mut();
 
     // return if nothing changed
-    if changed_len == 0 {
+    let resized = has_resized(ctx);
+    if changed_len == 0 && !resized {
         // cleanup if all nodes were removed
         if ui_nodes.len() == 0 && ui_mesh.positions.len() > 0 {
             ui_mesh.clear();
