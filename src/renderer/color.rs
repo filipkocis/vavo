@@ -84,7 +84,7 @@ impl Into<Color> for glyphon::Color {
 
 impl Default for Color {
     fn default() -> Self {
-        Self::new(1.0, 1.0, 1.0, 1.0)
+        Self::new(0.0, 0.0, 0.0, 1.0)
     }
 }
 
