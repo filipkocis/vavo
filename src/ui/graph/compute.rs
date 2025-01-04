@@ -1,6 +1,6 @@
 use glam::Vec3;
 
-use crate::{prelude::*, ui::node::{ComputedBox, ComputedRect, Display, FlexDirection, Rect, Val}};
+use crate::{prelude::*, ui::node::{BoxSizing, ComputedBox, ComputedRect, Display, FlexDirection, Rect, Val}};
 
 use super::build_temp::{nodes_to_temp_graph, TempNode};
 
@@ -11,7 +11,6 @@ pub fn compute_nodes_and_transforms(ctx: &mut SystemsContext, mut q: Query<()>) 
     compute_z_index_for_nodes(&mut temp_nodes, &mut 0);
     
     for temp_node in &mut temp_nodes {
-        dbg!(&temp_node);
         temp_node.compute(None, ctx);
         temp_node.compute_translation(Vec3::ZERO, ctx);
     }
@@ -168,6 +167,48 @@ impl TempNode<'_> {
         }
     }
 
+    /// Computes the sizes for `ComputedBox` based on `box-sizing`
+    fn compute_box_sizing(&self, computed_size: f32, is_width: bool) -> (f32, f32, f32) {
+        let (size, padding_border, margin) = if is_width {
+            (
+                self.node.width,
+                self.computed.padding.horizontal() + self.computed.border.horizontal(),
+                self.computed.margin.horizontal(),
+            )
+        } else {
+            (
+                self.node.height,
+                self.computed.padding.vertical() + self.computed.border.vertical(),
+                self.computed.margin.vertical(),
+            )
+        };
+
+        let mut content;
+        let mut border;
+        let total;
+
+        if self.node.box_sizing == BoxSizing::ContentBox || // box-sizing: content-box 
+            size == Val::Auto { // size: auto -> box-sizing has no effect
+            content = computed_size;
+            border = content + padding_border;
+            total = border + margin;
+        } else { // box-sizing: border-box
+            border = computed_size;
+            content = border - padding_border;
+
+            if content < 0.0 {
+                // if padding + border is greater than content width
+                let overflow = content.abs();
+                border += overflow;
+                content = 0.0;
+            }
+
+            total = border + margin;
+        }
+
+        (content, border, total)
+    }
+
     /// Returns the computed height of the node
     ///
     /// # Note
@@ -179,7 +220,7 @@ impl TempNode<'_> {
             None => screen_size.height as f32,
         };
 
-        let content = match self.node.height {
+        let computed_height = match self.node.height {
             Val::Percent(percent) => parent_height * percent / 100.0,
             Val::Vw(vw) => screen_size.width as f32 * vw / 100.0,
             Val::Vh(vh) => screen_size.height as f32 * vh / 100.0,
@@ -188,8 +229,8 @@ impl TempNode<'_> {
             Val::Auto => self.compute_auto_height(parent, ctx),
         };
 
-        let border = content + self.computed.padding.vertical() + self.computed.border.vertical(); 
-        let total = border + self.computed.margin.vertical();
+        // compute box sizing
+        let (content, border, total) = self.compute_box_sizing(computed_height, false);
 
         ComputedBox {
             content,
@@ -262,7 +303,7 @@ impl TempNode<'_> {
         self.computed.column_gap = column_gap;
         self.computed.row_gap = row_gap;
 
-        let content = match self.node.width {
+        let computed_width = match self.node.width {
             Val::Percent(percent) => parent_width * percent / 100.0,
             Val::Vw(vw) => screen_size.width as f32 * vw / 100.0,
             Val::Vh(vh) => screen_size.height as f32 * vh / 100.0,
@@ -282,16 +323,16 @@ impl TempNode<'_> {
         // border
         // TODO: does not work for percentage values in children, because that would require this
         // to be calculated before `content` width
-        let border = self.node.border.compute_rect(content, ctx);
+        let border = self.node.border.compute_rect(computed_width, ctx);
         self.computed.border = border;
 
-        // border box
-        let border = content + self.computed.padding.horizontal() + self.computed.border.horizontal();
+        // compute box sizing
+        let (content, border, total) = self.compute_box_sizing(computed_width, true); 
         
         ComputedBox {
             content,
             border,
-            total: border + self.computed.margin.horizontal(), 
+            total, 
         }
     }
 

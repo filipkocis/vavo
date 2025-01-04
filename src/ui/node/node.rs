@@ -2,7 +2,7 @@ use crate::prelude::Color;
 
 /// Defines the style properties of an Ui Entity in a similar fashion to CSS
 
-#[derive(Default, Debug, Clone, Copy)]
+#[derive(Default, Debug, Clone, Copy, PartialEq)]
 pub enum Val {
     #[default]
     Auto,
@@ -140,6 +140,13 @@ pub enum AlignItems {
     Baseline,
 }
 
+#[derive(Default, Debug, Copy, Clone, PartialEq)]
+pub enum BoxSizing {
+    ContentBox,
+    #[default]
+    BorderBox,
+}
+
 #[derive(Default, Debug, Clone)]
 pub struct Node {
     pub background_color: Color,
@@ -150,6 +157,7 @@ pub struct Node {
     pub display: Display,
     pub position: Position,
     pub z_index: i32,
+    pub box_sizing: BoxSizing,
 
     pub flex_direction: FlexDirection,
     pub justify_content: JustifyContent,
