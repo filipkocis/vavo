@@ -97,7 +97,6 @@ pub fn update_ui_mesh_and_transforms(ctx: &mut SystemsContext, mut query: Query<
     let mut text_areas = Vec::new();
     let mut ui_transforms = Vec::new();
     let mut transform_index = 0;
-    let size = *ctx.renderer.size();
 
     for (id, transform, global_transform, node, computed, text) in &ui_nodes {
         // extract global translation
@@ -132,7 +131,9 @@ pub fn update_ui_mesh_and_transforms(ctx: &mut SystemsContext, mut query: Query<
         
         // entitie's transform
         let mut glob_transform = global_transform.matrix.to_cols_array_2d();
-        glob_transform[3][2] = computed.z_index as f32; // z-index as pos.z
+        // TODO: we should use this instead of vec3.z in pos, but for nonui parent nodes this would
+        // not work, so implement it later
+        // glob_transform[3][2] = computed.z_index as f32; // z-index as pos.z
         ui_transforms.push(glob_transform);
         transform_index += 1;
 
@@ -162,14 +163,19 @@ pub fn update_ui_mesh_and_transforms(ctx: &mut SystemsContext, mut query: Query<
     }
 
     // prepare text areas for rendering
-    text_renderer.prepare(
+    text_renderer.prepare_with_depth(
         ctx.renderer.device(), 
         ctx.renderer.queue(), 
         &mut font_system, 
         &mut text_atlas, 
         &viewport, 
         text_areas, 
-        &mut swash_cache
+        &mut swash_cache,
+        |md| {
+            // TODO: do a better way to match with UI shader, this is copypasting
+            let mil = 1_000_000.0;
+            return (mil - md as f32 - 1.0) / mil;
+        }
     ).unwrap();
 
     // update transform storage with ui nodes

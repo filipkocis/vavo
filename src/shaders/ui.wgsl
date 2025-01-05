@@ -30,12 +30,6 @@ fn vs_main(
   var out: Output;
   out.color = input.color;
 
-  // let screen_pos = vec3<f32>(
-  //   input.pos.x / window_size.width * 2.0 - 1.0,
-  //   input.pos.y / window_size.height * 2.0 - 1.0,
-  //   input.pos.z / 1000.0,
-  // );
-
   var world_pos = transforms[input.transform_index] * vec4<f32>(input.pos, 1.0);
   // out.clip = camera.view_proj * world_pos;
 
@@ -46,7 +40,7 @@ fn vs_main(
     // we have to flip the z axis for correct z ordering based on z_index
     // z_index may start at 0, so we add 1 to avoid clipping
     // then we convert to NDC with a fake hardcoded far plane at 1mil
-    (mil - world_pos.z - 1.0) / mil,
+    (mil - input.pos.z - 1.0) / mil,
     world_pos.w,
   );
   out.clip = screen_pos;

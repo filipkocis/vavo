@@ -2,6 +2,7 @@ use std::fmt::Debug;
 
 use crate::prelude::*;
 use crate::ui::node::{ComputedNode, Node};
+use crate::ui::text::text::Text;
 
 pub struct TempNode<'a> {
     pub id: EntityId,
@@ -9,6 +10,8 @@ pub struct TempNode<'a> {
     pub computed: &'a mut ComputedNode,
     pub transform: &'a mut Transform,
     pub children: Vec<TempNode<'a>>,
+
+    pub text: Option<&'a mut Text>,
 }
 
 impl Debug for TempNode<'_> {
@@ -46,6 +49,7 @@ pub fn nodes_to_temp_graph<'a>(q: &mut Query<'a, ()>) -> Vec<TempNode<'a>> {
             computed,
             transform,
             children: Vec::new(),
+            text: None,
         };
         root_nodes.push(root)
     }
@@ -68,20 +72,25 @@ pub fn nodes_to_temp_graph<'a>(q: &mut Query<'a, ()>) -> Vec<TempNode<'a>> {
             computed,
             transform,
             children: Vec::new(),
+            text: None,
         };
         root_nodes.push(root)
     }
 
-    // populate with children
+    // populate with children and ui node components
     for root in root_nodes.iter_mut() {
-        let children = match q.cast::<&Children, ()>().get(root.id) {
-            Some(children) => children,
-            None => continue,
+        // children
+        if let Some(children) = q.cast::<&Children, ()>().get(root.id) {
+            for child in &children.ids {
+                root.children.push(build_temp_node_for(*child, q))
+            }
         };
 
-        for child in &children.ids {
-            root.children.push(build_temp_node_for(*child, q))
-        }
+        // TODO: replace these once query filter supports Option<T>
+        // text
+        root.text = q.cast::<&mut Text, ()>().get(root.id);
+
+        // TODO: add other node types as options, like Image, Button, etc.
     }
 
     root_nodes
@@ -89,9 +98,11 @@ pub fn nodes_to_temp_graph<'a>(q: &mut Query<'a, ()>) -> Vec<TempNode<'a>> {
 
 /// Returns a TempNode<'a> for a given EntityId, fully populated with children recursively
 fn build_temp_node_for<'a>(id: EntityId, query: &mut Query<'a, ()>) -> TempNode<'a> {
+    // root
     let mut node_query = query.cast::<(&Node, &mut ComputedNode, &mut Transform), ()>();
     let (node, computed, transform) = node_query.get(id).expect("Node not found");
 
+    // children
     let mut children_query = query.cast::<&Children, ()>();
     let mut built_children = Vec::new();
     if let Some(children) = children_query.get(id) {
@@ -100,11 +111,17 @@ fn build_temp_node_for<'a>(id: EntityId, query: &mut Query<'a, ()>) -> TempNode<
         }
     }
 
+    // text
+    let text = query.cast::<&mut Text, ()>().get(id);
+
+    // TODO: add other node types as options, like Image, Button, etc.
+
     TempNode {
         id,
         node,
         computed,
         transform,
         children: built_children,
+        text,
     }
 }

@@ -25,6 +25,11 @@ pub fn compute_z_index_for_nodes(nodes: &mut Vec<TempNode>, layer: &mut usize) {
     nodes.sort_by(|a, b| a.node.z_index.cmp(&b.node.z_index)); 
 
     for node in nodes.iter_mut() {
+        if let Some(ref mut text) = node.text {
+            text.attrs(text.attrs.metadata(*layer));
+            // TODO: update text render asset buffer, or check if its needed
+        }
+
         node.computed.z_index = *layer as i32;
         *layer += 1;
 
@@ -46,6 +51,7 @@ impl TempNode<'_> {
         // apply margin
         translation.x += self.computed.margin.left;
         translation.y += self.computed.margin.top;
+        translation.z = self.computed.z_index as f32;
 
         // apply self offset
         let mut child_offset = Vec3::new(
