@@ -4,6 +4,8 @@ use crate::prelude::*;
 use crate::ui::node::{ComputedNode, Node};
 use crate::ui::text::text::Text;
 
+use super::update::has_resized;
+
 pub struct TempNode<'a> {
     pub id: EntityId,
     pub node: &'a Node,
@@ -24,14 +26,16 @@ impl Debug for TempNode<'_> {
 }
 
 /// Returns temp nodes with populated children, or empty if zero nodes were updated.
-/// Runs on `Changed<Node>` filter.
-pub fn nodes_to_temp_graph<'a>(q: &mut Query<'a, ()>) -> Vec<TempNode<'a>> {
+/// Runs on `Changed<Node>` filter, or `WindowEvent::Resized` event
+pub fn nodes_to_temp_graph<'a>(ctx: &mut SystemsContext, q: &mut Query<'a, ()>) -> Vec<TempNode<'a>> {
     let mut check_updated = q.cast::<
         &EntityId,
         (With<Node>, With<ComputedNode>, With<Transform>, Changed<Node>)
     >();
-    // if no nodes where updated, do not run and return empty
-    if check_updated.iter_mut().is_empty() {
+
+    // if zero nodes where updated and window has not been resized,
+    // do not run and return empty
+    if check_updated.iter_mut().is_empty() && !has_resized(ctx) {
         return Vec::new();
     }
 

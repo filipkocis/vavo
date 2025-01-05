@@ -6,7 +6,11 @@ use super::build_temp::{nodes_to_temp_graph, TempNode};
 
 /// Post update system to compute ui nodes and update their transforms
 pub fn compute_nodes_and_transforms(ctx: &mut SystemsContext, mut q: Query<()>) {
-    let mut temp_nodes = nodes_to_temp_graph(&mut q);
+    let mut temp_nodes = nodes_to_temp_graph(ctx, &mut q);
+
+    if temp_nodes.is_empty() {
+        return;
+    }
 
     compute_z_index_for_nodes(&mut temp_nodes, &mut 0);
     

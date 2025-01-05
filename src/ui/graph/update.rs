@@ -24,7 +24,7 @@ pub fn update_glyphon_viewport(ctx: &mut SystemsContext, _: Query<()>) {
 }
 
 /// Utility function to check for a window resize event.
-fn has_resized(ctx: &SystemsContext) -> bool {
+pub fn has_resized(ctx: &SystemsContext) -> bool {
     ctx.event_reader.read::<WindowEvent>().iter().any(|event| {
         if let WindowEvent::Resized(_) = event {
             true
