@@ -55,7 +55,7 @@ pub fn update_ui_mesh_and_transforms(ctx: &mut SystemsContext, mut query: Query<
     let changed_len = changed_query.iter_mut().len();
 
     // query all nodes
-    let mut nodes_query = query.cast::<(&EntityId, &Transform, &GlobalTransform, &Node, &ComputedNode), ()>();
+    let mut nodes_query = query.cast::<(&EntityId, &GlobalTransform, &Node, &ComputedNode), ()>();
     let ui_nodes = nodes_query.iter_mut();
 
     // return if nothing changed
@@ -83,7 +83,7 @@ pub fn update_ui_mesh_and_transforms(ctx: &mut SystemsContext, mut query: Query<
     // add other node types as options 
     // TODO: implement Option<T> to query
     let mut text_query = query.cast::<&Text, With<Node>>();
-    let ui_nodes = ui_nodes.into_iter().map(|(id, transform, global_transform, node, computed)| {
+    let ui_nodes = ui_nodes.into_iter().map(|(id, global_transform, node, computed)| {
         let text = if let Some(text) = text_query.get(*id) {
             let text = text_buffers.get_by_entity(id, text, ctx);
             Some(text)
@@ -91,14 +91,14 @@ pub fn update_ui_mesh_and_transforms(ctx: &mut SystemsContext, mut query: Query<
             None
         };
         
-        (id, transform, global_transform, node, computed, text)
+        (id, global_transform, node, computed, text)
     }).collect::<Vec<_>>();
 
     let mut text_areas = Vec::new();
     let mut ui_transforms = Vec::new();
     let mut transform_index = 0;
 
-    for (id, transform, global_transform, node, computed, text) in &ui_nodes {
+    for (id, global_transform, node, computed, text) in &ui_nodes {
         // extract global translation
         let translation = global_transform.matrix.to_scale_rotation_translation().2;
 
