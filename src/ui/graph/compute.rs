@@ -1,7 +1,7 @@
 use glam::Vec3;
 use glyphon::FontSystem;
 
-use crate::{prelude::*, render_assets::RenderAssets, ui::{node::{BoxSizing, ComputedBox, ComputedRect, Display, FlexDirection, Rect, Val}, text::TextBuffer}};
+use crate::{prelude::*, render_assets::RenderAssets, ui::{node::{BoxSizing, ComputedBox, Display, FlexDirection, Val}, text::TextBuffer}};
 
 use super::build_temp::{nodes_to_temp_graph, TempNode};
 
@@ -117,44 +117,6 @@ impl TempNode<'_> {
         };
 
         self.transform.translation = translation;
-    }
-}
-
-impl Val {
-    pub fn compute_val(&self, parent: f32, ctx: &SystemsContext) -> f32 {
-        let window_size = ctx.renderer.size();
-        match self {
-            Val::Auto => 0.0,
-            Val::Px(val) => *val,
-            Val::Rem(val) => *val * 16.0,
-            Val::Percent(val) => parent * *val / 100.0,
-            Val::Vw(val) => window_size.width as f32 * *val / 100.0,
-            Val::Vh(val) => window_size.height as f32 * *val / 100.0,
-        }
-    }
-}
-
-impl Rect {
-    /// Compute Rect fields based on parent width for padding and margin, self width for border
-    pub fn compute_rect(&self, width: f32, ctx: &mut SystemsContext) -> ComputedRect {
-        ComputedRect {
-            left: self.left.compute_val(width, ctx),
-            right: self.right.compute_val(width, ctx),
-            top: self.top.compute_val(width, ctx),
-            bottom: self.bottom.compute_val(width, ctx),
-        }
-    }
-}
-
-impl ComputedRect {
-    /// Returns the horizontal sum of left and right
-    pub fn horizontal(&self) -> f32 {
-        self.left + self.right
-    }
-
-    /// Returns the vertical sum of top and bottom
-    pub fn vertical(&self) -> f32 {
-        self.top + self.bottom
     }
 }
 

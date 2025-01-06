@@ -1,4 +1,20 @@
-use crate::prelude::Color;
+use crate::{prelude::Color, system::SystemsContext};
+
+use super::{Rect, Val};
+
+impl Val {
+    pub fn compute_val(&self, parent: f32, ctx: &SystemsContext) -> f32 {
+        let window_size = ctx.renderer.size();
+        match self {
+            Val::Auto => 0.0,
+            Val::Px(val) => *val,
+            Val::Rem(val) => *val * 16.0,
+            Val::Percent(val) => parent * *val / 100.0,
+            Val::Vw(val) => window_size.width as f32 * *val / 100.0,
+            Val::Vh(val) => window_size.height as f32 * *val / 100.0,
+        }
+    }
+}
 
 #[derive(Default, Debug, Clone, Copy)]
 pub struct ComputedRect {
@@ -6,6 +22,30 @@ pub struct ComputedRect {
     pub right: f32,
     pub top: f32,
     pub bottom: f32,
+}
+
+impl ComputedRect {
+    /// Returns the horizontal sum of left and right
+    pub fn horizontal(&self) -> f32 {
+        self.left + self.right
+    }
+
+    /// Returns the vertical sum of top and bottom
+    pub fn vertical(&self) -> f32 {
+        self.top + self.bottom
+    }
+}
+
+impl Rect {
+    /// Compute Rect fields based on parent width for padding and margin, self width for border
+    pub fn compute_rect(&self, width: f32, ctx: &mut SystemsContext) -> ComputedRect {
+        ComputedRect {
+            left: self.left.compute_val(width, ctx),
+            right: self.right.compute_val(width, ctx),
+            top: self.top.compute_val(width, ctx),
+            bottom: self.bottom.compute_val(width, ctx),
+        }
+    }
 }
 
 #[derive(Default, Debug, Clone, Copy)]
@@ -46,118 +86,3 @@ pub struct ComputedNode {
     pub width: ComputedBox,
     pub height: ComputedBox,
 }
-
-// impl ComputedNode {
-//     /// Returns the translation of the node by combining css properties: margin, border
-//     pub fn self_translation(&self) -> Vec3 {
-//         Vec3::new(
-//             self.margin.left + self.border.left,
-//             self.margin.top + self.border.top,
-//             0.0,
-//         )
-//     }
-//
-//     pub fn children_translation(&self, parent: &ComputedNode, accumulated: &Vec3) -> Vec3 {
-//         let translation = self.self_translation();
-//
-//         Vec3::new(
-//             translation.x + parent.padding.left + accumulated.x,
-//             translation.y + parent.padding.top + accumulated.y,
-//             0.0,
-//         )
-//     }
-// }
-
-// pub struct ComputeContext<'a> {
-//     pub parent_node: Option<&'a Node>,
-//     pub parent_computed: Option<&'a ComputedNode>,
-//     pub window_size: Vec2,
-// }
-//
-// impl<'a> ComputeContext<'a> {
-//     pub fn from_size(size: PhysicalSize<u32>) -> Self {
-//         Self {
-//             parent_node: None,
-//             parent_computed: None,
-//             window_size: Vec2::new(size.width as f32, size.height as f32),
-//         }
-//     }
-//
-//     pub fn set_parent(&mut self, parent: Option<(&'a Node, &'a ComputedNode)>) {
-//         if let Some(parent) = parent {
-//             self.parent_node = Some(parent.0);
-//             self.parent_computed = Some(parent.1);
-//         } else {
-//             self.parent_node = None;
-//             self.parent_computed = None;
-//         }
-//     }
-// }
-
-// impl Val {
-//     pub fn compute(&self, parent: f32, context: &ComputeContext) -> f32 {
-//         match self {
-//             Val::Auto => 0.0,
-//             Val::Px(val) => *val,
-//             Val::Rem(val) => *val * 16.0,
-//             Val::Percent(val) => parent * *val / 100.0,
-//             Val::Vw(val) => context.window_size.x * *val / 100.0,
-//             Val::Vh(val) => context.window_size.y * *val / 100.0,
-//         }
-//     }
-// }
-//
-// impl Rect {
-//     pub fn compute(&self, parent_width: f32, parent_height: f32, context: &ComputeContext) -> ComputedRect {
-//         ComputedRect {
-//             left: self.left.compute(parent_width, context),
-//             right: self.left.compute(parent_width, context),
-//             top: self.left.compute(parent_height, context),
-//             bottom: self.left.compute(parent_height, context),
-//         }
-//     }
-// }
-//
-// impl Node {
-//     pub fn compute(&self, context: &ComputeContext, ctx: &mut SystemsContext) -> ComputedNode {
-//         let parent_computed = match context.parent_computed {
-//             Some(parent_computed) => parent_computed,
-//             None => {
-//                 let window_size = ctx.renderer.size();
-//                 let window_size = (window_size.width as f32, window_size.height as f32);
-//                 return self.compute_internal(window_size, context);
-//             }
-//         };
-//
-//         let size = (parent_computed.width, parent_computed.height);
-//         self.compute_internal(size, context)
-//     }
-//
-//     fn compute_internal(&self, size: (f32, f32), context: &ComputeContext) -> ComputedNode {
-//         let padding = self.padding.compute(size.0, size.1, context);
-//
-//         ComputedNode {
-//             color: self.color,
-//             z_index: self.z_index + context.parent_computed.map_or(0, |parent| parent.z_index),
-//
-//             grid_template_columns: self.grid_template_columns.iter().map(|val| val.compute(size.0, context)).collect(),
-//             grid_template_rows: self.grid_template_rows.iter().map(|val| val.compute(size.1, context)).collect(),
-//
-//             column_gap: match context.parent_node {
-//                 Some(_) => self.column_gap.compute(size.0, context),
-//                 None => 0.0,
-//             },
-//             row_gap: match context.parent_node {
-//                 Some(_) => self.row_gap.compute(size.0, context),
-//                 None => 0.0,
-//             },
-//
-//             padding,
-//             margin: self.margin.compute(size.0, size.1, context),
-//             border: self.border.compute(size.0, size.1, context),
-//
-//             width: self.width.compute(size.0, context) + padding.left + padding.right,
-//             height: self.height.compute(size.1, context) + padding.top + padding.bottom,
-//         }
-//     }
-// }
