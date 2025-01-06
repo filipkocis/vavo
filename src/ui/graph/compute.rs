@@ -80,20 +80,21 @@ impl TempNode<'_> {
 
         match self.node.display {
             Display::Flex => {
-                for child in &mut self.children {
-                    child.compute_translation(child_offset, ctx);
+                let justify_content_offsets = self.justify_content_offset();
+
+                for (i, child) in self.children.iter_mut().enumerate() {
+                    let justify_content_offset = justify_content_offsets[i];
+                    child.compute_translation(child_offset + justify_content_offset, ctx);
 
                     match self.node.flex_direction {
                         FlexDirection::Row | FlexDirection::RowReverse => {
                             child_offset.x += 
-                                child.computed.width.border + 
-                                child.computed.margin.horizontal() +
+                                child.computed.width.total + 
                                 self.computed.column_gap;
                         },
                         FlexDirection::Column | FlexDirection::ColumnReverse => {
                             child_offset.y += 
-                                child.computed.height.border + 
-                                child.computed.margin.vertical() +
+                                child.computed.height.total + 
                                 self.computed.row_gap;
                         }
                     }
@@ -102,10 +103,7 @@ impl TempNode<'_> {
             Display::Block => {
                 for child in &mut self.children {
                     child.compute_translation(child_offset, ctx);
-
-                    child_offset.y += 
-                        child.computed.height.border + 
-                        child.computed.margin.vertical();
+                    child_offset.y += child.computed.height.total; 
                 } 
             },
             Display::Grid => {
@@ -117,6 +115,111 @@ impl TempNode<'_> {
         };
 
         self.transform.translation = translation;
+    }
+
+    /// Returns the offsets for `justify-content` for each child node.
+    /// `result.len() == self.children.len()`
+    ///
+    /// Only the main axis field is used in a flex container, otherwise fields are 0.0.
+    pub fn justify_content_offset(&self) -> Vec<Vec3> {
+        let offsets_from = |v: Vec3| {
+            (0..self.children.len()).map(|_| v).collect::<Vec<_>>()
+        };
+
+        if self.node.display != Display::Flex {
+            return offsets_from(Vec3::ZERO); 
+        }
+
+        let gaps_num = (self.children.len() as isize - 1).max(0) as f32;
+
+        match self.node.flex_direction {
+            FlexDirection::Row | FlexDirection::RowReverse => {
+                let content_width = self.children.iter().fold(0.0, |acc, child| 
+                    acc + child.computed.width.total
+                );
+                let offset = (self.computed.width.content - content_width).max(0.0);    
+
+                let offsets = match self.node.justify_content {
+                    JustifyContent::FlexStart => return offsets_from(Vec3::ZERO),
+                    JustifyContent::FlexEnd => offsets_from(Vec3::new(offset, 0.0, 0.0)),
+                    JustifyContent::Center => offsets_from(Vec3::new(offset / 2.0, 0.0, 0.0)), 
+                    JustifyContent::SpaceBetween => {
+                        let between_gap = offset / gaps_num;
+                        self.children.iter().enumerate().map(|(i, _)| {
+                            let gap = if i == 0 { 0.0 } else { between_gap * i as f32 };
+                            Vec3::new(gap, 0.0, 0.0)
+                        }).collect()
+                    },
+                    JustifyContent::SpaceAround => {
+                        let around_gap = offset / (gaps_num + 1.0);  
+                        self.children.iter().enumerate().map(|(i, _)| {
+                            let gap = (around_gap * i as f32) + around_gap / 2.0;
+                            Vec3::new(gap, 0.0, 0.0)
+                        }).collect()
+                    }
+                    JustifyContent::SpaceEvenly => {
+                        let even_gap = offset / (gaps_num + 2.0);  
+                        self.children.iter().enumerate().map(|(i, _)| {
+                            let gap = even_gap * (i + 1) as f32;
+                            Vec3::new(gap, 0.0, 0.0)
+                        }).collect()
+                    }
+                };
+
+                offsets.into_iter().enumerate().map(|(i, mut offset)| {
+                    if i == 0 { 
+                        offset 
+                    } else {
+                        // offset back the gap which is added in compute_translation
+                        offset.x -= self.computed.column_gap * i as f32;
+                        offset
+                    }
+                }).collect()
+            },
+            FlexDirection::Column | FlexDirection::ColumnReverse => {
+                let content_height = self.children.iter().fold(0.0, |acc, child| 
+                    acc + child.computed.height.total
+                );
+                let offset = (self.computed.height.content - content_height).max(0.0);    
+
+                let offsets = match self.node.justify_content {
+                    JustifyContent::FlexStart => return offsets_from(Vec3::ZERO),
+                    JustifyContent::FlexEnd => offsets_from(Vec3::new(0.0, offset, 0.0)),
+                    JustifyContent::Center => offsets_from(Vec3::new(0.0, offset / 2.0, 0.0)), 
+                    JustifyContent::SpaceBetween => {
+                        let between_gap = offset / gaps_num;
+                        self.children.iter().enumerate().map(|(i, _)| {
+                            let gap = if i == 0 { 0.0 } else { between_gap * i as f32 };
+                            Vec3::new(0.0, gap, 0.0)
+                        }).collect()
+                    },
+                    JustifyContent::SpaceAround => {
+                        let around_gap = offset / (gaps_num + 1.0);  
+                        self.children.iter().enumerate().map(|(i, _)| {
+                            let gap = (around_gap * i as f32) + around_gap / 2.0;
+                            Vec3::new(0.0, gap, 0.0)
+                        }).collect()
+                    }
+                    JustifyContent::SpaceEvenly => {
+                        let even_gap = offset / (gaps_num + 2.0);  
+                        self.children.iter().enumerate().map(|(i, _)| {
+                            let gap = even_gap * (i + 1) as f32;
+                            Vec3::new(0.0, gap, 0.0)
+                        }).collect()
+                    }
+                };
+
+                offsets.into_iter().enumerate().map(|(i, mut offset)| {
+                    if i == 0 { 
+                        offset 
+                    } else {
+                        // offset back the gap which is added in compute_translation
+                        offset.y -= self.computed.row_gap * i as f32;
+                        offset
+                    }
+                }).collect()
+            },
+        }
     }
 }
 
