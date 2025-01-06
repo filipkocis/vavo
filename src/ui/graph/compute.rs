@@ -1,6 +1,7 @@
 use glam::Vec3;
+use glyphon::FontSystem;
 
-use crate::{prelude::*, ui::node::{BoxSizing, ComputedBox, ComputedRect, Display, FlexDirection, Rect, Val}};
+use crate::{prelude::*, render_assets::RenderAssets, ui::{node::{BoxSizing, ComputedBox, ComputedRect, Display, FlexDirection, Rect, Val}, text::text::TextBuffer}};
 
 use super::build_temp::{nodes_to_temp_graph, TempNode};
 
@@ -12,7 +13,8 @@ pub fn compute_nodes_and_transforms(ctx: &mut SystemsContext, mut q: Query<()>) 
         return;
     }
 
-    compute_z_index_for_nodes(&mut temp_nodes, &mut 0);
+    let mut text_buffers = ctx.resources.get_mut::<RenderAssets<TextBuffer>>().expect("TextBuffer render assets not found");
+    compute_z_index_for_nodes(ctx, &mut text_buffers, &mut temp_nodes, &mut 0);
     
     for temp_node in &mut temp_nodes {
         temp_node.compute(None, ctx);
@@ -24,20 +26,32 @@ pub fn compute_nodes_and_transforms(ctx: &mut SystemsContext, mut q: Query<()>) 
 /// Starts with layer 0, increments by 1 for each node.
 ///
 /// # Note
-/// Doesn't handle `position: absolute`
-pub fn compute_z_index_for_nodes(nodes: &mut Vec<TempNode>, layer: &mut usize) {
+/// Doesn't handle `position: absolute`.
+///
+/// # Important
+/// When setting z_index on text, it will recreate the text buffer render asset.
+pub fn compute_z_index_for_nodes(
+    ctx: &mut SystemsContext, 
+    text_buffers: &mut RenderAssets<TextBuffer>, 
+    nodes: &mut Vec<TempNode>, 
+    layer: &mut usize
+) {
     nodes.sort_by(|a, b| a.node.z_index.cmp(&b.node.z_index)); 
 
-    for node in nodes.iter_mut() {
+    for node in nodes {
         if let Some(ref mut text) = node.text {
-            text.attrs(text.attrs.metadata(*layer));
-            // TODO: update text render asset buffer, or check if its needed
+            text.attrs(text.attrs.metadata(*layer + 1)); // +1 to fix LessEqual depthmap issues 
+            // simply remove the render asset, to recreate it with the new metadata, since buffer
+            // does not have a `set_attrs` method, bufferlines do, but it gets reset
+            text_buffers.remove_by_entity(&node.id, &**text);
+            let text_rae = text_buffers.get_by_entity(&node.id, &**text, ctx);
+            node.text_rae = Some(text_rae);
         }
 
         node.computed.z_index = *layer as i32;
         *layer += 1;
 
-        compute_z_index_for_nodes(&mut node.children, layer);
+        compute_z_index_for_nodes(ctx, text_buffers, &mut node.children, layer);
     }
 }
 
@@ -222,7 +236,8 @@ impl TempNode<'_> {
     /// Returns the computed height of the node
     ///
     /// # Note
-    /// Requires padding, border and margin to be computed
+    /// Requires padding, border and margin to be computed.
+    /// Text buffer width is required to be set in order to get correct auto height.
     fn compute_height(&mut self, parent: Option<*const TempNode>, ctx: &mut SystemsContext) -> ComputedBox {
         let screen_size = ctx.renderer.size();
         let parent_height = match parent {
@@ -241,6 +256,12 @@ impl TempNode<'_> {
 
         // compute box sizing
         let (content, border, total) = self.compute_box_sizing(computed_height, false);
+
+        // set text buffer height
+        if let Some(ref text_rae) = self.text_rae {
+            let mut font_system = ctx.resources.get_mut::<FontSystem>().expect("FontSystem resource not found");
+            text_rae.set_size(&mut font_system, Some(self.computed.width.content), Some(content));
+        }
 
         ComputedBox {
             content,
@@ -289,16 +310,30 @@ impl TempNode<'_> {
                 height = 0.0;
             }
         }
-        
+
+        let (parent_width_auto, parent_height_auto) = parent.map(|p| {
+            let p = unsafe { &*p }; 
+            (p.node.width == Val::Auto, p.node.height == Val::Auto)
+        }).unwrap_or((false, false)); // if no parent, screen size is fixed
+        // text height, if label is present first compute the width to get correct height from text
+        // wrrapping, this may be needed if parent has fixed width but auto height
+        if self.text_rae.is_some() && !parent_width_auto && parent_height_auto {
+            self.compute_width_and_box(parent, ctx);
+        }
+        let text_height = self.text_rae.as_ref()
+            .map(|rae| rae.height())
+            .unwrap_or_default();
+
         // return final height
-        height
+        height.max(text_height)
     }
 
     /// Returns the computed width box of the node
     ///
     /// # Note
-    /// Requires margin to be computed
-    /// Will also compute and set margin, padding, border, column_gap, row_gap
+    /// Requires margin to be computed.
+    /// Will also compute and set margin, padding, border, column_gap, row_gap.
+    /// Based on text css it will also set and recreate its text buffer width.
     fn compute_width_and_box(&mut self, parent: Option<*const TempNode>, ctx: &mut SystemsContext) -> ComputedBox {
         let screen_size = ctx.renderer.size();
         let parent_width = match parent {
@@ -338,6 +373,14 @@ impl TempNode<'_> {
 
         // compute box sizing
         let (content, border, total) = self.compute_box_sizing(computed_width, true); 
+
+        // set text buffer width
+        if let Some(ref text_rae) = self.text_rae {
+            let mut font_system = ctx.resources.get_mut::<FontSystem>().expect("FontSystem resource not found");
+            text_rae.set_size(&mut font_system, Some(content), None);
+        }
+
+        println!("id {:?} width {}", self.id, content);
         
         ComputedBox {
             content,
@@ -386,8 +429,31 @@ impl TempNode<'_> {
                 width = 0.0;
             }
         }
+
+        // text width, if label is present
+        let text_width = self.text_rae.as_ref()
+            .map(|rae| {
+                let mut font_system = ctx.resources.get_mut::<FontSystem>().expect("FontSystem resource not found");
+                let max_screen = ctx.renderer.size().width as f32;
+
+                // max width for text wrapping, doesnt take padding or border into account
+                let max_width = parent.map(|p| { 
+                        let p = unsafe { &*p };
+                        if p.node.width == Val::Auto {
+                            max_screen
+                        } else {
+                            p.computed.width.content
+                        }
+                    })
+                    .unwrap_or(max_screen);
+
+                // first reset size to get accurate auto width
+                rae.set_size(&mut font_system, Some(max_width), None);
+                rae.width()
+            })
+            .unwrap_or_default();
         
         // return final width
-        width 
+        width.max(text_width)
     }
 }
