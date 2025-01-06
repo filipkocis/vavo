@@ -1,7 +1,7 @@
 use glam::Vec3;
 use glyphon::FontSystem;
 
-use crate::{prelude::*, render_assets::RenderAssets, ui::{node::{BoxSizing, ComputedBox, ComputedRect, Display, FlexDirection, Rect, Val}, text::text::TextBuffer}};
+use crate::{prelude::*, render_assets::RenderAssets, ui::{node::{BoxSizing, ComputedBox, ComputedRect, Display, FlexDirection, Rect, Val}, text::TextBuffer}};
 
 use super::build_temp::{nodes_to_temp_graph, TempNode};
 

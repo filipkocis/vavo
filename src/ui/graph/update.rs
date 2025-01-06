@@ -6,7 +6,7 @@ use crate::{palette, prelude::*};
 use crate::render_assets::RenderAssets;
 use crate::ui::mesh::UiMesh;
 use crate::ui::node::{ComputedNode, Display, Node};
-use crate::ui::text::text::{Text, TextBuffer};
+use crate::ui::text::{Text, TextBuffer};
 
 use super::UiTransformStorage;
 

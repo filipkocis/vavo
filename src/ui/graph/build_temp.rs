@@ -3,7 +3,7 @@ use std::fmt::Debug;
 use crate::prelude::*;
 use crate::render_assets::{RenderAssetEntry, RenderAssets};
 use crate::ui::node::{ComputedNode, Node};
-use crate::ui::text::text::{Text, TextBuffer};
+use crate::ui::text::{Text, TextBuffer};
 
 use super::update::has_resized;
 

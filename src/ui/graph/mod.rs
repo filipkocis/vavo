@@ -17,7 +17,7 @@ use crate::core::graph::*;
 use crate::render_assets::RenderAssets;
 
 use super::mesh::UiMesh;
-use super::text::text::TextBuffer;
+use super::text::TextBuffer;
 
 /// Create a graph UI node
 fn ui_node(ctx: &mut SystemsContext) -> GraphNode {
