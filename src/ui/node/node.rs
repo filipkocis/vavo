@@ -155,7 +155,7 @@ pub enum JustifyContent {
     Center,
     SpaceBetween,
     SpaceAround,
-    SpaceEvenely,
+    SpaceEvenly,
 }
 
 #[derive(Default, Debug, Clone, Copy)]
