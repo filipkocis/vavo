@@ -186,4 +186,11 @@ impl<T> RenderAssets<T> {
         let key = self.handle_map.remove(&handle.into())?;
         self.storage.remove(&key)
     }
+    
+    /// Remove render asset created by `get_by_entity` method
+    pub fn remove_by_entity<A: 'static>(&mut self, entity_id: &EntityId, component: &A) -> Option<Rc<T>> {
+        let entity_component_id = (entity_id, component).into();
+        let key = self.entity_component_map.remove(&entity_component_id)?;
+        self.storage.remove(&key)
+    }
 }
