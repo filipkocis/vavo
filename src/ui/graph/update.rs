@@ -80,25 +80,36 @@ pub fn update_ui_mesh_and_transforms(ctx: &mut SystemsContext, mut query: Query<
     let viewport = ctx.resources.get::<Viewport>().expect("Viewport resource not found");
     let mut swash_cache = ctx.resources.get_mut::<SwashCache>().expect("SwashCache resource not found");
 
+    // intermediate storage for text buffer raes
+    let mut intermediate_text_rae = Vec::new();
+
     // add other node types as options 
     // TODO: implement Option<T> to query
     let mut text_query = query.cast::<&Text, With<Node>>();
     let ui_nodes = ui_nodes.into_iter().map(|(id, global_transform, node, computed)| {
-        let text = if let Some(text) = text_query.get(*id) {
+        // HINT: if node has text, get the text buffer rae, add it to intermediate storage for RefCell
+        // lifetime issues, then later in code retrieve it and push its borrow to text_borrows
+        if let Some(text) = text_query.get(*id) {
             let text = text_buffers.get_by_entity(id, text, ctx);
-            Some(text)
+            intermediate_text_rae.push(Some(text));
         } else {
-            None
+            intermediate_text_rae.push(None);
         };
         
-        (id, global_transform, node, computed, text)
+        // return core ui node
+        (id, global_transform, node, computed)
+    }).collect::<Vec<_>>();
+
+    // borrow intermediate text raes, needed for lifetime issues
+    let text_borrows = intermediate_text_rae.iter().map(|rae_option| {
+        rae_option.as_ref().map(|rae| rae.buffer.borrow())
     }).collect::<Vec<_>>();
 
     let mut text_areas = Vec::new();
     let mut ui_transforms = Vec::new();
     let mut transform_index = 0;
 
-    for (id, global_transform, node, computed, text) in &ui_nodes {
+    for (i, (id, global_transform, node, computed)) in ui_nodes.into_iter().enumerate() {
         // extract global translation
         let translation = global_transform.matrix.to_scale_rotation_translation().2;
 
@@ -138,15 +149,15 @@ pub fn update_ui_mesh_and_transforms(ctx: &mut SystemsContext, mut query: Query<
         transform_index += 1;
 
         // prepare text node for rendering
-        if let Some(text) = text {
-            // translation width the content box offset
+        if let Some(text) = &text_borrows[i] {
+            // translation with the content box offset
             let content_translation = Vec2::new(
                 translation.x + computed.width.offset(),
                 translation.y + computed.height.offset(),
             );
 
             text_areas.push(TextArea {
-                buffer: &text.buffer,
+                buffer: text,
                 left: content_translation.x,
                 top: content_translation.y,
                 scale: 1.0,
