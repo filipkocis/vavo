@@ -30,6 +30,34 @@ impl Rect {
             bottom,
         }
     }
+    
+    pub fn left(val: Val) -> Self {
+        Self {
+            left: val,
+            ..Default::default()
+        }
+    }
+
+    pub fn right(val: Val) -> Self {
+        Self {
+            right: val,
+            ..Default::default()
+        }
+    }
+    
+    pub fn top(val: Val) -> Self {
+        Self {
+            top: val,
+            ..Default::default()
+        }
+    }
+    
+    pub fn bottom(val: Val) -> Self {
+        Self {
+            bottom: val,
+            ..Default::default()
+        }
+    }
 
     pub fn all(val: Val) -> Self {
         Self {
