@@ -1,8 +1,9 @@
 use std::fmt::Debug;
 
 use crate::prelude::*;
+use crate::render_assets::{RenderAssetEntry, RenderAssets};
 use crate::ui::node::{ComputedNode, Node};
-use crate::ui::text::text::Text;
+use crate::ui::text::text::{Text, TextBuffer};
 
 use super::update::has_resized;
 
@@ -14,6 +15,7 @@ pub struct TempNode<'a> {
     pub children: Vec<TempNode<'a>>,
 
     pub text: Option<&'a mut Text>,
+    pub text_rae: Option<RenderAssetEntry<TextBuffer>>,
 }
 
 impl Debug for TempNode<'_> {
@@ -53,7 +55,9 @@ pub fn nodes_to_temp_graph<'a>(ctx: &mut SystemsContext, q: &mut Query<'a, ()>) 
             computed,
             transform,
             children: Vec::new(),
+
             text: None,
+            text_rae: None,
         };
         root_nodes.push(root)
     }
@@ -76,7 +80,9 @@ pub fn nodes_to_temp_graph<'a>(ctx: &mut SystemsContext, q: &mut Query<'a, ()>) 
             computed,
             transform,
             children: Vec::new(),
+
             text: None,
+            text_rae: None,
         };
         root_nodes.push(root)
     }
@@ -86,7 +92,7 @@ pub fn nodes_to_temp_graph<'a>(ctx: &mut SystemsContext, q: &mut Query<'a, ()>) 
         // children
         if let Some(children) = q.cast::<&Children, ()>().get(root.id) {
             for child in &children.ids {
-                root.children.push(build_temp_node_for(*child, q))
+                root.children.push(build_temp_node_for(ctx, *child, q))
             }
         };
 
@@ -101,7 +107,7 @@ pub fn nodes_to_temp_graph<'a>(ctx: &mut SystemsContext, q: &mut Query<'a, ()>) 
 }
 
 /// Returns a TempNode<'a> for a given EntityId, fully populated with children recursively
-fn build_temp_node_for<'a>(id: EntityId, query: &mut Query<'a, ()>) -> TempNode<'a> {
+fn build_temp_node_for<'a>(ctx: &mut SystemsContext, id: EntityId, query: &mut Query<'a, ()>) -> TempNode<'a> {
     // root
     let mut node_query = query.cast::<(&Node, &mut ComputedNode, &mut Transform), ()>();
     let (node, computed, transform) = node_query.get(id).expect("Node not found");
@@ -111,12 +117,17 @@ fn build_temp_node_for<'a>(id: EntityId, query: &mut Query<'a, ()>) -> TempNode<
     let mut built_children = Vec::new();
     if let Some(children) = children_query.get(id) {
         for child in &children.ids {
-            built_children.push(build_temp_node_for(*child, query))
+            built_children.push(build_temp_node_for(ctx, *child, query))
         }
     }
 
     // text
+    let mut text_buffers = ctx.resources.get_mut::<RenderAssets<TextBuffer>>().expect("TextBuffer render assets not found");
     let text = query.cast::<&mut Text, ()>().get(id);
+    // HINT: currently this will be replaced in compute_z_index every time, we will keep it anyways
+    let text_rae = text.as_ref().map(|text| {
+        text_buffers.get_by_entity(&id, &**text, ctx)
+    });
 
     // TODO: add other node types as options, like Image, Button, etc.
 
@@ -126,6 +137,8 @@ fn build_temp_node_for<'a>(id: EntityId, query: &mut Query<'a, ()>) -> TempNode<
         computed,
         transform,
         children: built_children,
+
         text,
+        text_rae,
     }
 }
