@@ -152,7 +152,8 @@ impl PipelineBuilder {
         let color_targets = vec![self.color_format.map(|format| 
             wgpu::ColorTargetState {
                 format: format,
-                blend: Some(wgpu::BlendState::REPLACE),
+                // TODO: make this field configurable
+                blend: Some(wgpu::BlendState::ALPHA_BLENDING),
                 write_mask: wgpu::ColorWrites::ALL,
             }
         )];
@@ -193,7 +194,7 @@ impl PipelineBuilder {
                 format,
                 depth_write_enabled: true,
                 depth_compare: wgpu::CompareFunction::Less,
-                stencil: wgpu::StencilState::default(),  
+                stencil: wgpu::StencilState::default(),
                 bias: wgpu::DepthBiasState::default(),
             }),
             multisample: wgpu::MultisampleState::default(),
