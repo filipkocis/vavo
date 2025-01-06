@@ -12,6 +12,8 @@ pub use super::{
 
 pub use super::math::camera;
 
+pub use super::ui::prelude::*;
+
 pub mod color {
     pub use super::super::renderer::palette::*; 
 }

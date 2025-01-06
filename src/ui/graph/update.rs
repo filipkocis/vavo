@@ -2,11 +2,9 @@ use glam::Vec2;
 use glyphon::{FontSystem, Resolution, SwashCache, TextArea, TextAtlas, TextBounds, TextRenderer, Viewport};
 use winit::event::WindowEvent;
 
-use crate::{palette, prelude::*};
+use crate::prelude::*;
 use crate::render_assets::RenderAssets;
-use crate::ui::mesh::UiMesh;
-use crate::ui::node::{ComputedNode, Display, Node};
-use crate::ui::text::{Text, TextBuffer};
+use crate::ui::text::TextBuffer;
 
 use super::UiTransformStorage;
 
@@ -114,7 +112,7 @@ pub fn update_ui_mesh_and_transforms(ctx: &mut SystemsContext, mut query: Query<
         let translation = global_transform.matrix.to_scale_rotation_translation().2;
 
         // add node to mesh
-        if node.background_color != palette::TRANSPARENT && node.display != Display::None {
+        if node.background_color != color::TRANSPARENT && node.display != Display::None {
             let horizontal = computed.border.horizontal();
             let vertical = computed.border.vertical();
 
