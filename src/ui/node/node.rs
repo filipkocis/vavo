@@ -203,5 +203,9 @@ pub struct Node {
     pub border: Rect,
 
     pub width: Val,
+    pub min_width: Val,
+    pub max_width: Val,
     pub height: Val,
+    pub min_height: Val,
+    pub max_height: Val,
 }

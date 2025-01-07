@@ -84,8 +84,19 @@ pub struct ComputedNode {
     pub border: ComputedRect,
 
     pub width: ComputedBox,
+    pub min_width: f32,
+    pub max_width: f32,
     pub height: ComputedBox,
+    pub min_height: f32,
+    pub max_height: f32,
 
+    /// True if width is auto and parent is a column flexbox with stretch alignment
     pub stretch_width: bool,
+    /// True if height is auto and parent is a row flexbox with stretch alignment
     pub stretch_height: bool,
+
+    // /// Scale used by children to fit in a row flexbox container
+    // pub width_scale: f32,
+    // /// Scale used by children to fit in a column flexbox container
+    // pub height_scale: f32,
 }

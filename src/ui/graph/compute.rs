@@ -282,16 +282,61 @@ impl TempNode<'_> {
         }
     }
 
+    /// Computes the min and max sizes.
+    fn compute_min_max_size(
+        &self, 
+        ctx: &SystemsContext, 
+        parent: Option<*const TempNode>, 
+        parent_content: f32, 
+        is_width: bool
+    ) -> (f32, f32) {
+        let map_max = |val: Val| if val == Val::Auto {
+            // use parent content size as max, or self computed size if parent is auto
+            if let Some(parent) = parent {
+                if unsafe { &*parent }.node.width == Val::Auto {
+                    f32::INFINITY
+                } else {
+                    parent_content
+                }
+            } else {
+                parent_content
+            }
+        } else {
+            val.compute_val(parent_content, ctx)
+        };
+
+        let map_min = |val: Val| if val == Val::Auto {
+            0.0
+        } else {
+            val.compute_val(parent_content, ctx)
+        };
+
+        let (min, max) = if is_width {
+            (
+                map_min(self.node.min_width),
+                map_max(self.node.max_width),
+            )
+        } else {
+            (
+                map_min(self.node.min_height),
+                map_max(self.node.max_height),
+            )
+        };
+
+        (min, max)
+    }
+
     /// Computes the sizes for `ComputedBox` based on `box-sizing`
     fn compute_box_sizing(&self, computed_size: f32, is_width: bool) -> (f32, f32, f32) {
         // TODO: check how percentage sizes should work, perhaps they should always use `border-box`
 
-        let (size, padding_border, margin, stretch) = if is_width {
+        let (size, padding_border, margin, stretch, min, max) = if is_width {
             (
                 self.node.width,
                 self.computed.padding.horizontal() + self.computed.border.horizontal(),
                 self.computed.margin.horizontal(),
                 self.computed.stretch_width,
+                self.computed.min_width, self.computed.max_width,
             )
         } else {
             (
@@ -299,19 +344,42 @@ impl TempNode<'_> {
                 self.computed.padding.vertical() + self.computed.border.vertical(),
                 self.computed.margin.vertical(),
                 self.computed.stretch_height,
+                self.computed.min_height, self.computed.max_height,
             )
         };
 
         let mut content;
         let mut border;
         let total;
-
+        
         if (self.node.box_sizing == BoxSizing::ContentBox || // box-sizing: content-box 
             size == Val::Auto) && // size: auto -> box-sizing has no effect
             !stretch { // border-box if stretched
+        // if self.node.box_sizing == BoxSizing::ContentBox && // box-sizing: content-box 
+        //     // size == Val::Auto) && // size: auto -> box-sizing has no effect
+        //     !stretch { // border-box if stretched
             content = computed_size;
             border = content + padding_border;
             total = border + margin;
+        // TODO: fix overflow for auto elements, maybe it needs to be done here ? 
+        // } else if size == Val::Auto {
+        //     if computed_size + padding_border <= max {
+        //         content = computed_size;
+        //         border = content + padding_border;
+        //         total = border + margin;
+        //     } else {
+        //         border = computed_size;
+        //         content = border - padding_border;
+        //
+        //         if content < 0.0 {
+        //             // if padding + border is greater than content width
+        //             let overflow = content.abs();
+        //             border += overflow;
+        //             content = 0.0;
+        //         }
+        //
+        //         total = border + margin;
+        //     }
         } else { // box-sizing: border-box
             border = computed_size;
             content = border - padding_border;
@@ -341,7 +409,12 @@ impl TempNode<'_> {
             None => screen_size.height as f32,
         };
 
-        let computed_height = match self.node.height {
+        // min max
+        let (min, max) = self.compute_min_max_size(ctx, parent, parent_height, false);
+        self.computed.min_height = min;
+        self.computed.max_height = max;
+
+        let mut computed_height = match self.node.height {
             Val::Percent(percent) => parent_height * percent / 100.0,
             Val::Vw(vw) => screen_size.width as f32 * vw / 100.0,
             Val::Vh(vh) => screen_size.height as f32 * vh / 100.0,
@@ -358,11 +431,16 @@ impl TempNode<'_> {
             if p.node.display == 
                 Display::Flex && p.node.flex_direction.is_row() && 
                 self.node.height == Val::Auto && p.node.align_items == AlignItems::Stretch {
+                    if p.node.height != Val::Auto {
+                        computed_height = parent_height;
+                    }
                     self.computed.stretch_height = true;
             } else {
                 self.computed.stretch_height = false;
             }
         }
+
+        let computed_height = computed_height.min(max).max(min);
 
         // compute box sizing
         let (content, border, total) = self.compute_box_sizing(computed_height, false);
@@ -458,7 +536,12 @@ impl TempNode<'_> {
         self.computed.column_gap = column_gap;
         self.computed.row_gap = row_gap;
 
-        let computed_width = match self.node.width {
+        // min max
+        let (min, max) = self.compute_min_max_size(ctx, parent, parent_width, true);
+        self.computed.min_width = min;
+        self.computed.max_width = max;
+
+        let mut computed_width = match self.node.width {
             Val::Percent(percent) => parent_width * percent / 100.0,
             Val::Vw(vw) => screen_size.width as f32 * vw / 100.0,
             Val::Vh(vh) => screen_size.height as f32 * vh / 100.0,
@@ -475,11 +558,16 @@ impl TempNode<'_> {
             if p.node.display == 
                 Display::Flex && p.node.flex_direction.is_column() && 
                 self.node.width == Val::Auto && p.node.align_items == AlignItems::Stretch {
+                    if p.node.width != Val::Auto {
+                        computed_width = parent_width;
+                    }
                     self.computed.stretch_width = true;
             } else {
                 self.computed.stretch_width = false;
             }
         }
+
+        let computed_width = computed_width.min(max).max(min);
 
         // margin
         let margin = self.node.margin.compute_rect(parent_width, ctx);
@@ -562,7 +650,7 @@ impl TempNode<'_> {
                 let max_width = parent.map(|p| { 
                         let p = unsafe { &*p };
                         if p.node.width == Val::Auto {
-                            max_screen
+                            p.computed.max_width
                         } else {
                             p.computed.width.content
                         }
