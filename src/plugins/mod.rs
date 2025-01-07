@@ -1,6 +1,4 @@
-use winit::{event::MouseButton, keyboard::KeyCode};
-
-use crate::{app::{App, Plugin}, core::standard::{movement::movement_system, prepare::graph_prerender_preparation_system, startup::{add_render_resources, register_standard_graph}, update::{update_camera_buffers, update_global_transforms}}, input::Input, prelude::{FixedTime, Time}, system::{System, SystemStage}, ui::graph::UiPlugin};
+use crate::{app::{App, Plugin}, core::standard::{movement::movement_system, prepare::graph_prerender_preparation_system, startup::{add_render_resources, register_standard_graph}, update::{update_camera_buffers, update_global_transforms}}, input::InputPlugin, prelude::{FixedTime, Time}, system::{System, SystemStage}, ui::graph::UiPlugin};
 
 /// Default plugins which are necessary for the app to run, includes:
 /// - `RenderPlugin` 
@@ -54,19 +52,5 @@ impl Plugin for TimePlugin {
 
         let time = app.world.resources.get::<Time>().unwrap();
         app.world.entities.initialize_tick(time.tick_raw());
-    }
-}
-
-/// Adds `Input<KeyCode>` and `Input<MouseButton>` resources to enable keyboard and mouse input
-/// handling.
-///
-/// # Note
-/// These can also be handled through events, by using `KeyboardInput` and `MouseInput` event types.
-pub struct InputPlugin;
-
-impl Plugin for InputPlugin {
-    fn build(&self, app: &mut App) {
-        app.world.resources.insert(Input::<KeyCode>::new());
-        app.world.resources.insert(Input::<MouseButton>::new());
     }
 }

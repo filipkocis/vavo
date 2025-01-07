@@ -9,6 +9,10 @@ pub use winit::{
     },
 };
 
+use crate::{query::Query, system::{System, SystemStage, SystemsContext}};
+
+use super::{App, Plugin};
+
 pub struct Input<T> 
 where T: Eq + Hash + Copy
 {
@@ -53,5 +57,31 @@ where T: Eq + Hash + Copy
 
     pub fn just_pressed(&self, key: T) -> bool {
         self.just_pressed.contains(&key)
+    }
+}
+
+/// UI input clearing system for just pressed inputs.
+fn clear_just_pressed_inputs(ctx: &mut SystemsContext, _: Query<()>) {
+    let resources = &mut ctx.resources;
+    resources.get_mut::<Input<KeyCode>>().unwrap().clear_just_pressed();
+    resources.get_mut::<Input<MouseButton>>().unwrap().clear_just_pressed();
+}
+
+/// Adds `Input<KeyCode>` and `Input<MouseButton>` resources to enable keyboard and mouse input
+/// handling.
+///
+/// # Note
+/// These can also be handled through events, by using `KeyboardInput` and `MouseInput` event types.
+pub struct InputPlugin;
+
+impl Plugin for InputPlugin {
+    fn build(&self, app: &mut App) {
+        app.world.resources.insert(Input::<KeyCode>::new());
+        app.world.resources.insert(Input::<MouseButton>::new());
+
+        app.register_system(
+            System::new("clear_just_pressed_inputs", clear_just_pressed_inputs), 
+            SystemStage::Last
+        );
     }
 }
