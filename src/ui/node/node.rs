@@ -165,7 +165,7 @@ pub enum AlignItems {
     Center,
     #[default]
     Stretch,
-    Baseline,
+    // Baseline,
 }
 
 #[derive(Default, Debug, Copy, Clone, PartialEq)]
