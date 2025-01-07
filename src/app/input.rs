@@ -31,8 +31,11 @@ where T: Eq + Hash + Copy
     }
 
     pub(crate) fn press(&mut self, key: T) {
+        if !self.storage.contains(&key) {
+            self.just_pressed.insert(key);
+        }
+
         self.storage.insert(key);
-        self.just_pressed.insert(key);
     }
 
     pub(crate) fn release(&mut self, key: T) {
