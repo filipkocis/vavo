@@ -158,7 +158,7 @@ pub enum JustifyContent {
     SpaceEvenly,
 }
 
-#[derive(Default, Debug, Clone, Copy)]
+#[derive(Default, Debug, Clone, Copy, PartialEq)]
 pub enum AlignItems {
     FlexStart,
     FlexEnd,

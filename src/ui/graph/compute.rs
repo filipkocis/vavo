@@ -284,17 +284,21 @@ impl TempNode<'_> {
 
     /// Computes the sizes for `ComputedBox` based on `box-sizing`
     fn compute_box_sizing(&self, computed_size: f32, is_width: bool) -> (f32, f32, f32) {
-        let (size, padding_border, margin) = if is_width {
+        // TODO: check how percentage sizes should work, perhaps they should always use `border-box`
+
+        let (size, padding_border, margin, stretch) = if is_width {
             (
                 self.node.width,
                 self.computed.padding.horizontal() + self.computed.border.horizontal(),
                 self.computed.margin.horizontal(),
+                self.computed.stretch_width,
             )
         } else {
             (
                 self.node.height,
                 self.computed.padding.vertical() + self.computed.border.vertical(),
                 self.computed.margin.vertical(),
+                self.computed.stretch_height,
             )
         };
 
@@ -302,8 +306,9 @@ impl TempNode<'_> {
         let mut border;
         let total;
 
-        if self.node.box_sizing == BoxSizing::ContentBox || // box-sizing: content-box 
-            size == Val::Auto { // size: auto -> box-sizing has no effect
+        if (self.node.box_sizing == BoxSizing::ContentBox || // box-sizing: content-box 
+            size == Val::Auto) && // size: auto -> box-sizing has no effect
+            !stretch { // border-box if stretched
             content = computed_size;
             border = content + padding_border;
             total = border + margin;
@@ -342,8 +347,22 @@ impl TempNode<'_> {
             Val::Vh(vh) => screen_size.height as f32 * vh / 100.0,
             Val::Px(px) => px,
             Val::Rem(rem) => rem * 16.0,
-            Val::Auto => self.compute_auto_height(parent, ctx),
+            Val::Auto => match self.computed.stretch_height {
+                true => parent_height,
+                false => self.compute_auto_height(parent, ctx),
+            }
         };
+
+        if let Some(parent) = parent {
+            let p = unsafe { &*parent };
+            if p.node.display == 
+                Display::Flex && p.node.flex_direction.is_row() && 
+                self.node.height == Val::Auto && p.node.align_items == AlignItems::Stretch {
+                    self.computed.stretch_height = true;
+            } else {
+                self.computed.stretch_height = false;
+            }
+        }
 
         // compute box sizing
         let (content, border, total) = self.compute_box_sizing(computed_height, false);
@@ -445,8 +464,22 @@ impl TempNode<'_> {
             Val::Vh(vh) => screen_size.height as f32 * vh / 100.0,
             Val::Px(px) => px,
             Val::Rem(rem) => rem * 16.0,
-            Val::Auto => self.compute_auto_width(parent, ctx),
+            Val::Auto => match self.computed.stretch_width {
+                true => parent_width,
+                false => self.compute_auto_width(parent, ctx),
+            }
         };
+
+        if let Some(parent) = parent {
+            let p = unsafe { &*parent };
+            if p.node.display == 
+                Display::Flex && p.node.flex_direction.is_column() && 
+                self.node.width == Val::Auto && p.node.align_items == AlignItems::Stretch {
+                    self.computed.stretch_width = true;
+            } else {
+                self.computed.stretch_width = false;
+            }
+        }
 
         // margin
         let margin = self.node.margin.compute_rect(parent_width, ctx);
@@ -471,8 +504,6 @@ impl TempNode<'_> {
             text_rae.set_size(&mut font_system, Some(content), None);
         }
 
-        println!("id {:?} width {}", self.id, content);
-        
         ComputedBox {
             content,
             border,

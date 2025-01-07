@@ -85,4 +85,7 @@ pub struct ComputedNode {
 
     pub width: ComputedBox,
     pub height: ComputedBox,
+
+    pub stretch_width: bool,
+    pub stretch_height: bool,
 }
