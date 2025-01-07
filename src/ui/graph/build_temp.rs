@@ -111,6 +111,8 @@ fn build_temp_node_for<'a>(ctx: &mut SystemsContext, id: EntityId, query: &mut Q
     // root
     let mut node_query = query.cast::<(&Node, &mut ComputedNode, &mut Transform), ()>();
     let (node, computed, transform) = node_query.get(id).expect("Node not found");
+    // reset old computed
+    *computed = ComputedNode::default();
 
     // children
     let mut children_query = query.cast::<&Children, ()>();
