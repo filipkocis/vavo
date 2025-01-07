@@ -133,20 +133,14 @@ impl TempNode<'_> {
         let gaps_num = (self.children.len() as isize - 1).max(0) as f32;
 
         // TODO: refactor into one function to not duplicate code
-        // TODO: use different offsets if offset will be smaller then required gap for SpaceAround,
-        // SpaceEvenly, SpaceBetween
         match self.node.flex_direction {
             FlexDirection::Row | FlexDirection::RowReverse => {
-                let initial = match self.node.justify_content {
-                    JustifyContent::FlexEnd | JustifyContent::Center => gaps_num * self.computed.column_gap,
-                    _ => 0.0,
-                };
-                let content_width = self.children.iter().fold(initial, |acc, child| 
+                let content_width = self.children.iter().fold(gaps_num * self.computed.column_gap, |acc, child| 
                     acc + child.computed.width.total
                 );
                 let offset = self.computed.width.content - content_width;
 
-                let offsets: Vec<_> = match self.node.justify_content {
+                match self.node.justify_content {
                     JustifyContent::FlexStart => return offsets_from(Vec3::ZERO),
                     JustifyContent::FlexEnd => return offsets_from(Vec3::new(offset, 0.0, 0.0)),
                     JustifyContent::Center => return offsets_from(Vec3::new(offset / 2.0, 0.0, 0.0)), 
@@ -174,29 +168,15 @@ impl TempNode<'_> {
                             Vec3::new(gap, 0.0, 0.0)
                         }).collect()
                     }
-                };
-
-                offsets.into_iter().enumerate().map(|(i, mut offset)| {
-                    if i == 0 { 
-                        offset 
-                    } else {
-                        // offset back the gap which is added in compute_translation
-                        offset.x -= self.computed.column_gap * i as f32;
-                        offset
-                    }
-                }).collect()
+                }
             },
             FlexDirection::Column | FlexDirection::ColumnReverse => {
-                let initial = match self.node.justify_content {
-                    JustifyContent::FlexEnd | JustifyContent::Center => gaps_num * self.computed.row_gap,
-                    _ => 0.0,
-                };
-                let content_height = self.children.iter().fold(initial, |acc, child| 
+                let content_height = self.children.iter().fold(gaps_num * self.computed.row_gap, |acc, child| 
                     acc + child.computed.height.total
                 );
                 let offset = self.computed.height.content - content_height;
 
-                let offsets: Vec<_> = match self.node.justify_content {
+                match self.node.justify_content {
                     JustifyContent::FlexStart => return offsets_from(Vec3::ZERO),
                     JustifyContent::FlexEnd => return offsets_from(Vec3::new(0.0, offset, 0.0)),
                     JustifyContent::Center => return offsets_from(Vec3::new(0.0, offset / 2.0, 0.0)), 
@@ -218,23 +198,13 @@ impl TempNode<'_> {
                     }
                     JustifyContent::SpaceEvenly => {
                         let offset = offset.max(0.0);
-                        let even_gap = offset / (gaps_num + 2.0);  
+                        let even_gap = offset / (gaps_num + 2.0);
                         self.children.iter().enumerate().map(|(i, _)| {
                             let gap = even_gap * (i + 1) as f32;
                             Vec3::new(0.0, gap, 0.0)
                         }).collect()
                     }
-                };
-
-                offsets.into_iter().enumerate().map(|(i, mut offset)| {
-                    if i == 0 { 
-                        offset 
-                    } else {
-                        // offset back the gap which is added in compute_translation
-                        offset.y -= self.computed.row_gap * i as f32;
-                        offset
-                    }
-                }).collect()
+                }
             },
         }
     }
