@@ -80,11 +80,13 @@ impl TempNode<'_> {
 
         match self.node.display {
             Display::Flex => {
-                let justify_content_offsets = self.justify_content_offset();
+                let justify_content_offsets = self.justify_content_offsets();
+                let align_items_offsets = self.align_items_offsets();
 
                 for (i, child) in self.children.iter_mut().enumerate() {
                     let justify_content_offset = justify_content_offsets[i];
-                    child.compute_translation(child_offset + justify_content_offset, ctx);
+                    let align_items_offset = align_items_offsets[i];
+                    child.compute_translation(child_offset + justify_content_offset + align_items_offset, ctx);
 
                     match self.node.flex_direction {
                         FlexDirection::Row | FlexDirection::RowReverse => {
@@ -117,11 +119,48 @@ impl TempNode<'_> {
         self.transform.translation = translation;
     }
 
+    /// Returns the offsets for `align-items` for each child node.
+    /// `result.len() == self.children.len()`
+    ///
+    /// Only the main cross-axis field is used in a flex container, otherwise fields are 0.0.
+    pub fn align_items_offsets(&self) -> Vec<Vec3> {
+        if self.node.display != Display::Flex {
+            return (0..self.children.len()).map(|_| Vec3::ZERO).collect::<Vec<_>>()
+        }
+
+        match self.node.flex_direction {
+            FlexDirection::Row | FlexDirection::RowReverse => {
+                self.children.iter().map(|child| {
+                    let diff = self.computed.height.content - child.computed.height.total;
+                    let offset = match self.node.align_items {
+                        AlignItems::FlexStart => 0.0,
+                        AlignItems::FlexEnd => diff,
+                        AlignItems::Center => diff / 2.0,
+                        AlignItems::Stretch => 0.0, // TODO: children are stretched during computation
+                    };
+                    Vec3::new(0.0, offset, 0.0)
+                }).collect()
+            },
+            FlexDirection::Column | FlexDirection::ColumnReverse => {
+                self.children.iter().map(|child| {
+                    let diff = self.computed.width.content - child.computed.width.total;
+                    let offset = match self.node.align_items {
+                        AlignItems::FlexStart => 0.0,
+                        AlignItems::FlexEnd => diff,
+                        AlignItems::Center => diff / 2.0,
+                        AlignItems::Stretch => 0.0, // TODO: children are stretched during computation
+                    };
+                    Vec3::new(offset, 0.0, 0.0)
+                }).collect()
+            }
+        }
+    }
+
     /// Returns the offsets for `justify-content` for each child node.
     /// `result.len() == self.children.len()`
     ///
     /// Only the main axis field is used in a flex container, otherwise fields are 0.0.
-    pub fn justify_content_offset(&self) -> Vec<Vec3> {
+    pub fn justify_content_offsets(&self) -> Vec<Vec3> {
         let offsets_from = |v: Vec3| {
             (0..self.children.len()).map(|_| v).collect::<Vec<_>>()
         };
