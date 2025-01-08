@@ -17,7 +17,6 @@ pub struct App {
 
     pub world: World,
     events: Events,
-    // plugins: Plugins,
 }
 
 impl App {
