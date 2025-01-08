@@ -6,6 +6,7 @@ pub struct System {
     name: String,
     func_ptr: *const (),
     exec: Box<dyn Fn(&mut SystemsContext, &mut Entities)>,
+    conditions: Vec<Box<dyn Fn(&mut SystemsContext, &mut Entities) -> bool>>,
 }
 
 impl System {
@@ -17,11 +18,23 @@ impl System {
                 let query = Query::new(entities);
                 func(ctx, query);
             }),
+            conditions: Vec::new(),
         }
     }
 
     pub(crate) fn run(&mut self, ctx: &mut SystemsContext, entities: &mut Entities) {
-        (self.exec)(ctx, entities);
+        if self.conditions.iter().all(|condition| condition(ctx, entities)) {
+            (self.exec)(ctx, entities);
+        }
+    }
+
+    /// Add new run condition to the system
+    pub fn run_if<T: 'static, F: 'static>(mut self, condition: fn(&mut SystemsContext, Query<T, F>) -> bool) -> Self {
+        self.conditions.push(Box::new(move |ctx, entities| -> bool {
+            let query = Query::new(entities);
+            condition(ctx, query)
+        }));
+        self
     }
 }
 
