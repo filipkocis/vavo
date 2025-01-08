@@ -1,6 +1,6 @@
 use std::{any::{Any, TypeId}, collections::HashMap, ops::{Deref, DerefMut}};
 
-use crate::{assets::{AssetLoader, Assets, ShaderLoader}, input::*, render_assets::{BindGroup, Buffer, Pipeline, RenderAssets}, renderer::{Image, Material, Mesh, Texture}};
+use crate::{assets::{AssetLoader, Assets, ShaderLoader}, render_assets::{BindGroup, Buffer, Pipeline, RenderAssets}, renderer::{Image, Material, Mesh, Texture}};
 
 use super::{FixedTime, Time};
 
