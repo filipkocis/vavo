@@ -3,6 +3,7 @@ use super::System;
 pub enum SystemStage {
     PreStartup,
     Startup,
+    First,
     PreUpdate,
     FixedUpdate,
     Update,
@@ -26,6 +27,7 @@ impl SystemStage {
 pub(crate) struct SystemHandler {
     pre_startup: Vec<System>, 
     startup: Vec<System>, 
+    first: Vec<System>, 
     pre_update: Vec<System>, 
     fixed_update: Vec<System>, 
     update: Vec<System>, 
@@ -41,6 +43,7 @@ impl SystemHandler {
         SystemHandler {
             pre_startup: Vec::new(),
             startup: Vec::new(),
+            first: Vec::new(),
             pre_update: Vec::new(),
             fixed_update: Vec::new(),
             update: Vec::new(),
@@ -57,6 +60,7 @@ impl SystemHandler {
         match stage {
             SystemStage::PreStartup => self.pre_startup.push(system),
             SystemStage::Startup => self.startup.push(system),
+            SystemStage::First => self.first.push(system),
             SystemStage::PreUpdate => self.pre_update.push(system),
             SystemStage::FixedUpdate => self.fixed_update.push(system),
             SystemStage::Update => self.update.push(system),
@@ -73,6 +77,7 @@ impl SystemHandler {
         match stage {
             SystemStage::PreStartup => &mut self.pre_startup,
             SystemStage::Startup => &mut self.startup,
+            SystemStage::First => &mut self.first,
             SystemStage::PreUpdate => &mut self.pre_update,
             SystemStage::FixedUpdate => &mut self.fixed_update,
             SystemStage::Update => &mut self.update,
