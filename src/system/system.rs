@@ -5,7 +5,7 @@ use super::SystemsContext;
 pub struct System {
     name: String,
     func_ptr: *const (),
-    exec: Box<dyn FnMut(&mut SystemsContext, &mut Entities)>,
+    exec: Box<dyn Fn(&mut SystemsContext, &mut Entities)>,
 }
 
 impl System {
