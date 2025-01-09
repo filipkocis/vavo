@@ -12,6 +12,7 @@ pub enum SystemStage {
     PreRender,
     Render,
     PostRender,
+    FrameEnd,
 }
 
 impl SystemStage {
@@ -32,10 +33,11 @@ pub(crate) struct SystemHandler {
     fixed_update: Vec<System>, 
     update: Vec<System>, 
     post_update: Vec<System>, 
+    last: Vec<System>, 
     pre_render: Vec<System>, 
     render: Vec<System>, 
     post_render: Vec<System>, 
-    last: Vec<System>, 
+    frame_end: Vec<System>, 
 }
 
 impl SystemHandler {
@@ -48,10 +50,11 @@ impl SystemHandler {
             fixed_update: Vec::new(),
             update: Vec::new(),
             post_update: Vec::new(),
+            last: Vec::new(),
             pre_render: Vec::new(),
             render: Vec::new(),
             post_render: Vec::new(),
-            last: Vec::new(),
+            frame_end: Vec::new(),
         }
     }
 
@@ -69,6 +72,7 @@ impl SystemHandler {
             SystemStage::PreRender => self.pre_render.push(system),
             SystemStage::Render => self.render.push(system),
             SystemStage::PostRender => self.post_render.push(system),
+            SystemStage::FrameEnd => self.post_render.push(system),
         }
     }
 
@@ -86,6 +90,7 @@ impl SystemHandler {
             SystemStage::PreRender => &mut self.pre_render,
             SystemStage::Render => &mut self.render,
             SystemStage::PostRender => &mut self.post_render,
+            SystemStage::FrameEnd => &mut self.frame_end,
         }
     }
 }

@@ -141,6 +141,7 @@ impl App {
         self.run_systems(SystemStage::Render, context.as_renderer());
         self.execute_render_graph(context.as_renderer());
         self.run_systems(SystemStage::PostRender, context.as_renderer());
+        self.run_systems(SystemStage::FrameEnd, context.as_renderer());
 
         self.events.apply();
 
