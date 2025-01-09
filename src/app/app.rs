@@ -110,6 +110,7 @@ impl App {
 
         self.world.resources.update();
 
+        self.run_systems(SystemStage::First, context.as_renderer());
         self.run_systems(SystemStage::PreUpdate, context.as_renderer());
         self.run_systems(SystemStage::FixedUpdate, context.as_renderer());
         self.run_systems(SystemStage::Update, context.as_renderer());
