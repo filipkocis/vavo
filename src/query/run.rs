@@ -4,12 +4,11 @@ use crate::world::EntityId;
 
 use super::{Query, filter::{Filters, QueryFilter}};
 
-// pub trait RunQuery<'a, T, U> {
-pub trait RunQuery<'a> {
+pub trait RunQuery {
     type Output;
 
-    fn iter_mut(&'a mut self) -> Vec<Self::Output>;
-    fn get(&'a mut self, entity_id: EntityId) -> Option<Self::Output>;
+    fn iter_mut(&mut self) -> Vec<Self::Output>;
+    fn get(&mut self, entity_id: EntityId) -> Option<Self::Output>;
 }
 
 trait QueryGetType {
@@ -57,7 +56,7 @@ impl<'a, T: 'static> QueryGetDowncasted<'a> for &mut T {
 macro_rules! impl_run_query {
     ($($types:ident),+; $($filter:ident),*) => {
         #[allow(unused_parens)]
-        impl<'e, 't, 's, $($types),+, $($filter),*> RunQuery<'s> for Query<'e, ($($types),+), ($($filter),*)>
+        impl<'t, $($types),+, $($filter),*> RunQuery for Query<($($types),+), ($($filter),*)>
         where
             $(
                 $types: QueryGetType + QueryGetDowncasted<'t, Output = $types>
@@ -69,7 +68,7 @@ macro_rules! impl_run_query {
             type Output = ($($types),+);
 
             #[allow(unused_parens)]
-            fn iter_mut(&'s mut self) -> Vec<($($types),+)> {
+            fn iter_mut(&mut self) -> Vec<($($types),+)> {
                 #[allow(unused_mut)]
                 let mut filters = Filters::new();
                 $(filters.add::<$filter>();)*
@@ -78,7 +77,7 @@ macro_rules! impl_run_query {
                 let requested_types = vec![$($types::get_type_id()),+];
                 let mut result = Vec::new();
 
-                for archetype in self.entities.archetypes_filtered(&requested_types, &filters) {
+                for archetype in unsafe { &mut *self.entities }.archetypes_filtered(&requested_types, &filters) {
                     // Extract specific component vecs into a $type variable
                     $(
                         #[allow(non_snake_case)]
@@ -112,7 +111,7 @@ macro_rules! impl_run_query {
                 result
             }
 
-            fn get(&'s mut self, entity_id: EntityId) -> Option<($($types),+)> {
+            fn get(&mut self, entity_id: EntityId) -> Option<($($types),+)> {
                 #[allow(unused_mut)]
                 let mut filters = Filters::new();
                 $(filters.add::<$filter>();)*
@@ -120,7 +119,7 @@ macro_rules! impl_run_query {
 
                 let requested_types = vec![$($types::get_type_id()),+];
 
-                for archetype in self.entities.archetypes_filtered(&requested_types, &filters) {
+                for archetype in unsafe { &mut *self.entities }.archetypes_filtered(&requested_types, &filters) {
                     let entity_index = match archetype.get_entity_index(entity_id) {
                         Some(index) => index,
                         None => continue,

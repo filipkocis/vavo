@@ -5,7 +5,7 @@ use crate::{prelude::*, render_assets::*};
 /// Internal system that updates active camera buffers with changed projection and transform.
 pub fn update_camera_buffers<'a>(
     ctx: &mut SystemsContext, 
-    mut query: Query<'a, 
+    mut query: Query< 
         (&'a EntityId, &'a Camera, &'a Projection, &'a Transform), 
         // TODO: add OR<T> since camera needs both proj and trans to be mutated to update
         // (With<Camera3D>, Changed<Projection>, Changed<Transform>)

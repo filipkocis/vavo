@@ -29,7 +29,7 @@ impl Debug for TempNode<'_> {
 
 /// Returns temp nodes with populated children, or empty if zero nodes were updated.
 /// Runs on `Changed<Node>` filter, or `WindowEvent::Resized` event
-pub fn nodes_to_temp_graph<'a>(ctx: &mut SystemsContext, q: &mut Query<'a, ()>) -> Vec<TempNode<'a>> {
+pub fn nodes_to_temp_graph<'a>(ctx: &mut SystemsContext, q: &mut Query<()>) -> Vec<TempNode<'a>> {
     let mut check_updated = q.cast::<
         &EntityId,
         (With<Node>, With<ComputedNode>, With<Transform>, Changed<Node>)
@@ -107,7 +107,7 @@ pub fn nodes_to_temp_graph<'a>(ctx: &mut SystemsContext, q: &mut Query<'a, ()>) 
 }
 
 /// Returns a TempNode<'a> for a given EntityId, fully populated with children recursively
-fn build_temp_node_for<'a>(ctx: &mut SystemsContext, id: EntityId, query: &mut Query<'a, ()>) -> TempNode<'a> {
+fn build_temp_node_for<'a>(ctx: &mut SystemsContext, id: EntityId, query: &mut Query<()>) -> TempNode<'a> {
     // root
     let mut node_query = query.cast::<(&Node, &mut ComputedNode, &mut Transform), ()>();
     let (node, computed, transform) = node_query.get(id).expect("Node not found");

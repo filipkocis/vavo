@@ -31,7 +31,7 @@ impl GroupedInstances {
     /// Should be called before rendering and set as a resource.
     pub fn generate<'a>(
         ctx: &mut SystemsContext,
-        mut query: Query<'a, (&'a Handle<Material>, &'a Handle<Mesh>, &'a GlobalTransform)>,
+        mut query: Query<(&'a Handle<Material>, &'a Handle<Mesh>, &'a GlobalTransform)>,
     ) -> Self {
         // Prepare sorted storage
         let mut transforms = Vec::new();
