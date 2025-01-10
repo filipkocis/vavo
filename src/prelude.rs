@@ -1,7 +1,7 @@
 pub use super::{
     app::{App, Plugin},
     query::{Query, RunQuery, filter::{Changed, With, Without}},
-    system::{System, GraphSystem, SystemsContext, Commands, SystemStage},
+    system::{System, GraphSystem, SystemsContext, Commands, SystemStage, IntoSystem, IntoSystemCondition},
     assets::{Assets, Handle, AssetLoader},
     world::{EntityId, Parent, Children},
     renderer::{Material, Texture, Image, Color, Face, Mesh, Meshable, shapes},
@@ -9,8 +9,6 @@ pub use super::{
     math::{Transform, GlobalTransform, camera::{Camera, Camera3D, Projection}, light::{Light, AmbientLight, DirectionalLight, PointLight, SpotLight}},
     plugins::{DefaultPlugin},
 };
-
-pub use super::math::camera;
 
 pub use super::ui::prelude::*;
 
