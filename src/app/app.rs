@@ -5,6 +5,8 @@ use winit::keyboard::PhysicalKey;
 
 use crate::core::graph::RenderGraph;
 use crate::prelude::FixedTime;
+use crate::state::systems::apply_state_transition;
+use crate::state::{NextState, State, States};
 use crate::system::{Commands, IntoSystem, SystemHandler, SystemStage, SystemsContext};
 use crate::window::{AppHandler, AppState, RenderContext, Renderer};
 use crate::world::World;
@@ -19,6 +21,8 @@ pub struct App {
 
     pub world: World,
     events: Events,
+
+    known_states: Vec<TypeId>,
 }
 
 impl App {
@@ -29,7 +33,34 @@ impl App {
             render_graph: RenderGraph::new(),
             world: World::new(),
             events: Events::new(),
+            known_states: Vec::new(),
         }
+    }
+
+    fn add_state_internal<T: States + 'static>(&mut self, state: State<T>) {
+        let state_type = TypeId::of::<T>();
+        if !self.known_states.contains(&state_type) {
+            self.known_states.push(state_type);
+
+            self.world.resources.insert(state);
+            self.world.resources.insert(NextState::<T>::new());
+
+            self.register_system(apply_state_transition::<T>, SystemStage::FrameEnd);
+        } else {
+            panic!("State 'State<{}>' already registered", type_name::<T>());
+        }
+    }
+
+    /// Add new state with a default value to the app
+    pub fn register_state<T: States + 'static>(&mut self) -> &mut Self {
+        self.add_state_internal(State::<T>::new());
+        self
+    }
+
+    /// Add new state with a specified value to the app
+    pub fn add_state<T: States + 'static>(&mut self, state: T) -> &mut Self {
+        self.add_state_internal(State(state));
+        self
     }
 
     /// Write event T to the event queue
