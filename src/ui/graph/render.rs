@@ -64,17 +64,3 @@ pub fn ui_render_system(
     // render text
     text_renderer.render(&text_atlas, &viewport, render_pass).unwrap();
 }
-
-/// System to initialize new UI nodes, it adds Transform and ComputedNode components
-pub fn initialize_ui_nodes(
-    ctx: &mut SystemsContext,
-    mut query: Query<&EntityId, (With<Node>, Without<Transform>, Without<ComputedNode>)>,
-) {
-    for id in query.iter_mut() {
-        ctx.commands.entity(*id)
-            .insert(Transform::default())
-            .insert(ComputedNode::default());
-
-        println!("Initialized ui node: {:?}", id);
-    }
-}

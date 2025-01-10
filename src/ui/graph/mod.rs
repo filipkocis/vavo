@@ -9,7 +9,7 @@ use compute::compute_nodes_and_transforms;
 use update::{update_glyphon_viewport, update_ui_mesh_and_transforms};
 use glyphon::{FontSystem, SwashCache, Cache, Viewport, TextAtlas, TextRenderer};
 use pipeline::create_ui_pipeline_builder;
-use render::{initialize_ui_nodes, ui_render_system};
+use render::ui_render_system;
 pub use storage::UiTransformStorage;
 
 use crate::prelude::*;
@@ -40,6 +40,20 @@ fn ui_node(ctx: &mut SystemsContext) -> GraphNode {
             store: wgpu::StoreOp::Store,
         }) 
         .build()
+}
+
+/// System to initialize new UI nodes, it adds Transform and ComputedNode components
+pub fn initialize_ui_nodes(
+    ctx: &mut SystemsContext,
+    mut query: Query<&EntityId, (With<Node>, Without<Transform>, Without<ComputedNode>)>,
+) {
+    for id in query.iter_mut() {
+        ctx.commands.entity(*id)
+            .insert(Transform::default())
+            .insert(ComputedNode::default());
+
+        println!("Initialized ui node: {:?}", id);
+    }
 }
 
 /// Inset necessary UI text resources to app
