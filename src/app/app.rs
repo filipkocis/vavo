@@ -1,9 +1,11 @@
+use std::any::{type_name, TypeId};
+
 use winit::dpi::PhysicalSize;
 use winit::keyboard::PhysicalKey;
 
 use crate::core::graph::RenderGraph;
 use crate::prelude::FixedTime;
-use crate::system::{Commands, System, SystemHandler, SystemStage, SystemsContext};
+use crate::system::{Commands, IntoSystem, SystemHandler, SystemStage, SystemsContext};
 use crate::window::{AppHandler, AppState, RenderContext, Renderer};
 use crate::world::World;
 
@@ -36,19 +38,22 @@ impl App {
     }
 
     /// Add a system to the startup stage
-    pub fn add_startup_system(&mut self, system: System) -> &mut Self {
+    pub fn add_startup_system<T, F>(&mut self, system: impl IntoSystem<T, F>) -> &mut Self {
+        let system = system.system();
         self.system_handler.register_system(system, SystemStage::Startup);
         self
     }
 
     /// Add a system to the update stage
-    pub fn add_system(&mut self, system: System) -> &mut Self {
+    pub fn add_system<T, F>(&mut self, system: impl IntoSystem<T, F>) -> &mut Self {
+        let system = system.system();
         self.system_handler.register_system(system, SystemStage::Update);
         self
     }
 
     /// Register a system to a specific stage
-    pub fn register_system(&mut self, system: System, stage: SystemStage) -> &mut Self {
+    pub fn register_system<T, F>(&mut self, system: impl IntoSystem<T, F>, stage: SystemStage) -> &mut Self {
+        let system = system.system();
         self.system_handler.register_system(system, stage);
         self
     }
