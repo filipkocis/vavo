@@ -9,7 +9,7 @@ pub use winit::{
     },
 };
 
-use crate::{query::Query, system::{System, SystemStage, SystemsContext}};
+use crate::{query::Query, system::{SystemStage, SystemsContext}};
 
 use super::{App, Plugin};
 
@@ -82,9 +82,6 @@ impl Plugin for InputPlugin {
         app.world.resources.insert(Input::<KeyCode>::new());
         app.world.resources.insert(Input::<MouseButton>::new());
 
-        app.register_system(
-            System::new("clear_just_pressed_inputs", clear_just_pressed_inputs), 
-            SystemStage::Last
-        );
+        app.register_system(clear_just_pressed_inputs, SystemStage::Last);
     }
 }

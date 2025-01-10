@@ -91,12 +91,12 @@ pub struct UiPlugin;
 impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
         app
-            .add_startup_system(System::new("insert_ui_resources", insert_ui_resources)) 
-            .add_startup_system(System::new("insert_ui_text_resources", insert_ui_text_resources)) 
-            .add_startup_system(System::new("register_ui_graph", register_ui_graph))
-            .register_system(System::new("initialize_ui_nodes", initialize_ui_nodes), SystemStage::PreUpdate)
-            .register_system(System::new("computed_nodes_and_transforms", compute_nodes_and_transforms), SystemStage::PostUpdate)
-            .register_system(System::new("update_glyphon_viewport", update_glyphon_viewport), SystemStage::PreRender)
-            .register_system(System::new("update_ui_mesh_and_transforms", update_ui_mesh_and_transforms), SystemStage::PreRender);
+            .add_startup_system(insert_ui_resources) 
+            .add_startup_system(insert_ui_text_resources) 
+            .add_startup_system(register_ui_graph)
+            .register_system(initialize_ui_nodes, SystemStage::PreUpdate)
+            .register_system(compute_nodes_and_transforms, SystemStage::PostUpdate)
+            .register_system(update_glyphon_viewport, SystemStage::PreRender)
+            .register_system(update_ui_mesh_and_transforms, SystemStage::PreRender);
     }
 }
