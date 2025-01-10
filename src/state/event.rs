@@ -7,7 +7,7 @@ pub struct StateTransitionEvent<S: States> {
 }
 
 impl<S: States> StateTransitionEvent<S> {
-    pub fn new(from: S, to: S) -> Self {
+    pub(super) fn new(from: S, to: S) -> Self {
         Self { from, to }
     }
 
