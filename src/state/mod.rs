@@ -14,8 +14,9 @@ use std::fmt::Debug;
 ///
 /// #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 /// enum GameState {
-///     Playing,
+///     #[default]
 ///     Paused,
+///     Playing,
 /// }
 ///
 /// impl States for GameState {}
