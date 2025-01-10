@@ -15,15 +15,17 @@ pub(crate) struct Archetype {
     ticks: Vec<Vec<u64>>,
     current_tick: *const u64,
 
-    /// Components of the same type are stored together in a row
-    /// ```
-    /// vec![
-    /// // E: 1  2  3
-    ///  vec![A, A, A],
-    ///  vec![B, B, B],
-    ///  vec![C, C, C],
-    /// ]
-    /// ```
+    /// Components of the same type are stored together in a row:
+    ///
+    /// `row 0: A components`
+    /// `row 1: B components`
+    /// `row 2: ...`
+    ///
+    ///
+    /// Indexes in rows correspond to entity_ids indexes, so that index N in each row represents
+    /// the same entity and its components:
+    ///
+    /// `entity_ids: E1, E2, E3`
     pub components: Vec<Vec<Box<dyn Any>>>,
 }
 
