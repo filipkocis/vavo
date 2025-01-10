@@ -11,6 +11,7 @@ mod math;
 pub mod core;
 pub mod plugins;
 pub mod ui;
+mod state;
 
 pub use renderer::{shapes, palette};
 pub use app::{input, events};
