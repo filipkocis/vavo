@@ -1,22 +1,32 @@
+use std::any::TypeId;
+
 use crate::{core::graph::{CustomRenderGraphContext, RenderGraphContext}, query::Query, world::entities::Entities};
 
-use super::SystemsContext;
+use super::{IntoSystemCondition, SystemsContext};
 
 pub struct System {
-    name: String,
-    func_ptr: *const (),
+    type_name: &'static str,
+    type_id: TypeId,
     exec: Box<dyn Fn(&mut SystemsContext, &mut Entities)>,
     conditions: Vec<Box<dyn Fn(&mut SystemsContext, &mut Entities) -> bool>>,
 }
 
 impl System {
-    pub fn new<T: 'static, F: 'static>(name: &str, func: fn(&mut SystemsContext, Query<T, F>)) -> Self {
+    /// Create a new system from function `exec` where `type_name` and `type_id` should be derived from
+    /// the function type.
+    ///
+    /// # Note
+    /// Use trait [`IntoSystem`] instead of this function.
+    pub fn new<E, T, F>(exec: E, type_name: &'static str, type_id: TypeId) -> Self 
+    where 
+        E: Fn(&mut SystemsContext, Query<T, F>) + 'static 
+    {
         Self {
-            name: name.to_string(),
-            func_ptr: func as *const (),
+            type_name,
+            type_id,
             exec: Box::new(move |ctx, entities| {
                 let query = Query::new(entities);
-                func(ctx, query);
+                exec(ctx, query);
             }),
             conditions: Vec::new(),
         }
@@ -29,7 +39,8 @@ impl System {
     }
 
     /// Add new run condition to the system
-    pub fn run_if<T: 'static, F: 'static>(mut self, condition: fn(&mut SystemsContext, Query<T, F>) -> bool) -> Self {
+    pub fn run_if<T: 'static, F: 'static>(mut self, condition: impl IntoSystemCondition<T, F>) -> Self {
+        let condition = condition.system_condition();
         self.conditions.push(Box::new(move |ctx, entities| -> bool {
             let query = Query::new(entities);
             condition(ctx, query)
