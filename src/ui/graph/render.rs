@@ -5,13 +5,12 @@ use crate::core::graph::*;
 
 use crate::render_assets::{BindGroup, Buffer, RenderAssets};
 use crate::ui::mesh::UiMesh;
-use crate::ui::node::{ComputedNode, Node};
 
 use super::UiTransformStorage;
 
 /// Ui graph node rendering system
 pub fn ui_render_system(
-    grpah_ctx: RenderGraphContext,
+    graph_ctx: RenderGraphContext,
     ctx: &mut SystemsContext,
     mut query: Query<()>,
 ) {
@@ -46,7 +45,7 @@ pub fn ui_render_system(
         return;
     }
 
-    let render_pass = grpah_ctx.pass;
+    let render_pass = graph_ctx.pass;
 
     // window size
     render_pass.set_push_constants(wgpu::ShaderStages::VERTEX, 0, bytemuck::cast_slice(&[
