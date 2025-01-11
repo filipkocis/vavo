@@ -132,7 +132,7 @@ pub fn update_ui_mesh_and_transforms(ctx: &mut SystemsContext, mut query: Query<
 
             // add quad with borders to mesh
             for (x, y, w, h, color) in quads {
-                if w > 0.0 && h > 0.0 {
+                if w > 0.0 && h > 0.0 && color.a > 0.0 {
                     ui_mesh.add_rect(x, y, computed.z_index as f32, w, h, color, transform_index);
                 }
             }
