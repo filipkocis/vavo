@@ -8,7 +8,8 @@ pub use super::{
     resources::{Resources, Res, ResMut, Time, FixedTime, Timer, TimerVariant},
     math::{Transform, GlobalTransform, camera::{Camera, Camera3D, Projection}, light::{Light, AmbientLight, DirectionalLight, PointLight, SpotLight}},
     plugins::{DefaultPlugin},
-    state::{State, NextState, States, StateTransitionEvent, conditions::*}
+    state::{State, NextState, States, StateTransitionEvent, conditions::*},
+    events::{KeyboardInput, MouseInput, MouseWheel, MouseMotion, CursorMoved}
 };
 
 pub use super::ui::prelude::*;
