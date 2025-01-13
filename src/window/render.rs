@@ -146,8 +146,8 @@ impl RenderContext<'_> {
         &self.state.config
     }
 
-    pub fn size(&self) -> &PhysicalSize<u32> {
-        &self.state.size
+    pub fn size(&self) -> PhysicalSize<u32> {
+        self.state.size
     }
 
     pub fn window(&self) -> &Arc<Window> {
