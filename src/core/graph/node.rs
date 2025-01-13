@@ -135,8 +135,9 @@ impl GraphNodeBuilder {
         self
     }
 
-    /// Setting a custom system will clear the depth_ops, color and depth targets, and replace the system with
-    /// an empty system
+    /// Setting a custom system will clear the depth_ops and replace the system with
+    /// an empty system. It will keep the color and depth target, if not specified they will be set
+    /// to `NodeTarget::None`.
     pub fn set_custom_system(mut self, custom_system: CustomGraphSystem) -> Self {
         self.custom_system = Some(custom_system);
         self
@@ -175,9 +176,15 @@ impl GraphNodeBuilder {
         if self.custom_system.is_some() {
             let name = format!("CLEARED_{}", self.name);
             self.system = Some(GraphSystem::new(&name, |_, _, _: crate::prelude::Query<()>| {}));
-            self.color_target = Some(NodeColorTarget::None);
-            self.depth_target = Some(NodeDepthTarget::None);
             self.depth_ops = None;
+
+            if self.color_target.is_none() {
+                self.color_target = Some(NodeColorTarget::None);
+            }
+
+            if self.depth_target.is_none() {
+                self.depth_target = Some(NodeDepthTarget::None);
+            }
         }
 
         GraphNode {
