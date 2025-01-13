@@ -4,10 +4,21 @@ use crate::{core::graph::NodeColorTarget, system::SystemsContext, world::entitie
 
 use super::{data::{ColorTargetData, DepthTargetData}, GraphNode, NodeDepthTarget, RenderGraph};
 
-/// Same as `RenderGraphContext`, but without a render_pass, used for custom render systems
+/// Same as `RenderGraphContext`, but without a render_pass, used for custom render systems.
+/// It provides preprocessed color and depth targets.
+///
+/// # Note
+/// When implementing custom render systems, you should be careful with the lifetimes and raw
+/// pointer usage.
 pub struct CustomRenderGraphContext {
+    /// Lifetime is tied to graph
     pub node: *mut GraphNode,
-    pub graph: *mut RenderGraph,
+    /// Graph containing the node
+    pub graph: *const RenderGraph,
+    /// Lifetime is tied to the node
+    pub color_target: Option<*const wgpu::TextureView>,
+    /// Lifetime is tied to the node
+    pub depth_target: Option<*const wgpu::TextureView>
 }
 
 pub struct RenderGraphContext<'a> {
@@ -46,20 +57,22 @@ impl RenderGraph {
             let ctx_copy = unsafe { &mut *(ctx as *mut SystemsContext) };
             // SAFETY: Since encoder is derived from ctx, we just bypass the borrow checker
             let encoder = ctx.renderer.encoder().inner;
+            
+            let node_raw = node as *mut GraphNode;
+            let color_attachment = self.get_color_attachment(node, ctx);
+            let depth_attachment = self.get_depth_attachment(node, ctx_copy);
 
             if node.custom_system.is_some() {
                 let graph_ctx = CustomRenderGraphContext {
-                    node,
+                    node: node_raw,
                     graph: self,
+                    color_target: color_attachment.as_ref().map(|x| x.view as *const _),
+                    depth_target: depth_attachment.as_ref().map(|x| x.view as *const _),
                 };
                 
                 node.custom_system.as_mut().unwrap().run(graph_ctx, ctx, entities);
                 continue;
             }
-
-
-            let color_attachment = self.get_color_attachment(node, ctx);
-            let depth_attachment = self.get_depth_attachment(node, ctx_copy);
 
             let mut render_pass = unsafe { &mut *encoder }.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some(&format!("{} render pass", node.name)),
@@ -73,7 +86,7 @@ impl RenderGraph {
 
             let graph_ctx = RenderGraphContext {
                 pass: &mut render_pass,
-                node,
+                node: node_raw,
                 graph: self,
             };
 
