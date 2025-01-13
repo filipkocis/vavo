@@ -4,43 +4,17 @@ mod storage;
 mod compute;
 mod update;
 mod build_temp;
+mod graph_nodes;
 
 use compute::compute_nodes_and_transforms;
+use graph_nodes::register_ui_graph;
 use update::{update_glyphon_viewport, update_ui_mesh_and_transforms};
 use glyphon::{FontSystem, SwashCache, Cache, Viewport, TextAtlas, TextRenderer};
-use pipeline::create_ui_pipeline_builder;
-use render::ui_render_system;
 pub use storage::UiTransformStorage;
 
 use crate::prelude::*;
-use crate::core::graph::*;
 use crate::render_assets::RenderAssets;
 use super::text::TextBuffer;
-
-/// Create a graph UI node
-fn ui_node(ctx: &mut SystemsContext) -> GraphNode {
-    // Create pipeline builder
-    let ui_pipeline_builder = create_ui_pipeline_builder(ctx);
-
-    // Create graph node
-    GraphNodeBuilder::new("ui")
-        .set_pipeline(ui_pipeline_builder)
-        .set_system(GraphSystem::new("ui_render_system", ui_render_system))
-        .set_color_target(NodeColorTarget::Surface)
-        .set_depth_target(NodeDepthTarget::Node("main".to_string()))
-        // .set_depth_target(NodeDepthTarget::None)
-        .add_dependency("main")
-        .add_dependency("shadow")
-        .set_depth_ops(Some(wgpu::Operations {
-            load: wgpu::LoadOp::Clear(1.0),
-            store: wgpu::StoreOp::Store,
-        }))
-        .set_color_ops(wgpu::Operations {
-            load: wgpu::LoadOp::Load,
-            store: wgpu::StoreOp::Store,
-        }) 
-        .build()
-}
 
 /// System to initialize new UI nodes, it adds Transform and ComputedNode components
 pub fn initialize_ui_nodes(
@@ -87,17 +61,11 @@ fn insert_ui_text_resources(ctx: &mut SystemsContext, _: Query<()>) {
 fn insert_ui_resources(ctx: &mut SystemsContext, _: Query<()>) {
     let node_transform_storage = UiTransformStorage::new(1, 32, ctx, wgpu::ShaderStages::VERTEX);
     let ui_mesh = UiMesh::new();
+    let ui_mesh_transparent = UiMeshTransparent::new();
 
     ctx.resources.insert(node_transform_storage);
     ctx.resources.insert(ui_mesh);
-}
-
-/// Register graph UI node
-fn register_ui_graph(ctx: &mut SystemsContext, _: Query<()>) {
-    let graph = unsafe { &mut *ctx.graph };
-
-    let ui_node = ui_node(ctx);
-    graph.add(ui_node);
+    ctx.resources.insert(ui_mesh_transparent);
 }
 
 pub struct UiPlugin;
