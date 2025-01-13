@@ -1,3 +1,6 @@
+use std::ops::Deref;
+use std::ops::DerefMut;
+
 use wgpu::VertexAttribute;
 use wgpu::VertexFormat;
 
@@ -11,6 +14,16 @@ pub struct UiMesh {
     pub positions: Vec<[f32; 3]>,
     pub indices: Vec<u32>,
     pub transform_indices: Vec<u32>,
+}
+
+/// Specialized UiMesh wrapper for transparent UI nodes
+#[derive(Debug)]
+pub struct UiMeshTransparent(pub UiMesh);
+
+impl UiMeshTransparent {
+    pub fn new() -> Self {
+        Self(UiMesh::new())
+    }
 }
 
 impl UiMesh {
@@ -111,5 +124,29 @@ impl RenderAsset<Buffer> for UiMesh {
         Buffer::new("ui_mesh")
             .create_vertex_buffer(&self.vertex_data(), None, device)
             .create_index_buffer(&self.indices, None, device)
+    }
+}
+
+impl Deref for UiMeshTransparent {
+    type Target = UiMesh;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for UiMeshTransparent {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl RenderAsset<Buffer> for UiMeshTransparent {
+    fn create_render_asset(
+        &self, 
+        ctx: &mut SystemsContext,
+        entity_id: Option<&EntityId>
+    ) -> Buffer {
+        self.0.create_render_asset(ctx, entity_id)
     }
 }

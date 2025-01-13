@@ -14,6 +14,6 @@ pub mod prelude {
     pub use super::{
         node::*,
         text::Text,
-        mesh::UiMesh,
+        mesh::{UiMesh, UiMeshTransparent},
     };
 }
