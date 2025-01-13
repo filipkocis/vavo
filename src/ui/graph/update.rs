@@ -4,6 +4,7 @@ use winit::event::WindowEvent;
 
 use crate::prelude::*;
 use crate::render_assets::RenderAssets;
+use crate::ui::mesh::UiMeshTransparent;
 use crate::ui::text::TextBuffer;
 
 use super::UiTransformStorage;
@@ -45,6 +46,7 @@ pub fn update_ui_mesh_and_transforms(ctx: &mut SystemsContext, mut query: Query<
     // resources
     let mut ui_transform_storage = ctx.resources.get_mut::<UiTransformStorage>().expect("UiTransformStorage resource not found");
     let mut ui_mesh = ctx.resources.get_mut::<UiMesh>().expect("UiMesh resource not found");
+    let mut ui_mesh_transparent = ctx.resources.get_mut::<UiMeshTransparent>().expect("UiMeshTransparent resource not found");
 
     // get the amount of changed nodes
     let mut changed_query = query.cast::<&EntityId, (
@@ -62,6 +64,7 @@ pub fn update_ui_mesh_and_transforms(ctx: &mut SystemsContext, mut query: Query<
         // cleanup if all nodes were removed
         if ui_nodes.len() == 0 && ui_mesh.positions.len() > 0 {
             ui_mesh.clear();
+            ui_mesh_transparent.clear();
         }
         return;
     }
@@ -69,6 +72,7 @@ pub fn update_ui_mesh_and_transforms(ctx: &mut SystemsContext, mut query: Query<
     // clear the mesh and regenerate all nodes
     // TODO: optimize this
     ui_mesh.clear();
+    ui_mesh_transparent.clear();
 
     // text resources
     let mut text_buffers = ctx.resources.get_mut::<RenderAssets<TextBuffer>>().expect("TextBuffer render assets not found");
@@ -133,7 +137,11 @@ pub fn update_ui_mesh_and_transforms(ctx: &mut SystemsContext, mut query: Query<
             // add quad with borders to mesh
             for (x, y, w, h, color) in quads {
                 if w > 0.0 && h > 0.0 && color.a > 0.0 {
-                    ui_mesh.add_rect(x, y, computed.z_index as f32, w, h, color, transform_index);
+                    if color.a == 1.0 {
+                        ui_mesh.add_rect(x, y, computed.z_index as f32, w, h, color, transform_index);
+                    } else {
+                        ui_mesh_transparent.add_rect(x, y, computed.z_index as f32, w, h, color, transform_index);
+                    }
                 }
             }
         }
