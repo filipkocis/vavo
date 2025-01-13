@@ -9,7 +9,8 @@ pub use super::{
     math::{Transform, GlobalTransform, camera::{Camera, Camera3D, Projection}, light::{Light, AmbientLight, DirectionalLight, PointLight, SpotLight}},
     plugins::{DefaultPlugin},
     state::{State, NextState, States, StateTransitionEvent, conditions::*},
-    events::{KeyboardInput, MouseInput, MouseWheel, MouseMotion, CursorMoved}
+    events::{KeyboardInput, MouseInput, MouseWheel, MouseMotion, CursorMoved},
+    input::Input
 };
 
 pub use super::ui::prelude::*;
