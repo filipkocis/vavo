@@ -1,4 +1,4 @@
-use glam::{Mat4, Quat, Vec3};
+use glam::{Mat4, Quat, Vec3, Vec4Swizzles};
 
 use crate::{render_assets::{BindGroup, Buffer, RenderAsset, RenderAssets}, system::SystemsContext, world::EntityId};
 
@@ -25,6 +25,11 @@ pub struct GlobalTransform {
 impl GlobalTransform {
     pub fn new(matrix: Mat4) -> Self {
         Self { matrix }
+    }
+
+    /// Extract the translation component
+    pub fn translation(&self) -> Vec3 {
+        self.matrix.w_axis.xyz()
     }
 
     pub fn from_transform(transform: &Transform) -> Self {
