@@ -203,7 +203,7 @@ impl App {
             input.release(event.code);
         }
 
-        self.create_event(event);
+        self.events.write_immediately(event);
     }
 
     /// Handle mouse input
@@ -219,6 +219,6 @@ impl App {
             input.release(event.button);
         }
 
-        self.create_event(event);
+        self.events.write_immediately(event);
     }
 }
