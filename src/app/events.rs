@@ -56,6 +56,12 @@ impl Events {
         events_t.push(Box::new(resource)); 
     }
 
+    /// Write event T directly to the storage bypassing the staging area
+    pub(super) fn write_immediately<T: 'static>(&mut self, resource: T) {
+        let events_t = self.storage.entry(TypeId::of::<T>()).or_insert(Vec::new());
+        events_t.push(Box::new(resource)); 
+    }
+
     pub(super) fn read<T: 'static>(&self) -> Vec<&T> {
         if let Some(events_t) = self.storage.get(&TypeId::of::<T>()) {
             return events_t.iter().map(|e| 
