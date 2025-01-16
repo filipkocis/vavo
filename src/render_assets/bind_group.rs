@@ -12,9 +12,9 @@ pub struct BindGroup {
     pub(crate) inner: wgpu::BindGroup,
 }
 
-impl<'a> Into<Option<&'a wgpu::BindGroup>> for &'a BindGroup {
-    fn into(self) -> Option<&'a wgpu::BindGroup> {
-        Some(&self.inner)
+impl<'a> From<&'a BindGroup> for Option<&'a wgpu::BindGroup> {
+    fn from(value: &'a BindGroup) -> Self {
+        Some(&value.inner)
     }
 }
 
