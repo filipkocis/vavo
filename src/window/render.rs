@@ -1,5 +1,6 @@
 use std::{ops::{Deref, DerefMut}, sync::Arc};
 
+use glam::Vec2;
 use winit::{dpi::PhysicalSize, window::Window};
 
 use super::AppState;
@@ -152,5 +153,9 @@ impl RenderContext<'_> {
 
     pub fn window(&self) -> &Arc<Window> {
         &self.state.window
+    }
+
+    pub fn cursor_position(&self) -> Option<Vec2> {
+        self.state.cursor_position
     }
 }

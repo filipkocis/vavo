@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use glam::Vec2;
 use pollster::FutureExt;
 use winit::{dpi::PhysicalSize, window::Window};
 
@@ -10,6 +11,7 @@ pub struct AppState {
     pub(super) size: PhysicalSize<u32>,
     pub(super) queue: wgpu::Queue,
     pub(super) window: Arc<Window>,
+    pub(super) cursor_position: Option<Vec2>,
 }
 
 impl AppState {
@@ -33,6 +35,7 @@ impl AppState {
             config,
             size,
             window,
+            cursor_position: None,
         }
     }
 

@@ -94,6 +94,7 @@ impl<'a> ApplicationHandler for AppHandler<'a> {
             WindowEvent::CursorMoved { position, .. } => {
                 let position = Vec2::new(position.x as f32, position.y as f32);
                 self.app.create_event(CursorMoved { position });
+                self.state.as_mut().unwrap().cursor_position = Some(position);
             }
 
             WindowEvent::Resized(physical_size) => self.resize(physical_size),
