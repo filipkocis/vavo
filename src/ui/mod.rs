@@ -1,9 +1,10 @@
 pub mod node;
 pub mod text;
-pub mod button;
+pub mod interactivity;
 pub mod image;
 pub mod mesh;
 pub mod graph;
+pub mod plugin;
 
 pub mod prelude {
     pub use glyphon::{
@@ -15,5 +16,6 @@ pub mod prelude {
         node::*,
         text::Text,
         mesh::{UiMesh, UiMeshTransparent},
+        interactivity::{Button, Interaction},
     };
 }
