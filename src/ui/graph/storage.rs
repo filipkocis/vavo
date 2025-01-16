@@ -1,9 +1,6 @@
 use std::ops::{Deref, DerefMut};
 
-use crate::render_assets::Storage;
-
-use super::SystemsContext;
-
+use crate::{render_assets::Storage, system::SystemsContext};
 
 pub struct UiTransformStorage(Storage);
 

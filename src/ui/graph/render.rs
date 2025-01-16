@@ -7,7 +7,7 @@ use crate::core::graph::*;
 use crate::render_assets::{BindGroup, Buffer, RenderAssets};
 use crate::ui::mesh::{UiMesh, UiMeshTransparent};
 
-use super::UiTransformStorage;
+use super::storage::UiTransformStorage;
 
 /// Ui graph node rendering system
 pub fn ui_render_system(

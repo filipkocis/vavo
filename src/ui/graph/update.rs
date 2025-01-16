@@ -7,7 +7,7 @@ use crate::render_assets::RenderAssets;
 use crate::ui::mesh::UiMeshTransparent;
 use crate::ui::text::TextBuffer;
 
-use super::UiTransformStorage;
+use super::storage::UiTransformStorage;
 
 /// System to update the glyphon text viewport resolution. 
 /// Runs only if the window size has changed.
@@ -113,7 +113,7 @@ pub fn update_ui_mesh_and_transforms(ctx: &mut SystemsContext, mut query: Query<
 
     for (i, (id, global_transform, node, computed)) in ui_nodes.into_iter().enumerate() {
         // extract global translation
-        let translation = global_transform.matrix.to_scale_rotation_translation().2;
+        let translation = global_transform.translation();
 
         // add node to mesh
         if node.background_color != color::TRANSPARENT && node.display != Display::None {
