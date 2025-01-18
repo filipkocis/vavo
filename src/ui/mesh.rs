@@ -14,6 +14,8 @@ pub struct UiMesh {
     pub positions: Vec<[f32; 3]>,
     pub indices: Vec<u32>,
     pub transform_indices: Vec<u32>,
+    /// One EntityId per rectangle, so `positions.len() / 4 == entity_ids.len()`
+    pub entity_ids: Vec<EntityId>,
 }
 
 /// Specialized UiMesh wrapper for transparent UI nodes
@@ -26,6 +28,16 @@ impl UiMeshTransparent {
     }
 }
 
+/// Specialized UiMesh wrapper for UI nodes with [UiImage] component
+#[derive(Debug)]
+pub struct UiMeshImages(pub UiMesh);
+
+impl UiMeshImages {
+    pub fn new() -> Self {
+        Self(UiMesh::new())
+    }
+}
+
 impl UiMesh {
     pub fn new() -> Self {
         Self {
@@ -33,6 +45,7 @@ impl UiMesh {
             positions: Vec::new(),
             indices: Vec::new(),
             transform_indices: Vec::new(),
+            entity_ids: Vec::new(),
         }
     }
 
@@ -41,9 +54,20 @@ impl UiMesh {
         self.positions.clear();
         self.indices.clear();
         self.transform_indices.clear();
+        self.entity_ids.clear();
     }
 
-    pub fn add_rect(&mut self, x: f32, y: f32, z_layer: f32, w: f32, h: f32, color: Color, transform_index: u32) {
+    pub fn add_rect(
+        &mut self, 
+        x: f32, 
+        y: f32, 
+        z_layer: f32, 
+        w: f32, 
+        h: f32, 
+        color: Color, 
+        transform_index: u32, 
+        entity_id: EntityId
+    ) {
         let i = self.positions.len() as u32;
 
         self.positions.extend([
@@ -63,6 +87,8 @@ impl UiMesh {
         ]);
 
         self.colors.extend([color, color, color, color]);
+
+        self.entity_ids.push(entity_id);
     }
 
     pub fn vertex_data(&self) -> Vec<u8> {
@@ -142,6 +168,30 @@ impl DerefMut for UiMeshTransparent {
 }
 
 impl RenderAsset<Buffer> for UiMeshTransparent {
+    fn create_render_asset(
+        &self, 
+        ctx: &mut SystemsContext,
+        entity_id: Option<&EntityId>
+    ) -> Buffer {
+        self.0.create_render_asset(ctx, entity_id)
+    }
+}
+
+impl Deref for UiMeshImages {
+    type Target = UiMesh;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for UiMeshImages {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl RenderAsset<Buffer> for UiMeshImages {
     fn create_render_asset(
         &self, 
         ctx: &mut SystemsContext,
