@@ -4,7 +4,7 @@ use winit::event::WindowEvent;
 
 use crate::prelude::*;
 use crate::render_assets::RenderAssets;
-use crate::ui::mesh::UiMeshTransparent;
+use crate::ui::mesh::{UiMesh, UiMeshImages, UiMeshTransparent};
 use crate::ui::text::TextBuffer;
 
 use super::storage::UiTransformStorage;
@@ -47,6 +47,7 @@ pub fn update_ui_mesh_and_transforms(ctx: &mut SystemsContext, mut query: Query<
     let mut ui_transform_storage = ctx.resources.get_mut::<UiTransformStorage>().expect("UiTransformStorage resource not found");
     let mut ui_mesh = ctx.resources.get_mut::<UiMesh>().expect("UiMesh resource not found");
     let mut ui_mesh_transparent = ctx.resources.get_mut::<UiMeshTransparent>().expect("UiMeshTransparent resource not found");
+    let mut ui_mesh_images = ctx.resources.get_mut::<UiMeshImages>().expect("UiMeshImages resource not found");
 
     // get the amount of changed nodes
     let mut changed_query = query.cast::<&EntityId, (
@@ -65,6 +66,7 @@ pub fn update_ui_mesh_and_transforms(ctx: &mut SystemsContext, mut query: Query<
         if ui_nodes.len() == 0 && ui_mesh.positions.len() > 0 {
             ui_mesh.clear();
             ui_mesh_transparent.clear();
+            ui_mesh_images.clear();
         }
         return;
     }
@@ -73,6 +75,7 @@ pub fn update_ui_mesh_and_transforms(ctx: &mut SystemsContext, mut query: Query<
     // TODO: optimize this
     ui_mesh.clear();
     ui_mesh_transparent.clear();
+    ui_mesh_images.clear();
 
     // text resources
     let mut text_buffers = ctx.resources.get_mut::<RenderAssets<TextBuffer>>().expect("TextBuffer render assets not found");
@@ -88,6 +91,7 @@ pub fn update_ui_mesh_and_transforms(ctx: &mut SystemsContext, mut query: Query<
     // add other node types as options 
     // TODO: implement Option<T> to query
     let mut text_query = query.cast::<&Text, With<Node>>();
+    let mut image_query = query.cast::<&UiImage, With<Node>>();
     let ui_nodes = ui_nodes.into_iter().map(|(id, global_transform, node, computed)| {
         // HINT: if node has text, get the text buffer rae, add it to intermediate storage for RefCell
         // lifetime issues, then later in code retrieve it and push its borrow to text_borrows
@@ -97,9 +101,11 @@ pub fn update_ui_mesh_and_transforms(ctx: &mut SystemsContext, mut query: Query<
         } else {
             intermediate_text_rae.push(None);
         };
+
+        let has_image = image_query.get(*id).is_some();
         
         // return core ui node
-        (id, global_transform, node, computed)
+        (id, global_transform, node, computed, has_image)
     }).collect::<Vec<_>>();
 
     // borrow intermediate text raes, needed for lifetime issues
@@ -111,37 +117,45 @@ pub fn update_ui_mesh_and_transforms(ctx: &mut SystemsContext, mut query: Query<
     let mut ui_transforms = Vec::new();
     let mut transform_index = 0;
 
-    for (i, (id, global_transform, node, computed)) in ui_nodes.into_iter().enumerate() {
+    for (i, (id, global_transform, node, computed, has_image)) in ui_nodes.into_iter().enumerate() {
         // extract global translation
         let translation = global_transform.translation();
 
-        // add node to mesh
-        if node.background_color != color::TRANSPARENT && node.display != Display::None {
-            let horizontal = computed.border.horizontal();
-            let vertical = computed.border.vertical();
+        // dont add node to mesh
+        if node.display == Display::None {
+            continue;
+        }
 
-            // x, y, w, h, color
-            let quads = [
-                // content + padding
-                (computed.border.left, computed.border.top, computed.width.border - horizontal, computed.height.border - vertical, node.background_color),
-                // top border
-                (0.0, 0.0, computed.width.border, computed.border.top, node.border_color),
-                // left border
-                (0.0, 0.0, computed.border.left, computed.height.border, node.border_color),
-                // right border
-                (computed.width.border - computed.border.right, 0.0, computed.border.right, computed.height.border, node.border_color),
-                // bottom border
-                (0.0, computed.height.border - computed.border.bottom, computed.width.border, computed.border.bottom, node.border_color),
-            ];
+        let horizontal = computed.border.horizontal();
+        let vertical = computed.border.vertical();
 
-            // add quad with borders to mesh
-            for (x, y, w, h, color) in quads {
-                if w > 0.0 && h > 0.0 && color.a > 0.0 {
-                    if color.a == 1.0 {
-                        ui_mesh.add_rect(x, y, computed.z_index as f32, w, h, color, transform_index);
-                    } else {
-                        ui_mesh_transparent.add_rect(x, y, computed.z_index as f32, w, h, color, transform_index);
-                    }
+        // x, y, w, h, color
+        let quads = [
+            // content + padding
+            (computed.border.left, computed.border.top, computed.width.border - horizontal, computed.height.border - vertical, node.background_color, has_image),
+            // top border
+            (0.0, 0.0, computed.width.border, computed.border.top, node.border_color, false),
+            // left border
+            (0.0, 0.0, computed.border.left, computed.height.border, node.border_color, false),
+            // right border
+            (computed.width.border - computed.border.right, 0.0, computed.border.right, computed.height.border, node.border_color, false),
+            // bottom border
+            (0.0, computed.height.border - computed.border.bottom, computed.width.border, computed.border.bottom, node.border_color, false),
+        ];
+
+        // add quad with borders to mesh
+        for (x, y, w, h, color, has_image) in quads {
+            if w > 0.0 && h > 0.0 && color.a > 0.0 {
+                if color.a == 1.0 {
+                    ui_mesh.add_rect(x, y, computed.z_index as f32, w, h, color, transform_index, *id);
+                } else {
+                    ui_mesh_transparent.add_rect(x, y, computed.z_index as f32, w, h, color, transform_index, *id);
+                }
+            }
+
+            if w > 0.0 && h > 0.0 {
+                if has_image {
+                    ui_mesh_images.add_rect(x, y, computed.z_index as f32, w, h, color::WHITE, transform_index, *id);
                 }
             }
         }
