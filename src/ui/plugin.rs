@@ -2,7 +2,7 @@ use glyphon::{FontSystem, SwashCache, Cache, Viewport, TextAtlas, TextRenderer};
 
 use super::{graph::{
     compute::compute_nodes_and_transforms, graph_nodes::register_ui_graph, storage::UiTransformStorage, update::{update_glyphon_viewport, update_ui_mesh_and_transforms}
-}, interactivity::{ui_interaction_update, Button}};
+}, interactivity::{ui_interaction_update, Button}, mesh::{UiMesh, UiMeshImages, UiMeshTransparent}};
 
 use crate::{prelude::*, ui::interactivity::Interaction};
 use crate::render_assets::RenderAssets;
@@ -67,10 +67,12 @@ fn insert_ui_resources(ctx: &mut SystemsContext, _: Query<()>) {
     let node_transform_storage = UiTransformStorage::new(1, 32, ctx, wgpu::ShaderStages::VERTEX);
     let ui_mesh = UiMesh::new();
     let ui_mesh_transparent = UiMeshTransparent::new();
+    let ui_mesh_images = UiMeshImages::new();
 
     ctx.resources.insert(node_transform_storage);
     ctx.resources.insert(ui_mesh);
     ctx.resources.insert(ui_mesh_transparent);
+    ctx.resources.insert(ui_mesh_images);
 }
 
 pub struct UiPlugin;
