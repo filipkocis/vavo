@@ -3,7 +3,7 @@ use crate::{prelude::*, render_assets::TransformStorage};
 use super::{rendering::standard_main_node, shadows::standard_shadow_node};
 
 /// Internal system to add necessary resources for standard rendering
-pub fn add_resources(ctx: &mut SystemsContext, _: Query<()>) {
+pub fn add_render_resources(ctx: &mut SystemsContext, _: Query<()>) {
     let storage = TransformStorage::new(100, 64, ctx, wgpu::ShaderStages::VERTEX);
     ctx.resources.insert(storage);
 }
