@@ -43,8 +43,7 @@ pub fn create_ui_pipeline_builder(ctx: &mut SystemsContext) -> PipelineBuilder {
 
     // Load shader modules
     ctx.resources.get_mut::<ShaderLoader>().expect("ShaderLoader resource not found")
-        .load("ui", include_str!("../../shaders/ui.wgsl"), device)
-        .expect("Shader with label 'ui' already exists");
+        .load("ui", include_str!("../../shaders/ui.wgsl"), device);
 
     // Create pipeline builder
     Pipeline::build("ui")
@@ -60,4 +59,54 @@ pub fn create_ui_pipeline_builder(ctx: &mut SystemsContext) -> PipelineBuilder {
                 range: 0..4 * 2,
             }
         ])
+}
+
+pub fn create_ui_image_pipeline_builder(ctx: &mut SystemsContext) -> PipelineBuilder {
+    let mut pipeline_builder = create_ui_pipeline_builder(ctx);
+
+    // Image bind group layout for uniform buffer
+    let image_layout = ctx.renderer.device().create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        label: Some("image_bind_group_layout"),
+        entries: &[
+            // texture
+            wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Texture {
+                    sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                    view_dimension: wgpu::TextureViewDimension::D2,
+                    multisampled: false 
+                },
+                count: None,
+            },
+            // sampler
+            wgpu::BindGroupLayoutEntry {
+                binding: 1,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                count: None,
+            },
+            // uniform
+            wgpu::BindGroupLayoutEntry {
+                binding: 2,
+                visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
+                ty: wgpu::BindingType::Buffer { 
+                    ty: wgpu::BufferBindingType::Uniform,
+                    min_binding_size: None,
+                    has_dynamic_offset: false,
+                },
+                count: None,
+            }
+        ]
+    });
+
+    let bind_group_layouts = pipeline_builder.bind_group_layouts.as_mut()
+        .expect("ui bind group layouts should not be empty");
+
+    bind_group_layouts.push(image_layout);
+
+    pipeline_builder
+        .set_label("ui_image")
+        .set_vertex_shader("ui", "vs_image")
+        .set_fragment_shader("ui", "fs_image")
 }
