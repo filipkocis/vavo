@@ -1,9 +1,7 @@
 use crate::{prelude::*, render_assets::{BindGroup, Buffer, RenderAsset}};
 
 /// An image UI node component.
-///
-/// # Usage
-/// Current usage is only as a `background-image` for a [Node] component.
+#[derive(Clone, Debug)]
 pub struct UiImage {
     pub image: Handle<Image>,
     /// Image color gets multiplied by this tint color, defaults to white
@@ -20,6 +18,24 @@ impl UiImage {
             flip_x: false,
             flip_y: false,
         }
+    }
+
+    /// Set a tint color
+    pub fn with_tint(mut self, tint: Color) -> Self {
+        self.tint = tint;
+        self
+    }
+
+    /// Set `flip_x` to true
+    pub fn flip_x(mut self) -> Self {
+        self.flip_x = true;
+        self
+    }
+
+    /// Set `flip_y` to true
+    pub fn flip_y(mut self) -> Self {
+        self.flip_y = true;
+        self
     }
 
     fn uniform_data(&self) -> Vec<u8> {
@@ -57,7 +73,7 @@ impl RenderAsset<BindGroup> for UiImage {
         let image = Some(self.image.clone());
 
         let buffer: Buffer = self.create_render_asset(ctx, None);
-        let uniform = buffer.uniform.expect("uiimage buffer should be uniform");
+        let uniform = buffer.uniform.expect("UiImage buffer should be uniform");
 
         BindGroup::build("ui_image")
             .add_texture(&image, ctx, color::WHITE, None, None)
