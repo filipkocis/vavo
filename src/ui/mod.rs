@@ -15,7 +15,7 @@ pub mod prelude {
     pub use super::{
         node::*,
         text::Text,
-        mesh::{UiMesh, UiMeshTransparent},
         interactivity::{Button, Interaction},
+        image::UiImage,
     };
 }
