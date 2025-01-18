@@ -58,7 +58,7 @@ pub fn ui_render_system(
     let mut depth_stencil = wgpu::RenderPassDepthStencilAttachment {
         view: unsafe { &*graph_ctx.depth_target.expect("ui depth target is None") },
         depth_ops: Some(wgpu::Operations {
-            load: wgpu::LoadOp::Clear(1.0),
+            load: wgpu::LoadOp::Load,
             store: wgpu::StoreOp::Store,
         }),
         stencil_ops: None,
@@ -109,8 +109,8 @@ fn draw_ui_render_pass(
     camera_bind_group: &BindGroup,
     ui_mesh: &Buffer,
 ) {
-    let vertex_buffer = ui_mesh.vertex.as_ref().expect("UiMesh buffer should be vertex buffer");
-    let index_buffer =  ui_mesh.index.as_ref().expect("UiMesh buffer should be index buffer");
+    let vertex_buffer = ui_mesh.vertex.as_ref().expect("UiMesh buffer should have a vertex buffer");
+    let index_buffer =  ui_mesh.index.as_ref().expect("UiMesh buffer should have an index buffer");
     let num_indices = ui_mesh.num_indices;
 
     if num_indices == 0 {
