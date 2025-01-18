@@ -23,13 +23,7 @@ struct WindowSize {
 }
 var<push_constant> window_size: WindowSize;
 
-@vertex
-fn vs_main(
-  input: Input,
-) -> Output {
-  var out: Output;
-  out.color = input.color;
-
+fn calc_clip_pos(input: Input) -> vec4<f32> {
   var world_pos = transforms[input.transform_index] * vec4<f32>(input.pos, 1.0);
   // out.clip = camera.view_proj * world_pos;
 
@@ -43,7 +37,16 @@ fn vs_main(
     (mil - input.pos.z - 1.0) / mil,
     world_pos.w,
   );
-  out.clip = screen_pos;
+  // out.clip = screen_pos;
+  return screen_pos;
+}
+
+@vertex
+fn vs_main(input: Input) -> Output {
+  var out: Output;
+  out.color = input.color;
+
+  out.clip = calc_clip_pos(input);   
 
   return out;
 }
@@ -51,4 +54,61 @@ fn vs_main(
 @fragment
 fn fs_main(input: Output) -> @location(0) vec4<f32> {
   return input.color;
+}
+
+@group(2) @binding(0) var texture: texture_2d<f32>;
+@group(2) @binding(1) var texture_sampler: sampler;
+@group(2) @binding(2) var<uniform> image_data: ImageData; 
+
+struct ImageData {
+  tint: vec4<f32>,
+  flags: u32,
+}
+
+struct ImageOutput {
+  @builtin(position) clip: vec4<f32>,
+  @location(0) uv: vec2<f32>,
+}
+
+@vertex
+fn vs_image(
+  @builtin(vertex_index) index: u32,
+  input: Input,
+) -> ImageOutput {
+  let flip_x = (image_data.flags & 1u) != 0u;
+  let flip_y = (image_data.flags & 2u) != 0u;
+
+  let uv_coords = array<vec2<f32>, 4>(
+    vec2<f32>(0.0, 1.0), // Top-left
+    vec2<f32>(1.0, 1.0), // Top-right
+    vec2<f32>(1.0, 0.0), // Bottom-right
+    vec2<f32>(0.0, 0.0), // Bottom-left
+  );
+  var uv = uv_coords[index % 4];
+
+  // Apply flipping
+  if flip_x {
+      uv.x = 1.0 - uv.x;
+  }
+  if flip_y {
+      uv.y = 1.0 - uv.y;
+  }
+
+  var out: ImageOutput;
+  out.clip = calc_clip_pos(input);
+  out.uv = uv;
+
+  return out;
+}
+
+@fragment
+fn fs_image(input: ImageOutput) -> @location(0) vec4<f32> {
+  let color = textureSample(texture, texture_sampler, input.uv) * image_data.tint;
+
+  // hack since images get rendered before ui
+  if color.a == 0.0 {
+    discard;
+  }
+
+  return color;
 }
