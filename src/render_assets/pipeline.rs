@@ -57,6 +57,12 @@ impl PipelineBuilder {
         }
     }
 
+    /// Set new label, useful when creating a pipeline from a fn created 'base' pipeline
+    pub fn set_label(mut self, label: &str) -> Self {
+        self.label = label.to_string();
+        self
+    }
+
     /// Set bind group layouts for pipeline layout
     ///
     /// # Note
