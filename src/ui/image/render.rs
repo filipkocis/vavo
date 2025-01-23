@@ -34,7 +34,7 @@ pub fn ui_image_render_system(
 
     // extract buffers
     let vertex_buffer = ui_mesh_images_buffer.vertex.as_ref().expect("UiMeshImages buffer should have a vertex buffer");
-    let index_buffer =  ui_mesh_images_buffer.index.as_ref().expect("UiMeshImages buffer should have an index buffer");
+    let index_buffer = ui_mesh_images_buffer.index.as_ref().expect("UiMeshImages buffer should have an index buffer");
 
     let render_pass = graph_ctx.pass;
 

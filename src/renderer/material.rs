@@ -80,7 +80,7 @@ impl RenderAsset<BindGroup> for Material {
         _: Option<&EntityId>
     ) -> BindGroup {
         let buffer: Buffer = self.create_render_asset(ctx, None);
-        let uniform = buffer.uniform.expect("material buffer should be uniform");
+        let uniform = buffer.uniform.expect("Material buffer should be an uniform buffer");
 
         BindGroup::build("material")
             .add_texture(&self.base_color_texture, ctx, self.base_color, None, None)

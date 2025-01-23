@@ -82,7 +82,7 @@ impl Storage {
 
     /// Return the storage buffer
     pub fn buffer(&self) -> &wgpu::Buffer {
-        self.buffer.storage.as_ref().expect("Storage buffer should be storage")
+        self.buffer.storage.as_ref().expect("Storage buffer should be a storage buffer")
     }
 
     /// Return the bind group

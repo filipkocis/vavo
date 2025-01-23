@@ -37,7 +37,7 @@ pub fn update_camera_buffers<'a>(
         let camera_buffer = buffers.get_by_entity(id, camera, ctx);
         let camera_buffer_data = Camera::get_buffer_data(projection, transform);
 
-        let camera_buffer = camera_buffer.uniform.as_ref().expect("Camera buffer should be uniform");
+        let camera_buffer = camera_buffer.uniform.as_ref().expect("Camera buffer should be an uniform buffer");
         let data = bytemuck::cast_slice(&camera_buffer_data);
         
         ctx.renderer.queue().write_buffer(camera_buffer, 0, data);
