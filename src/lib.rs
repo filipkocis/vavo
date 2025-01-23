@@ -2,7 +2,7 @@ mod app;
 mod query;
 mod system;
 mod world;
-mod assets;
+pub mod assets;
 mod window;
 pub mod renderer;
 mod resources;
