@@ -32,6 +32,12 @@ impl System {
         }
     }
 
+    /// Returns function's type name
+    pub fn type_name(&self) -> &'static str {
+        self.type_name
+    }
+
+    /// Execute system if all conditions are met
     pub(crate) fn run(&mut self, ctx: &mut SystemsContext, entities: &mut Entities) {
         if self.conditions.iter().all(|condition| condition(ctx, entities)) {
             (self.exec)(ctx, entities);
