@@ -138,14 +138,16 @@ impl Camera {
 impl RenderAsset<Buffer> for Camera {
     fn create_render_asset(
             &self, 
-            ctx: &mut crate::prelude::SystemsContext,
-            _: Option<&crate::prelude::EntityId>
+            ctx: &mut SystemsContext,
+            entity_id: Option<&EntityId>
     ) -> Buffer {
-        let transform = crate::math::Transform::default()
-            .with_translation(glam::Vec3::new(0.0, 0.0, 10.0));
-        let projection = Projection::perspective();
+        let id = entity_id.expect("EntityId should be provided for Camera Buffer");
 
-        let data = Camera::get_buffer_data(&projection, &transform);
+        let world = unsafe { &mut *ctx.world };
+        let mut query = world.query::<(&Projection, &GlobalTransform)>(); 
+        let (projection, global_transform) = query.get(*id).expect("Camera should have Projection and GlobalTransform components");
+
+        let data = Camera::get_buffer_data(projection, global_transform);
         
         Buffer::new("camera")
             .create_uniform_buffer(&data, Some(wgpu::BufferUsages::COPY_DST), ctx.renderer.device())
