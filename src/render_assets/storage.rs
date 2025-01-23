@@ -24,6 +24,12 @@ impl Storage {
     pub fn new(name: &str, count: usize, element_size: usize, ctx: &mut SystemsContext, visibility: wgpu::ShaderStages) -> Self {
         let data = vec![0u8; count * element_size];
 
+        if data.is_empty() {
+            panic!("Storage buffer cannot be empty, '{}' has count '{}' and element_size '{}'",
+                name, count, element_size
+            );
+        }
+
         let buffer = Buffer::new("transform_storage")
             .create_storage_buffer(&data, Some(wgpu::BufferUsages::COPY_DST), ctx.renderer.device());
 
