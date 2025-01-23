@@ -122,6 +122,21 @@ impl Entities {
         }
     }
 
+    /// Despawn entity and all its children recursively
+    pub(crate) fn despawn_entity_recursive(&mut self, entity_id: EntityId) {
+        let mut children_ids = vec![];
+
+        if let Some(children) = self.get_component_mut::<Children>(entity_id) {
+            children_ids = children.ids.clone();
+        }
+
+        for child_id in children_ids {
+            self.despawn_entity_recursive(child_id);
+        }
+
+        self.despawn_entity(entity_id);
+    }
+
     /// Insert new component
     ///
     /// # Panics

@@ -7,6 +7,7 @@ enum Command {
     RemoveResource(TypeId),
     SpawnEntity(EntityId),
     DespawnEntity(EntityId),
+    DespawnEntityRecursive(EntityId),
     InsertComponent(EntityId, Box<dyn Any>),
     RemoveComponent(EntityId, TypeId),
     AddChild(EntityId, EntityId),
@@ -69,6 +70,12 @@ impl<'a> EntityCommands<'a> {
         self.commands
             .commands
             .push(Command::DespawnEntity(self.entity_id));
+    }
+
+    pub fn despawn_recursive(self) {
+        self.commands
+            .commands
+            .push(Command::DespawnEntityRecursive(self.entity_id));
     }
 
     pub fn insert<T: 'static>(mut self, component: T) -> Self {
@@ -179,6 +186,9 @@ impl Commands {
                 }
                 Command::DespawnEntity(entity_id) => {
                     world.entities.despawn_entity(entity_id);
+                }
+                Command::DespawnEntityRecursive(entity_id) => {
+                    world.entities.despawn_entity_recursive(entity_id);
                 }
                 Command::InsertComponent(entity_id, component) => {
                     world.entities.insert_component(entity_id, component);
