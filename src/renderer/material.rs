@@ -1,6 +1,6 @@
 use crate::{assets::Handle, render_assets::{BindGroup, Buffer, RenderAsset}, system::SystemsContext, world::EntityId};
 
-use super::{Color, Face, Image};
+use super::{palette, Color, Face, Image};
 
 pub struct Material {
     pub base_color: Color,
