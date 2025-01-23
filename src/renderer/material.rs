@@ -47,7 +47,7 @@ impl Material {
 impl Default for Material {
     fn default() -> Self {
         Self {
-            base_color: Color::default(),
+            base_color: palette::WHITE,
             base_color_texture: None,
             normal_map_texture: None,
             emissive: Color::rgb(0.0, 0.0, 0.0),
