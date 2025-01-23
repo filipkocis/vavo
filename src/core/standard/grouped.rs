@@ -50,7 +50,7 @@ impl GroupedInstances {
         });
 
         // Group by material and mesh
-        let last_index = sorted.len() - 1;
+        let last_index = sorted.len().saturating_sub(1);
         let mut last_entry = None;
         let mut instance_count = 0;
         let mut instance_offset = 0;
