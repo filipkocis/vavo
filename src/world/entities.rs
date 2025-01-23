@@ -208,7 +208,7 @@ impl Entities {
         }
     }
 
-    /// Get component
+    /// Get component mutably
     pub(crate) fn get_component_mut<T: 'static>(&mut self, entity_id: EntityId) -> Option<&mut T> {
         let type_id = TypeId::of::<T>();
         for archetype in self.archetypes.values_mut() {
@@ -217,11 +217,30 @@ impl Entities {
                 None => continue,
             };
 
-            if let Some(component_index) = archetype.types.get(&type_id) {
-                let component_index = *component_index;
+            if let Some(component_index) = archetype.types.get(&type_id).cloned() {
                 archetype.mark_mutated_single(entity_index, component_index);
                 let component = &mut archetype.components[component_index][entity_index];
                 return component.downcast_mut::<T>();
+            } else {
+                return None
+            }
+        }
+
+        None
+    }
+
+    /// Get component
+    pub(crate) fn get_component<T: 'static>(&self, entity_id: EntityId) -> Option<&T> {
+        let type_id = TypeId::of::<T>();
+        for archetype in self.archetypes.values() {
+            let entity_index = match archetype.get_entity_index(entity_id) {
+                Some(index) => index,
+                None => continue,
+            };
+
+            if let Some(component_index) = archetype.types.get(&type_id) {
+                let component = &archetype.components[*component_index][entity_index];
+                return component.downcast_ref::<T>();
             } else {
                 return None
             }
