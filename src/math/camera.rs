@@ -144,8 +144,8 @@ impl RenderAsset<Buffer> for Camera {
         let id = entity_id.expect("EntityId should be provided for Camera Buffer");
 
         let world = unsafe { &mut *ctx.world };
-        let mut query = world.query::<(&Projection, &GlobalTransform)>(); 
-        let (projection, global_transform) = query.get(*id).expect("Camera should have Projection and GlobalTransform components");
+        let projection = world.entities.get_component(*id).expect("Camera should have a Projection component");
+        let global_transform = world.entities.get_component(*id).expect("Camera should have a GlobalTransform component");
 
         let data = Camera::get_buffer_data(projection, global_transform);
         
