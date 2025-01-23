@@ -1,4 +1,4 @@
-use crate::resources::Resources;
+use crate::{query::Query, resources::Resources};
 
 use super::entities::Entities;
 
@@ -16,5 +16,15 @@ impl World {
             entities: Entities::new(),
             resources,
         }
+    }
+
+    /// Creates new world query
+    pub fn query<T>(&mut self) -> Query<T> {
+        Query::new(&mut self.entities)
+    }
+
+    /// Creates new world query with filters
+    pub fn query_filtered<T, F>(&mut self) -> Query<T, F> {
+        Query::new(&mut self.entities)
     }
 }
