@@ -1,6 +1,8 @@
-use crate::{assets::Handle, render_assets::{BindGroup, Buffer, RenderAsset, RenderAssets}, renderer::{palette, Color, Image}};
+use glam::Mat4;
 
-use super::{Rect, Transform};
+use crate::{assets::Handle, query::RunQuery, render_assets::{BindGroup, Buffer, RenderAsset, RenderAssets}, renderer::{palette, Color, Image}, system::SystemsContext, world::EntityId};
+
+use super::{GlobalTransform, Rect};
 
 /// Main camera component
 /// Requires Projection, Transform, and Camera2D/3D components
@@ -84,11 +86,12 @@ impl Projection {
 }
 
 impl Projection {
-    pub fn get_view_projection_matrix(&self, transform: &Transform) -> [[f32; 4]; 4] {
+    pub fn get_view_projection_matrix(&self, matrix: &Mat4) -> [[f32; 4]; 4] {
+        let view = matrix.inverse();
+
         match self {
             Projection::Perspective(p) => {
                 let projection = glam::Mat4::perspective_rh(p.fov.to_radians(), p.aspect_ratio, p.near, p.far);
-                let view = transform.as_matrix().inverse();
                 let view_projection = projection * view;
                 
                 view_projection.to_cols_array_2d()
@@ -97,7 +100,6 @@ impl Projection {
                 let projection = glam::Mat4::orthographic_rh(
                     o.area.min.x, o.area.max.x, o.area.min.y, o.area.max.y, o.near, o.far
                 );
-                let view = transform.as_matrix().inverse();
                 let view_projection = projection * view;
                 
                 view_projection.to_cols_array_2d()
@@ -119,12 +121,14 @@ impl Projection {
 }
 
 impl Camera {
-    pub fn get_buffer_data(projection: &Projection, transform: &Transform) -> Vec<f32> {
-        let mut data = projection.get_view_projection_matrix(transform).as_flattened().to_vec();
+    pub fn get_buffer_data(projection: &Projection, global_transform: &GlobalTransform) -> Vec<f32> {
+        let mut data = projection.get_view_projection_matrix(&global_transform.matrix).as_flattened().to_vec();
+        let translation = global_transform.translation();
+
         data.extend(&[
-            transform.translation.x,
-            transform.translation.y,
-            transform.translation.z,
+            translation.x,
+            translation.y,
+            translation.z,
             0.0, // padding
         ]);
         data
@@ -151,8 +155,8 @@ impl RenderAsset<Buffer> for Camera {
 impl RenderAsset<BindGroup> for Camera {
     fn create_render_asset(
             &self, 
-            ctx: &mut crate::prelude::SystemsContext,
-            entity_id: Option<&crate::prelude::EntityId>
+            ctx: &mut SystemsContext,
+            entity_id: Option<&EntityId>
     ) -> BindGroup {
         let id = entity_id.expect("EntityId should be provided for Camera BindGroup");
 
