@@ -6,10 +6,10 @@ use crate::{prelude::*, render_assets::*};
 pub fn update_camera_buffers<'a>(
     ctx: &mut SystemsContext, 
     mut query: Query< 
-        (&'a EntityId, &'a Camera, &'a Projection, &'a Transform), 
+        (&'a EntityId, &'a Camera, &'a Projection, &'a GlobalTransform), 
         // TODO: add OR<T> since camera needs both proj and trans to be mutated to update
         // (With<Camera3D>, Changed<Projection>, Changed<Transform>)
-        (With<Camera3D>, With<Projection>, Changed<Transform>)
+        (With<Camera3D>, With<Projection>, Changed<GlobalTransform>)
     >
 ) {
     let mut buffers = ctx.resources.get_mut::<RenderAssets<Buffer>>().unwrap();
@@ -29,13 +29,13 @@ pub fn update_camera_buffers<'a>(
         }
     }
 
-    for (id, camera, projection, transform) in query.iter_mut() {
+    for (id, camera, projection, global_transform) in query.iter_mut() {
         if !camera.active {
             continue
         }
 
         let camera_buffer = buffers.get_by_entity(id, camera, ctx);
-        let camera_buffer_data = Camera::get_buffer_data(projection, transform);
+        let camera_buffer_data = Camera::get_buffer_data(projection, global_transform);
 
         let camera_buffer = camera_buffer.uniform.as_ref().expect("Camera buffer should be an uniform buffer");
         let data = bytemuck::cast_slice(&camera_buffer_data);
