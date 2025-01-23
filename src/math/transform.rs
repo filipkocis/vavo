@@ -57,8 +57,23 @@ impl GlobalTransform {
 }
 
 impl Transform {
+    /// Create new default Transform
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Create new Transform from a matrix
+    pub fn from_matrix(matrix: &Mat4) -> Self {
+        let (scale, rotation, translation) = matrix.to_scale_rotation_translation();
+
+        Self {
+            scale, rotation, translation
+        }
+    }
+
+    /// Returns new 3D transformation matrix
+    pub fn as_matrix(&self) -> Mat4 {
+        Mat4::from_scale_rotation_translation(self.scale, self.rotation, self.translation)
     }
 
     pub fn with_scale(mut self, scale: Vec3) -> Self {
@@ -74,10 +89,6 @@ impl Transform {
     pub fn with_translation(mut self, translation: Vec3) -> Self {
         self.translation = translation;
         self
-    }
-
-    pub fn as_matrix(&self) -> Mat4 {
-        Mat4::from_scale_rotation_translation(self.scale, self.rotation, self.translation)
     }
 }
 
