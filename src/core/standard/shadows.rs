@@ -109,8 +109,12 @@ fn per_light_render_pass(
         // set vertex buffer with mesh
         let mesh_buffer = buffers.get_by_handle(mesh, ctx); 
         if last_mesh != Some(mesh) {
-            render_pass.set_vertex_buffer(0, mesh_buffer.vertex.as_ref()
-                .expect("mesh should have vertex buffer").slice(..));
+            let Some(vertex_buffer) = mesh_buffer.vertex.as_ref() else {
+                continue;
+            };
+
+            render_pass.set_vertex_buffer(0, vertex_buffer.slice(..));
+            last_mesh = Some(mesh);
         }
 
         // draw
@@ -121,8 +125,6 @@ fn per_light_render_pass(
         } else {
             render_pass.draw(0..mesh_buffer.num_vertices, instance_range);
         }
-
-        last_mesh = Some(mesh);
     }
 }
 

@@ -85,13 +85,18 @@ fn main_render_system(
         if last_material != Some(material) {
             let material_bind_group = bind_groups.get_by_handle(material, ctx); 
             render_pass.set_bind_group(0, &*material_bind_group, &[]);
+            last_material = Some(material);
         }
 
         // set vertex buffer with mesh
         let mesh_buffer = buffers.get_by_handle(mesh, ctx); 
         if last_mesh != Some(mesh) {
-            render_pass.set_vertex_buffer(0, mesh_buffer.vertex.as_ref()
-                .expect("mesh should have vertex buffer").slice(..));
+            let Some(vertex_buffer) = mesh_buffer.vertex.as_ref() else {
+                continue;
+            };
+
+            render_pass.set_vertex_buffer(0, vertex_buffer.slice(..));
+            last_mesh = Some(mesh);
         }
 
         // draw
@@ -101,10 +106,7 @@ fn main_render_system(
             render_pass.draw_indexed(0..mesh_buffer.num_indices, 0, instance_range);
         } else {
             render_pass.draw(0..mesh_buffer.num_vertices, instance_range);
-        }        
-
-        last_material = Some(material);
-        last_mesh = Some(mesh);
+        }
     }
 }
 
