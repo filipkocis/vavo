@@ -12,6 +12,7 @@ pub trait Meshable {
     fn mesh(&self) -> Mesh;
 }
 
+#[derive(Debug, Default, Clone)]
 pub struct Mesh {
     pub topology: PrimitiveTopology,
     pub colors: Option<Vec<Color>>,
