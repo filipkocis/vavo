@@ -109,13 +109,12 @@ fn draw_ui_render_pass(
     camera_bind_group: &BindGroup,
     ui_mesh: &Buffer,
 ) {
-    let vertex_buffer = ui_mesh.vertex.as_ref().expect("UiMesh buffer should have a vertex buffer");
-    let index_buffer =  ui_mesh.index.as_ref().expect("UiMesh buffer should have an index buffer");
-    let num_indices = ui_mesh.num_indices;
-
-    if num_indices == 0 {
+    if ui_mesh.num_indices == 0 {
         return;
     }
+
+    let vertex_buffer = ui_mesh.vertex.as_ref().expect("UiMesh buffer should have a vertex buffer");
+    let index_buffer = ui_mesh.index.as_ref().expect("UiMesh buffer should have an index buffer");
 
     render_pass.set_pipeline(pipeline);
 
@@ -134,5 +133,5 @@ fn draw_ui_render_pass(
     render_pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
     
     // draw
-    render_pass.draw_indexed(0..num_indices, 0, 0..1);
+    render_pass.draw_indexed(0..ui_mesh.num_indices, 0, 0..1);
 }
