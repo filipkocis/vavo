@@ -1,8 +1,15 @@
-use std::cell::RefCell;
+use std::sync::Mutex;
 
 use glyphon::{Attrs, Buffer, FontSystem, Metrics, Shaping};
 
-use crate::{prelude::Color, render_assets::RenderAsset};
+use crate::{prelude::Color, render_assets::IntoRenderAsset, resources::Resource};
+
+// TODO: use newtype pattern and derive
+impl Resource for glyphon::FontSystem {}
+impl Resource for glyphon::TextRenderer {}
+impl Resource for glyphon::TextAtlas {}
+impl Resource for glyphon::SwashCache {}
+impl Resource for glyphon::Viewport {}
 
 pub struct Text {
     pub content: String,
