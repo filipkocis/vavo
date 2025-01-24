@@ -37,28 +37,28 @@ impl App {
         }
     }
 
-    fn add_state_internal<T: States + 'static>(&mut self, state: State<T>) {
-        let state_type = TypeId::of::<T>();
+    fn add_state_internal<S: States>(&mut self, state: State<S>) {
+        let state_type = TypeId::of::<S>();
         if !self.known_states.contains(&state_type) {
             self.known_states.push(state_type);
 
             self.world.resources.insert(state);
-            self.world.resources.insert(NextState::<T>::new());
+            self.world.resources.insert(NextState::<S>::new());
 
-            self.register_system(apply_state_transition::<T>, SystemStage::FrameEnd);
+            self.register_system(apply_state_transition::<S>, SystemStage::FrameEnd);
         } else {
-            panic!("State 'State<{}>' already registered", type_name::<T>());
+            panic!("State 'State<{}>' already registered", type_name::<S>());
         }
     }
 
     /// Add new state with a default value to the app
-    pub fn register_state<T: States + 'static>(&mut self) -> &mut Self {
-        self.add_state_internal(State::<T>::new());
+    pub fn register_state<S: States + Default>(&mut self) -> &mut Self {
+        self.add_state_internal(State::<S>::new());
         self
     }
 
     /// Add new state with a specified value to the app
-    pub fn add_state<T: States + 'static>(&mut self, state: T) -> &mut Self {
+    pub fn add_state<S: States>(&mut self, state: S) -> &mut Self {
         self.add_state_internal(State(state));
         self
     }

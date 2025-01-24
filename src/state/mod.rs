@@ -3,6 +3,7 @@ mod event;
 pub mod conditions;
 
 pub use event::StateTransitionEvent;
+use crate::macros::Resource;
 
 use std::fmt::Debug;
 
@@ -12,30 +13,30 @@ use std::fmt::Debug;
 /// ```
 /// use engine::prelude::*;
 ///
-/// #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+/// #[derive(States, Debug, Clone, Copy, Default, PartialEq, Eq)]
 /// enum GameState {
 ///     #[default]
 ///     Paused,
 ///     Playing,
 /// }
-///
-/// impl States for GameState {}
 /// ```
-pub trait States: Debug + Clone + Copy + Default + PartialEq + Eq {}
+pub trait States: Debug + Clone + Copy + PartialEq + Eq + Send + Sync + 'static {}
 
 /// Current app state
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Resource, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct State<S: States>(pub S);
 
 /// State to transition to in the next frame
-#[derive(Debug, Clone, Copy)]
+#[derive(Resource, Debug, Clone, Copy)]
 pub struct NextState<S: States>(pub Option<S>);
 
-impl<S: States> State<S> {
+impl<S: States + Default> State<S> {
     pub(crate) fn new() -> Self {
-        Self::default()
+        Self(S::default())
     }
+}
 
+impl<S: States> State<S> {
     /// Apply the next state
     pub(crate) fn update(&mut self, value: S) {
         self.0 = value;
