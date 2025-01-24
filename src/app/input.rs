@@ -13,16 +13,18 @@ use crate::{query::Query, system::{SystemStage, SystemsContext}};
 
 use super::{App, Plugin};
 
-pub struct Input<T> 
-where T: Eq + Hash + Copy
-{
-    storage: HashSet<T>,
-    just_pressed: HashSet<T>,
+trait InputData: Eq + Hash + Copy + Send + Sync + 'static {}
+
+impl InputData for KeyCode {}
+impl InputData for MouseButton {}
+
+#[derive(crate::macros::Resource)]
+pub struct Input<I: InputData> {
+    storage: HashSet<I>,
+    just_pressed: HashSet<I>,
 }
 
-impl<T> Input<T> 
-where T: Eq + Hash + Copy
-{
+impl<I: InputData> Input<I> {
     pub fn new() -> Self {
         Self {
             storage: HashSet::new(),
@@ -30,7 +32,7 @@ where T: Eq + Hash + Copy
         }
     }
 
-    pub(crate) fn press(&mut self, key: T) {
+    pub(crate) fn press(&mut self, key: I) {
         if !self.storage.contains(&key) {
             self.just_pressed.insert(key);
         }
@@ -38,7 +40,7 @@ where T: Eq + Hash + Copy
         self.storage.insert(key);
     }
 
-    pub(crate) fn release(&mut self, key: T) {
+    pub(crate) fn release(&mut self, key: I) {
         self.storage.remove(&key);
     }
 
@@ -46,19 +48,19 @@ where T: Eq + Hash + Copy
         self.just_pressed.clear();
     }
 
-    pub fn pressed(&self, key: T) -> bool {
+    pub fn pressed(&self, key: I) -> bool {
         self.storage.contains(&key)
     }
 
-    pub fn pressed_any(&self, keys: &[T]) -> bool {
+    pub fn pressed_any(&self, keys: &[I]) -> bool {
         keys.iter().any(|key| self.pressed(*key))
     }
 
-    pub fn pressed_all(&self, keys: &[T]) -> bool {
+    pub fn pressed_all(&self, keys: &[I]) -> bool {
         keys.iter().all(|key| self.pressed(*key))
     }
 
-    pub fn just_pressed(&self, key: T) -> bool {
+    pub fn just_pressed(&self, key: I) -> bool {
         self.just_pressed.contains(&key)
     }
 }

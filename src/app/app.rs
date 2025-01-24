@@ -12,7 +12,7 @@ use crate::window::{AppHandler, AppState, RenderContext, Renderer};
 use crate::world::World;
 
 use super::events::{KeyboardInput, MouseInput};
-use super::input::Input;
+use super::input::{Input, KeyCode, MouseButton};
 use super::{Events, Plugin};
 
 pub struct App {
@@ -196,7 +196,7 @@ impl App {
             state: event.state,
         };
 
-        let mut input = self.world.resources.get_mut::<Input<super::input::KeyCode>>().expect("Input<KeyCode> resource not found");
+        let mut input = self.world.resources.get_mut::<Input<KeyCode>>().expect("Input<KeyCode> resource not found");
         if event.state == winit::event::ElementState::Pressed {
             input.press(event.code);
         } else {
@@ -212,7 +212,7 @@ impl App {
             button, state
         };
 
-        let mut input = self.world.resources.get_mut::<Input<super::input::MouseButton>>().expect("Input<MouseButton> resource not found");
+        let mut input = self.world.resources.get_mut::<Input<MouseButton>>().expect("Input<MouseButton> resource not found");
         if event.state == winit::event::ElementState::Pressed {
             input.press(event.button);
         } else {
