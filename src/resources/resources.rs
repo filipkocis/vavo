@@ -2,7 +2,7 @@ use std::{any::{Any, TypeId}, collections::HashMap, ops::{Deref, DerefMut}};
 
 use crate::{assets::{AssetLoader, Assets, ShaderLoader}, render_assets::{BindGroup, Buffer, Pipeline, RenderAssets}, renderer::{Image, Material, Mesh, Texture}};
 
-use super::{FixedTime, Time};
+use super::{FixedTime, Resource, Time};
 
 pub struct Resources {
     resources: HashMap<TypeId, Box<dyn Any>>,
@@ -45,20 +45,25 @@ impl Resources {
         }
     }
 
-    pub fn insert<T: 'static>(&mut self, resource: T) {
-        self.resources.insert(TypeId::of::<T>(), Box::new(resource)); 
+    /// Used by [Commands](crate::system::Commands) to insert resources
+    pub(crate) fn insert_boxed(&mut self, type_id: TypeId, boxed_resource: Box<dyn Any>) {
+        self.resources.insert(type_id, boxed_resource); 
+    }
+
+    pub fn insert<R: Resource>(&mut self, resource: R) {
+        self.resources.insert(TypeId::of::<R>(), Box::new(resource)); 
     }
 
     pub fn remove(&mut self, type_id: TypeId) {
         self.resources.remove(&type_id);
     }
 
-    pub fn get<T: 'static>(&self) -> Option<Res<T>> {
-        self.resources.get(&TypeId::of::<T>()).map(|r| Res(r.downcast_ref::<T>().unwrap()))
+    pub fn get<R: Resource>(&self) -> Option<Res<R>> {
+        self.resources.get(&TypeId::of::<R>()).map(|r| Res(r.downcast_ref::<R>().unwrap()))
     }
 
-    pub fn get_mut<T: 'static>(&mut self) -> Option<ResMut<T>> {
-        self.resources.get_mut(&TypeId::of::<T>()).map(|r| ResMut(r.downcast_mut::<T>().unwrap()))
+    pub fn get_mut<R: Resource>(&mut self) -> Option<ResMut<R>> {
+        self.resources.get_mut(&TypeId::of::<R>()).map(|r| ResMut(r.downcast_mut::<R>().unwrap()))
     }
 
     /// Initialize self with default resources

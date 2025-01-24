@@ -1,5 +1,7 @@
 use std::time::{Duration, Instant};
+use crate::macros::Resource;
 
+#[derive(Resource)]
 pub struct Time {
     /// Current world tick / frame count
     tick: u64,
@@ -68,6 +70,7 @@ impl Time {
 
 /// Resource used for fixed time step updates. It will try to run the systems on average at a fixed
 /// rate, therefore it may run multiple times or zero times during udpate loop depending on the frame rate.
+#[derive(Resource)]
 pub struct FixedTime {
     time: Time,
     fixed_delta: f32,
