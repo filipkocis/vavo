@@ -2,11 +2,12 @@ use std::{any::Any, collections::HashMap};
 
 use crate::prelude::{Color, Image, Material, Mesh, Resources};
 
-use super::{Assets, Handle};
+use super::{Asset, Assets, Handle};
 
+#[derive(crate::macros::Resource)]
 pub struct AssetLoader {
     /// Cache of loaded assets, stores Handle<T: LoadableAsset>
-    cache: HashMap<String, Box<dyn Any>>,
+    cache: HashMap<String, Box<dyn Any + Send + Sync>>,
 }
 
 impl AssetLoader {
@@ -16,17 +17,17 @@ impl AssetLoader {
         }
     }
 
-    pub fn load<T>(&mut self, path: &str, resources: &mut Resources) -> Handle<T>
-    where T: LoadableAsset + 'static {
+    pub fn load<A>(&mut self, path: &str, resources: &mut Resources) -> Handle<A>
+    where A: LoadableAsset + 'static {
         if let Some(handle) = self.cache.get(path) {
-            return handle.downcast_ref::<Handle<T>>()
+            return handle.downcast_ref::<Handle<A>>()
                 .expect(&format!("Could not downcast asset handle for '{}'", path))
                 .clone();
         }
 
-        let asset = T::load(self, resources, path);
-        let mut assets = resources.get_mut::<Assets<T>>()
-            .expect(&format!("Could not find Assets<T> in resources when loading '{}'", path));
+        let asset = A::load(self, resources, path);
+        let mut assets = resources.get_mut::<Assets<A>>()
+            .expect(&format!("Could not find Assets<A> in resources when loading '{}'", path));
 
         let handle = assets.add(asset);
         self.cache.insert(path.to_string(), Box::new(handle.clone()));
@@ -36,7 +37,7 @@ impl AssetLoader {
 }
 
 /// Trait for assets which can be loaded from a file
-pub trait LoadableAsset {
+pub trait LoadableAsset: Asset {
     fn load(loader: &mut AssetLoader, resources: &mut Resources, path: &str) -> Self;
 }
 
