@@ -46,6 +46,7 @@ impl SingleColorTexture {
     }
 }
 
+#[derive(Clone, Debug, crate::macros::Asset)]
 pub struct Image {
     /// Image data, if set, will be used to write to the texture during creation
     pub data: Vec<u8>,

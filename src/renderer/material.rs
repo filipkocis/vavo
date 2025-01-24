@@ -1,7 +1,8 @@
-use crate::{assets::Handle, render_assets::{BindGroup, Buffer, RenderAsset}, system::SystemsContext, world::EntityId};
+use crate::{assets::Handle, render_assets::{BindGroup, Buffer, IntoRenderAsset}, system::SystemsContext, world::EntityId};
 
 use super::{palette, Color, Face, Image};
 
+#[derive(Debug, Clone, crate::macros::Asset)]
 pub struct Material {
     pub base_color: Color,
     pub base_color_texture: Option<Handle<Image>>,
