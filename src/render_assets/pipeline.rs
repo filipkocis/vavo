@@ -2,6 +2,7 @@ use crate::{assets::ShaderLoader, system::SystemsContext};
 
 use super::RenderHandle;
 
+#[derive(crate::macros::RenderAsset)]
 pub struct Pipeline {
     inner: wgpu::RenderPipeline,
 }

@@ -8,6 +8,7 @@ use crate::system::SystemsContext;
 use super::render_assets::RenderAssetEntry;
 use super::RenderAssets;
 
+#[derive(crate::macros::RenderAsset)]
 pub struct BindGroup {
     pub(crate) inner: wgpu::BindGroup,
 }

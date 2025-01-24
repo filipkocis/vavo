@@ -1,10 +1,10 @@
-use std::{any::TypeId, collections::HashMap, ops::Deref, rc::Rc};
+use std::{any::TypeId, collections::HashMap, ops::Deref, sync::Arc};
 
-use crate::{assets::{Assets, Handle}, prelude::Res, system::SystemsContext, world::EntityId};
+use crate::{assets::{Asset, Assets, Handle}, prelude::Res, resources::Resource, system::SystemsContext, world::EntityId};
 
-use super::RenderHandle;
+use super::{RenderAsset, RenderHandle};
 
-pub trait RenderAsset<R> {
+pub trait IntoRenderAsset<R: RenderAsset> {
     fn create_render_asset(
         &self, 
         ctx: &mut SystemsContext,
@@ -13,7 +13,7 @@ pub trait RenderAsset<R> {
 }
 
 /// Wrapper for render asset entry to allow multiple mutable borrows for RenderAssets<T>
-pub struct RenderAssetEntry<T>(Rc<T>);
+pub struct RenderAssetEntry<T>(Arc<T>);
 
 impl<T> Clone for RenderAssetEntry<T> {
     fn clone(&self) -> Self {
@@ -59,15 +59,16 @@ impl<T: 'static> Into<EntityComponentId> for (&EntityId, &T) {
     }
 }
 
-pub struct RenderAssets<T> {
-    storage: HashMap<RenderHandle<T>, Rc<T>>,
-    handle_map: HashMap<AssetHandleId, RenderHandle<T>>,
-    entity_component_map: HashMap<EntityComponentId, RenderHandle<T>>,
-    resource_map: HashMap<ResourceId, RenderHandle<T>>,
+#[derive(crate::macros::Resource)]
+pub struct RenderAssets<RA: RenderAsset> {
+    storage: HashMap<RenderHandle<RA>, Arc<RA>>,
+    handle_map: HashMap<AssetHandleId, RenderHandle<RA>>,
+    entity_component_map: HashMap<EntityComponentId, RenderHandle<RA>>,
+    resource_map: HashMap<ResourceId, RenderHandle<RA>>,
     next_id: u64,
 }
 
-impl<T> RenderAssets<T> {
+impl<RA: RenderAsset> RenderAssets<RA> {
     pub fn new() -> Self {
         Self {
             storage: HashMap::new(),
@@ -78,19 +79,19 @@ impl<T> RenderAssets<T> {
         }
     }
 
-    fn step_id(&mut self) -> RenderHandle<T> {
+    fn step_id(&mut self) -> RenderHandle<RA> {
         let id = self.next_id;
         self.next_id += 1;
         RenderHandle::new(id)
     }
 
-    pub fn insert(&mut self, asset: T) -> RenderHandle<T> {
+    pub fn insert(&mut self, asset: RA) -> RenderHandle<RA> {
         let id = self.step_id();
-        self.storage.insert(id.clone(), Rc::new(asset));
+        self.storage.insert(id.clone(), Arc::new(asset));
         id
     }
 
-    pub fn get(&self, handle: &RenderHandle<T>) -> Option<Rc<T>> {
+    pub fn get(&self, handle: &RenderHandle<RA>) -> Option<Arc<RA>> {
         self.storage.get(&handle).cloned()
     }
 
@@ -99,15 +100,15 @@ impl<T> RenderAssets<T> {
         entity_id: &EntityId, 
         component: &A, 
         ctx: &mut SystemsContext,
-    ) -> RenderAssetEntry<T>
-    where A: 'static + RenderAsset<T> {
+    ) -> RenderAssetEntry<RA>
+    where A: IntoRenderAsset<RA> + 'static {
         let entity_component_id = (entity_id, component).into();
 
         let rae = match self.entity_component_map.get(&entity_component_id){
             Some(key) => {
                 self.storage
                     .entry(key.clone())
-                    .or_insert_with(|| Rc::new(component.create_render_asset(ctx, Some(entity_id))))
+                    .or_insert_with(|| Arc::new(component.create_render_asset(ctx, Some(entity_id))))
             },
             None => {
                 let key = self.insert(component.create_render_asset(ctx, Some(entity_id)));
@@ -123,15 +124,15 @@ impl<T> RenderAssets<T> {
         &mut self, 
         handle: &Handle<A>, 
         ctx: &mut SystemsContext,
-    ) -> RenderAssetEntry<T>
-    where A: 'static + RenderAsset<T> {
+    ) -> RenderAssetEntry<RA>
+    where A: Asset + IntoRenderAsset<RA> {
         let asset_handle_id = handle.into();
 
         let rae = match self.handle_map.get(&asset_handle_id){
             Some(key) => {
                 self.storage
                     .entry(key.clone())
-                    .or_insert_with(|| Rc::new(Self::create_asset(handle, ctx)))
+                    .or_insert_with(|| Arc::new(Self::create_asset(handle, ctx)))
             },
             None => {
                 let key = self.insert(Self::create_asset(handle, ctx));
@@ -143,13 +144,13 @@ impl<T> RenderAssets<T> {
         RenderAssetEntry(rae.clone())
     }
 
-    pub fn get_by_resource<A>(
+    pub fn get_by_resource<R>(
         &mut self,
-        resource: &Res<A>,
+        resource: &Res<R>,
         ctx: &mut SystemsContext,
         replace: bool,
-    ) -> RenderAssetEntry<T>
-    where A: 'static + RenderAsset<T> {
+    ) -> RenderAssetEntry<RA>
+    where R: Resource + IntoRenderAsset<RA> {
         let resource_id = resource.into();
 
         let rae = match self.resource_map.get(&resource_id){
@@ -160,7 +161,7 @@ impl<T> RenderAssets<T> {
 
                 self.storage
                     .entry(key.clone())
-                    .or_insert_with(|| Rc::new(resource.create_render_asset(ctx, None)))
+                    .or_insert_with(|| Arc::new(resource.create_render_asset(ctx, None)))
             },
             None => {
                 let key = self.insert(resource.create_render_asset(ctx, None));
@@ -172,8 +173,8 @@ impl<T> RenderAssets<T> {
         RenderAssetEntry(rae.clone())
     }
 
-    fn create_asset<A>(handle: &Handle<A>, ctx: &mut SystemsContext) -> T
-    where A: 'static + RenderAsset<T> {
+    fn create_asset<A>(handle: &Handle<A>, ctx: &mut SystemsContext) -> RA
+    where A: Asset + IntoRenderAsset<RA> {
         let assets = ctx.resources.get::<Assets<A>>().expect("Assets<A> not found");
         let asset = assets.get(handle).expect("Asset not found, invalid handle");
         let render_asset = asset.create_render_asset(ctx, None);
@@ -181,14 +182,14 @@ impl<T> RenderAssets<T> {
         render_asset
     }
 
-    pub fn remove<A: 'static>(&mut self, handle: &Handle<A>) -> Option<Rc<T>> {
+    pub fn remove<A: 'static>(&mut self, handle: &Handle<A>) -> Option<Arc<RA>> {
         // TODO: should we remove both the handle and the asset? 
         let key = self.handle_map.remove(&handle.into())?;
         self.storage.remove(&key)
     }
     
     /// Remove render asset created by `get_by_entity` method
-    pub fn remove_by_entity<A: 'static>(&mut self, entity_id: &EntityId, component: &A) -> Option<Rc<T>> {
+    pub fn remove_by_entity<A: 'static>(&mut self, entity_id: &EntityId, component: &A) -> Option<Arc<RA>> {
         let entity_component_id = (entity_id, component).into();
         let key = self.entity_component_map.remove(&entity_component_id)?;
         self.storage.remove(&key)

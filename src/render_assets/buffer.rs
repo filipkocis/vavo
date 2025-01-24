@@ -1,6 +1,7 @@
 use bytemuck::{AnyBitPattern, NoUninit};
 use wgpu::util::DeviceExt;
 
+#[derive(crate::macros::RenderAsset)]
 pub struct Buffer {
     pub label: String,
     pub vertex: Option<wgpu::Buffer>,
