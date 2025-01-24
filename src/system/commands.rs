@@ -1,9 +1,9 @@
 use std::any::{Any, TypeId};
 
-use crate::{math::{GlobalTransform, Transform}, world::{entities::EntityId, World}};
+use crate::{math::{GlobalTransform, Transform}, resources::Resource, world::{entities::EntityId, World}};
 
 enum Command {
-    InsertResource(Box<dyn Any>),
+    InsertResource(TypeId, Box<dyn Any>),
     RemoveResource(TypeId),
     SpawnEntity(EntityId),
     DespawnEntity(EntityId),
@@ -146,15 +146,18 @@ impl Commands {
         }
     }
 
-    pub fn insert_resource<T: 'static>(&mut self, resource: T) -> &mut Self {
+    pub fn insert_resource<R: Resource>(&mut self, resource: R) -> &mut Self {
+        let boxed_resource = Box::new(resource);
+        let resource_type_id = TypeId::of::<R>();
+
         self.commands
-            .push(Command::InsertResource(Box::new(resource)));
+            .push(Command::InsertResource(resource_type_id, boxed_resource));
         self
     }
 
-    pub fn remove_resource<T: 'static>(&mut self) -> &mut Self {
+    pub fn remove_resource<R: Resource>(&mut self) -> &mut Self {
         self.commands
-            .push(Command::RemoveResource(TypeId::of::<T>()));
+            .push(Command::RemoveResource(TypeId::of::<R>()));
         self
     }
 
@@ -175,8 +178,8 @@ impl Commands {
     pub(crate) fn apply(self, world: &mut World) {
         for command in self.commands {
             match command {
-                Command::InsertResource(resource) => {
-                    world.resources.insert(resource);
+                Command::InsertResource(type_id, resource) => {
+                    world.resources.insert_boxed(type_id, resource);
                 }
                 Command::RemoveResource(type_id) => {
                     world.resources.remove(type_id);
