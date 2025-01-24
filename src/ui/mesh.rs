@@ -139,7 +139,7 @@ impl UiMesh {
     }
 }
 
-impl RenderAsset<Buffer> for UiMesh {
+impl IntoRenderAsset<Buffer> for UiMesh {
     fn create_render_asset(
         &self, 
         ctx: &mut SystemsContext,
@@ -167,7 +167,7 @@ impl DerefMut for UiMeshTransparent {
     }
 }
 
-impl RenderAsset<Buffer> for UiMeshTransparent {
+impl IntoRenderAsset<Buffer> for UiMeshTransparent {
     fn create_render_asset(
         &self, 
         ctx: &mut SystemsContext,
@@ -191,7 +191,7 @@ impl DerefMut for UiMeshImages {
     }
 }
 
-impl RenderAsset<Buffer> for UiMeshImages {
+impl IntoRenderAsset<Buffer> for UiMeshImages {
     fn create_render_asset(
         &self, 
         ctx: &mut SystemsContext,
