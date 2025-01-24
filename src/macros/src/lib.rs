@@ -76,7 +76,7 @@ pub fn derive_states(item: proc_macro::TokenStream) -> TokenStream {
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
     
     let expanded = quote! {
-        impl #impl_generics #path::states::States for #name #ty_generics #where_clause {}
+        impl #impl_generics #path::state::States for #name #ty_generics #where_clause {}
     };
 
     TokenStream::from(expanded)
