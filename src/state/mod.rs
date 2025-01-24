@@ -11,7 +11,7 @@ use std::fmt::Debug;
 ///
 /// # Usage
 /// ```
-/// use engine::prelude::*;
+/// use vavo::prelude::*;
 ///
 /// #[derive(States, Debug, Clone, Copy, Default, PartialEq, Eq)]
 /// enum GameState {
