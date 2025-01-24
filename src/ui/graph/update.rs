@@ -112,7 +112,7 @@ pub fn update_ui_mesh_and_transforms(ctx: &mut SystemsContext, mut query: Query<
 
     // borrow intermediate text raes, needed for lifetime issues
     let text_borrows = intermediate_text_rae.iter().map(|rae_option| {
-        rae_option.as_ref().map(|rae| rae.buffer.borrow())
+        rae_option.as_ref().map(|rae| rae.buffer.lock().unwrap())
     }).collect::<Vec<_>>();
 
     let mut text_areas = Vec::new();

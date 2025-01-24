@@ -19,19 +19,20 @@ pub struct Text {
     pub shaping: Shaping,
 }
 
+#[derive(crate::macros::RenderAsset)]
 pub struct TextBuffer {
-    pub buffer: RefCell<Buffer>,
+    pub buffer: Mutex<Buffer>,
 }
 
 impl TextBuffer {
     /// Set buffer size
     pub fn set_size(&self, font_system: &mut FontSystem, width: Option<f32>, height: Option<f32>) {
-        self.buffer.borrow_mut().set_size(font_system, width, height);
+        self.buffer.lock().unwrap().set_size(font_system, width, height);
     }
 
     /// Returns buffer width
     pub fn width(&self) -> f32 {
-        self.buffer.borrow().layout_runs()
+        self.buffer.lock().unwrap().layout_runs()
             .map(|line| line.line_w)
             .reduce(f32::max) // .max() workaround for f32
             .unwrap_or_default()
@@ -39,7 +40,7 @@ impl TextBuffer {
 
     /// Returns buffer height
     pub fn height(&self) -> f32 {
-        self.buffer.borrow().layout_runs()
+        self.buffer.lock().unwrap().layout_runs()
             .map(|line| line.line_height)
             .sum::<f32>()
     }
@@ -111,7 +112,7 @@ impl IntoRenderAsset<TextBuffer> for Text {
         // });
 
         TextBuffer {
-            buffer: RefCell::new(buffer),
+            buffer: Mutex::new(buffer),
         }
     }
 }
