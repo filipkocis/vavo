@@ -3,6 +3,9 @@ name = "engine"
 version = "0.1.0"
 edition = "2021"
 
+[dependencies.vavo_macros]
+path = "./src/macros"
+
 [dependencies]
 anyhow = "1.0.95"
 bytemuck = { version = "1.21.0", features = ["derive"] }
