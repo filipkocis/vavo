@@ -2,23 +2,23 @@ pub use super::{
     app::{App, Plugin},
     query::{Query, RunQuery, filter::{Changed, With, Without}},
     system::{System, GraphSystem, SystemsContext, Commands, SystemStage, IntoSystem, IntoSystemCondition},
-    assets::{Assets, Handle, AssetLoader},
+    assets::{Assets, Handle, AssetLoader, Asset, ShaderLoader},
     world::{EntityId, Parent, Children},
     renderer::{Material, Texture, Image, Color, Face, Mesh, Meshable, shapes},
-    resources::{Resources, Res, ResMut, Time, FixedTime, Timer, TimerVariant},
+    resources::{Resources, Res, ResMut, Time, FixedTime, Timer, TimerVariant, Resource},
     math::*,
     plugins::{DefaultPlugin},
     state::{State, NextState, States, StateTransitionEvent, conditions::*},
     events::{KeyboardInput, MouseInput, MouseWheel, MouseMotion, CursorMoved},
     input::Input,
+
+    winit::{self},
+    image::{self},
+    wgpu::{self},
+    glam::{self, Vec2, Vec3, Vec4, Mat4},
 };
 
-/// Re-exported pallette module as color
-pub mod color {
-    pub use super::super::renderer::palette::*; 
-}
+pub use vavo_macros::*;
 
-pub use winit::{self};
-pub use image::{self};
-pub use wgpu::{self};
-pub use glam::{self, Vec2, Vec3, Mat4, Quat};
+/// Re-exported pallette module as color
+pub use super::renderer::palette as color; 
