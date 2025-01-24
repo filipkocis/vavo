@@ -22,6 +22,7 @@ impl InstanceGroup {
 }
 
 /// Grouped instances first by material and then by mesh.
+#[derive(crate::macros::Resource)]
 pub struct GroupedInstances {
     pub groups: Vec<InstanceGroup>,
 }

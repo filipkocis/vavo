@@ -3,6 +3,7 @@ use std::ops::{Deref, DerefMut};
 use bytemuck::{AnyBitPattern, NoUninit};
 
 use crate::system::SystemsContext;
+use crate::macros::Resource;
 
 use super::{BindGroup, Buffer};
 
@@ -112,7 +113,10 @@ impl Storage {
     }
 }
 
+// TODO: move these to their respective modules
+#[derive(Resource)]
 pub struct TransformStorage(Storage);
+#[derive(Resource)]
 pub struct LightStorage(Storage);
 
 impl TransformStorage {

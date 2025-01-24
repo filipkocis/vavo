@@ -3,6 +3,7 @@ use glam::{Mat4, Vec4Swizzles};
 use crate::{core::lighting::LightAndShadowManager, math::CubeFace, prelude::*};
 
 /// Prepared light data for rendering
+#[derive(crate::macros::Resource)]
 pub struct PreparedLightData {
     pub lights: Vec<Light>,
 }

@@ -1,8 +1,9 @@
-use crate::{prelude::Light, render_assets::{BindGroup, LightStorage, RenderAsset}, system::SystemsContext};
+use crate::{prelude::Light, render_assets::{BindGroup, LightStorage, IntoRenderAsset}, system::SystemsContext};
 
 use super::ShadowMapArray;
 
 /// Manages the light storage and shadow maps for every applicable light type
+#[derive(crate::macros::Resource)]
 pub struct LightAndShadowManager {
     pub storage: LightStorage,
     directional_shadow_map: ShadowMapArray,

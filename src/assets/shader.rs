@@ -34,6 +34,7 @@ impl Shader {
 /// # Info
 /// This may be removed in the future when a more robust system is in place, currently doing it
 /// with AssetLoader will not work
+#[derive(crate::macros::Resource)]
 pub struct ShaderLoader {
     cache: HashMap<String, Shader>,
 }

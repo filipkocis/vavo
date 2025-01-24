@@ -2,6 +2,7 @@ use std::ops::{Deref, DerefMut};
 
 use crate::{render_assets::Storage, system::SystemsContext};
 
+#[derive(crate::macros::Resource)]
 pub struct UiTransformStorage(Storage);
 
 impl UiTransformStorage {

@@ -56,6 +56,7 @@ pub struct Light {
 } 
 
 /// Ambient light source affecting all objects in the scene equally, set as a resource
+#[derive(crate::macros::Resource)]
 pub struct AmbientLight {
     pub color: Color,
     pub intensity: f32,
