@@ -1,11 +1,13 @@
 mod transform;
-pub mod camera;
-pub mod light;
+mod camera;
+mod light;
 mod face;
 
 use glam::Vec2;
-pub use transform::{Transform, GlobalTransform};
-pub use face::CubeFace;
+pub use transform::*;
+pub use face::*;
+pub use camera::*;
+pub use light::*;
 
 pub struct Rect {
     pub min: Vec2,
