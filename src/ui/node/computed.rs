@@ -1,6 +1,6 @@
 use crate::{prelude::Color, system::SystemsContext};
 
-use super::{Rect, Val};
+use super::{UiRect, Val};
 
 impl Val {
     pub fn compute_val(&self, parent: f32, ctx: &SystemsContext) -> f32 {
@@ -17,14 +17,14 @@ impl Val {
 }
 
 #[derive(Default, Debug, Clone, Copy)]
-pub struct ComputedRect {
+pub struct ComputedUiRect {
     pub left: f32,
     pub right: f32,
     pub top: f32,
     pub bottom: f32,
 }
 
-impl ComputedRect {
+impl ComputedUiRect {
     /// Returns the horizontal sum of left and right
     pub fn horizontal(&self) -> f32 {
         self.left + self.right
@@ -36,10 +36,10 @@ impl ComputedRect {
     }
 }
 
-impl Rect {
+impl UiRect {
     /// Compute Rect fields based on parent width for padding and margin, self width for border
-    pub fn compute_rect(&self, width: f32, ctx: &mut SystemsContext) -> ComputedRect {
-        ComputedRect {
+    pub fn compute_rect(&self, width: f32, ctx: &mut SystemsContext) -> ComputedUiRect {
+        ComputedUiRect {
             left: self.left.compute_val(width, ctx),
             right: self.right.compute_val(width, ctx),
             top: self.top.compute_val(width, ctx),
@@ -79,9 +79,9 @@ pub struct ComputedNode {
     pub column_gap: f32,
     pub row_gap: f32,
 
-    pub padding: ComputedRect,
-    pub margin: ComputedRect,
-    pub border: ComputedRect,
+    pub padding: ComputedUiRect,
+    pub margin: ComputedUiRect,
+    pub border: ComputedUiRect,
 
     pub width: ComputedBox,
     pub min_width: f32,

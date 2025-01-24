@@ -14,14 +14,14 @@ pub enum Val {
 }
 
 #[derive(Default, Debug, Clone, Copy)]
-pub struct Rect {
+pub struct UiRect {
     pub left: Val,
     pub right: Val,
     pub top: Val,
     pub bottom: Val,
 }
 
-impl Rect {
+impl UiRect {
     pub fn new(left: Val, right: Val, top: Val, bottom: Val) -> Self {
         Self {
             left,
@@ -198,9 +198,9 @@ pub struct Node {
     pub column_gap: Val,
     pub row_gap: Val,
 
-    pub padding: Rect,
-    pub margin: Rect,
-    pub border: Rect,
+    pub padding: UiRect,
+    pub margin: UiRect,
+    pub border: UiRect,
 
     pub width: Val,
     pub min_width: Val,
