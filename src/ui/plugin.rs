@@ -4,7 +4,7 @@ use super::{graph::{
     compute::compute_nodes_and_transforms, graph_nodes::register_ui_graph, storage::UiTransformStorage, update::{update_glyphon_viewport, update_ui_mesh_and_transforms}
 }, interactivity::{ui_interaction_update, Button}, mesh::{UiMesh, UiMeshImages, UiMeshTransparent}};
 
-use crate::{prelude::*, ui::interactivity::Interaction};
+use crate::{prelude::*, ui::prelude::*};
 use crate::render_assets::RenderAssets;
 use super::text::TextBuffer;
 

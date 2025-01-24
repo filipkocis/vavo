@@ -4,10 +4,12 @@ use winit::event::WindowEvent;
 
 use crate::prelude::*;
 use crate::render_assets::RenderAssets;
-use crate::ui::mesh::{UiMesh, UiMeshImages, UiMeshTransparent};
-use crate::ui::text::TextBuffer;
-
-use super::storage::UiTransformStorage;
+use crate::ui::{
+    prelude::*,
+    mesh::*,
+    text::TextBuffer,
+    graph::storage::UiTransformStorage,
+};
 
 /// System to update the glyphon text viewport resolution. 
 /// Runs only if the window size has changed.

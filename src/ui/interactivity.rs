@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use winit::event::MouseButton;
 
-use crate::{math::Rect, prelude::*};
+use crate::{prelude::*, ui::prelude::*};
 
 /// Marks an UI entity as interactive, enabling mouse events via `Interaction`
 #[derive(Debug, Clone, Copy)]
