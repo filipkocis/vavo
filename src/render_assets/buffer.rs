@@ -30,12 +30,12 @@ impl Buffer {
         bytemuck::cast_slice(data)
     }
 
-    /// Creates new vertex buffer with [wgpu::BufferUsages::VERTEX] usage. Updates `num_vertices`
-    /// to the length of the data slice.
+    /// Creates new vertex buffer with [wgpu::BufferUsages::VERTEX] usage. Sets `num_vertices`
+    /// to the provided value. The user must ensure that the value is correct.
     ///
     /// # Note
     /// If the data slice is empty, `vertex` buffer will be [None].
-    pub fn create_vertex_buffer<A>(self, data: &[A], usages: Option<wgpu::BufferUsages>, device: &wgpu::Device) -> Self
+    pub fn create_vertex_buffer<A>(self, data: &[A], num_vertices: usize, usages: Option<wgpu::BufferUsages>, device: &wgpu::Device) -> Self
     where A: NoUninit + AnyBitPattern {
         let vertex_buffer = if !data.is_empty() {
             Some(device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -47,10 +47,9 @@ impl Buffer {
             None
         };
 
-        // TODO: fix num_vertices, data.len() is incorrect
         Self {
             vertex: vertex_buffer,
-            num_vertices: data.len() as u32,
+            num_vertices: num_vertices as u32,
             ..self
         }
     }

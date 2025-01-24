@@ -118,7 +118,7 @@ impl IntoRenderAsset<Buffer> for Mesh {
         let device = ctx.renderer.device();
 
         let buffer = Buffer::new("mesh")
-            .create_vertex_buffer(&self.vertex_data(), None, device);
+            .create_vertex_buffer(&self.vertex_data(), self.positions.len(), None, device);
 
         if let Some(indices) = self.index_data() {
             buffer.create_index_buffer(indices, None, device)

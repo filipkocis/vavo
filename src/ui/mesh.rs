@@ -148,7 +148,7 @@ impl IntoRenderAsset<Buffer> for UiMesh {
         let device = ctx.renderer.device();
 
         Buffer::new("ui_mesh")
-            .create_vertex_buffer(&self.vertex_data(), None, device)
+            .create_vertex_buffer(&self.vertex_data(), self.positions.len(), None, device)
             .create_index_buffer(&self.indices, None, device)
     }
 }
