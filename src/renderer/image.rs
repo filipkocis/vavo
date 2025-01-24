@@ -1,7 +1,8 @@
-use crate::{assets::Assets, render_assets::{RenderAsset, RenderAssetEntry, RenderAssets}, system::SystemsContext};
+use crate::{assets::Assets, render_assets::{IntoRenderAsset, RenderAssetEntry, RenderAssets}, system::SystemsContext};
 
 use super::Color;
 
+#[derive(crate::macros::RenderAsset)]
 pub struct Texture {
     pub texture: wgpu::Texture,
     pub view: wgpu::TextureView,
@@ -103,7 +104,7 @@ impl Image {
     }
 }
 
-impl RenderAsset<Texture> for Image {
+impl IntoRenderAsset<Texture> for Image {
     fn create_render_asset(
         &self, 
         ctx: &mut crate::prelude::SystemsContext,

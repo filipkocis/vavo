@@ -80,7 +80,7 @@ impl Text {
     }
 }
 
-impl RenderAsset<TextBuffer> for Text {
+impl IntoRenderAsset<TextBuffer> for Text {
     fn create_render_asset(
         &self, 
         ctx: &mut crate::prelude::SystemsContext,

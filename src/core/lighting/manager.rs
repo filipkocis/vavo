@@ -128,7 +128,7 @@ impl LightAndShadowManager {
     }
 }
 
-impl RenderAsset<BindGroup> for LightAndShadowManager {
+impl IntoRenderAsset<BindGroup> for LightAndShadowManager {
     fn create_render_asset(
         &self, 
         ctx: &mut SystemsContext,

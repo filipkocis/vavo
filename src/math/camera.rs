@@ -1,6 +1,6 @@
 use glam::Mat4;
 
-use crate::{assets::Handle, render_assets::{BindGroup, Buffer, RenderAsset, RenderAssets}, renderer::{palette, Color, Image}, system::SystemsContext, world::EntityId};
+use crate::{assets::Handle, render_assets::{BindGroup, Buffer, IntoRenderAsset, RenderAssets}, renderer::{palette, Color, Image}, system::SystemsContext, world::EntityId};
 
 use super::{GlobalTransform, Rect};
 
@@ -135,7 +135,7 @@ impl Camera {
     }
 }
 
-impl RenderAsset<Buffer> for Camera {
+impl IntoRenderAsset<Buffer> for Camera {
     fn create_render_asset(
             &self, 
             ctx: &mut SystemsContext,
@@ -154,7 +154,7 @@ impl RenderAsset<Buffer> for Camera {
     }
 }
 
-impl RenderAsset<BindGroup> for Camera {
+impl IntoRenderAsset<BindGroup> for Camera {
     fn create_render_asset(
             &self, 
             ctx: &mut SystemsContext,

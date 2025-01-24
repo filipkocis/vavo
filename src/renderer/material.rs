@@ -56,13 +56,13 @@ impl Default for Material {
             metallic: 0.0,
             reflectance: 0.04,
             flip_normal_map_y: false,
-            cull_mode: Some(Face::Back),
+            cull_mode: Some(Face::default()),
             unlit: false,
         } 
     }
 }
 
-impl RenderAsset<Buffer> for Material {
+impl IntoRenderAsset<Buffer> for Material {
     fn create_render_asset(
         &self, 
         ctx: &mut SystemsContext,
@@ -73,7 +73,7 @@ impl RenderAsset<Buffer> for Material {
     }
 }
 
-impl RenderAsset<BindGroup> for Material {
+impl IntoRenderAsset<BindGroup> for Material {
     fn create_render_asset(
         &self, 
         ctx: &mut SystemsContext,

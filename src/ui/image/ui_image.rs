@@ -1,4 +1,4 @@
-use crate::{prelude::*, render_assets::{BindGroup, Buffer, RenderAsset}};
+use crate::{prelude::*, render_assets::{BindGroup, Buffer, IntoRenderAsset}};
 
 /// An image UI node component.
 #[derive(Clone, Debug)]
@@ -53,7 +53,7 @@ impl UiImage {
     }
 }
 
-impl RenderAsset<Buffer> for UiImage {
+impl IntoRenderAsset<Buffer> for UiImage {
     fn create_render_asset(
         &self, 
         ctx: &mut SystemsContext,
@@ -64,7 +64,7 @@ impl RenderAsset<Buffer> for UiImage {
     }
 }
 
-impl RenderAsset<BindGroup> for UiImage {
+impl IntoRenderAsset<BindGroup> for UiImage {
     fn create_render_asset(
         &self, 
         ctx: &mut SystemsContext,

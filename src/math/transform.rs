@@ -1,6 +1,6 @@
 use glam::{Mat4, Quat, Vec3, Vec4Swizzles};
 
-use crate::{render_assets::{BindGroup, Buffer, RenderAsset, RenderAssets}, system::SystemsContext, world::EntityId};
+use crate::{render_assets::{BindGroup, Buffer, IntoRenderAsset, RenderAssets}, system::SystemsContext, world::EntityId};
 
 #[derive(Debug, Clone, Copy)]
 /// Represents the local transform of an entity, relative to its parent or the world space if it
@@ -102,7 +102,7 @@ impl Default for Transform {
     }
 }
 
-impl RenderAsset<Buffer> for Transform {
+impl IntoRenderAsset<Buffer> for Transform {
     fn create_render_asset(
         &self, 
         ctx: &mut SystemsContext,
@@ -115,7 +115,7 @@ impl RenderAsset<Buffer> for Transform {
     }
 }   
 
-impl RenderAsset<BindGroup> for Transform {
+impl IntoRenderAsset<BindGroup> for Transform {
     fn create_render_asset(
         &self, 
         ctx: &mut SystemsContext,

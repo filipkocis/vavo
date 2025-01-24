@@ -1,4 +1,4 @@
-use crate::{prelude::Image, render_assets::RenderAsset, system::SystemsContext};
+use crate::{prelude::Image, render_assets::IntoRenderAsset, system::SystemsContext};
 
 /// Single texture array with a sampler
 pub struct ShadowMapArray {

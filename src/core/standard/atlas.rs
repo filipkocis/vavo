@@ -1,4 +1,4 @@
-use crate::{assets::{Assets, Handle}, palette, prelude::Image, render_assets::{BindGroup, RenderAsset}};
+use crate::{assets::{Assets, Handle}, palette, prelude::Image, render_assets::{BindGroup, IntoRenderAsset}};
 
 pub struct ShadowMapAtlas {
     pub image: Handle<Image>,
@@ -32,7 +32,7 @@ impl ShadowMapAtlas {
     }
 }
 
-impl RenderAsset<BindGroup> for ShadowMapAtlas {
+impl IntoRenderAsset<BindGroup> for ShadowMapAtlas {
     fn create_render_asset(
         &self, 
         ctx: &mut crate::prelude::SystemsContext,

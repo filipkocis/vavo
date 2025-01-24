@@ -1,4 +1,4 @@
-use crate::{prelude::Texture, render_assets::{pipeline::PipelineBuilder, Pipeline, RenderAsset, RenderAssetEntry, RenderAssets}, system::SystemsContext};
+use crate::{prelude::Texture, render_assets::{pipeline::PipelineBuilder, Pipeline, IntoRenderAsset, RenderAssetEntry, RenderAssets}, system::SystemsContext};
 
 use super::{NodeColorTarget, NodeDepthTarget};
 
