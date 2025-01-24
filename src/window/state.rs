@@ -61,7 +61,7 @@ impl AppState {
     }
 
     fn create_gpu_instance() -> wgpu::Instance {
-        wgpu::Instance::new(wgpu::InstanceDescriptor {
+        wgpu::Instance::new(&wgpu::InstanceDescriptor {
             backends: wgpu::Backends::PRIMARY,
             ..Default::default()
         })

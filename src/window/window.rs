@@ -103,7 +103,7 @@ impl<'a> ApplicationHandler for AppHandler<'a> {
 
                 if let Err(err) = self.app.render(self.state.as_mut().unwrap()) {
                     match err {
-                        wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated => {
+                        wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated | wgpu::SurfaceError::Other => {
                             eprintln!("Surface Lost or Outdated");
                             self.resize(*self.state.as_ref().unwrap().size());
                         },
