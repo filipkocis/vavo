@@ -2,7 +2,6 @@ use crate::prelude::*;
 
 use super::event::StateTransitionEvent;
 
-
 /// Evaluates to true if the current state is exiting the provided `state`
 pub fn on_exit<S: States + 'static>(state: S) -> impl IntoSystemCondition<(), ()> {
     move |ctx: &mut SystemsContext, _| {

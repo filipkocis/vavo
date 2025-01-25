@@ -1,17 +1,15 @@
 mod app;
 mod query;
 mod system;
-mod world;
 pub mod assets;
 mod window;
 pub mod renderer;
-pub mod resources;
 pub mod render_assets;
 mod math;
 pub mod core;
 pub mod plugins;
 pub mod ui;
-pub mod state;
+pub mod ecs;
 
 pub use renderer::{shapes, palette};
 pub use app::{input, events};

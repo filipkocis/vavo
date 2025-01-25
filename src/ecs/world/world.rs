@@ -1,6 +1,7 @@
-use crate::{query::Query, resources::Resources};
+use crate::query::Query;
 
 use super::entities::Entities;
+use super::super::resources::Resources;
 
 pub struct World {
     pub entities: Entities,
