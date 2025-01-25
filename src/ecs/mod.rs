@@ -1,6 +1,7 @@
 pub mod resources;
 pub mod state;
 pub mod world;
+pub mod entities;
 
 pub mod prelude {
     pub use super::resources::{
@@ -10,10 +11,11 @@ pub mod prelude {
     };
     pub use super::state::{
         States, State, NextState,
-        StateTransitionEvent, conditions::*
+        StateTransitionEvent, conditions::*,
     };
-    pub use super::world::{
-        World, Children, Parent,
-        entities::{Entities, EntityId},
+    pub use super::world::World;
+    pub use super::entities::{
+        Entities, EntityId, 
+        relation::{Children, Parent},
     };
 }

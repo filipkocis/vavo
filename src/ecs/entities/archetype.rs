@@ -2,7 +2,7 @@ use std::{any::{Any, TypeId}, collections::HashMap, hash::{DefaultHasher, Hash, 
 
 use crate::query::filter::Filters;
 
-use super::entities::EntityId;
+use super::EntityId;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub(super) struct ArchetypeId(u64);

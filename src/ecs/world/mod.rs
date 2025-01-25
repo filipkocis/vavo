@@ -1,8 +1,31 @@
-pub mod entities;
-mod world;
-mod archetype;
-mod relation;
+use crate::query::Query;
 
-pub use world::World;
-pub use entities::EntityId;
-pub use relation::{Children, Parent};
+use super::resources::Resources;
+use super::entities::Entities;
+
+pub struct World {
+    pub entities: Entities,
+    pub resources: Resources,
+}
+
+impl World {
+    pub fn new() -> Self {
+        let mut resources = Resources::new();
+        resources.insert_default_resources();
+
+        Self {
+            entities: Entities::new(),
+            resources,
+        }
+    }
+
+    /// Creates new world query
+    pub fn query<T>(&mut self) -> Query<T> {
+        Query::new(&mut self.entities)
+    }
+
+    /// Creates new world query with filters
+    pub fn query_filtered<T, F>(&mut self) -> Query<T, F> {
+        Query::new(&mut self.entities)
+    }
+}

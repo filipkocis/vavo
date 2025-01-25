@@ -1,9 +1,12 @@
 use super::EntityId;
 
+/// A component which holds all the [parents](Parent) children. It's automatically inserted (and removed) if
+/// an [entity](super) has at least 1 child.
 pub struct Children {
     pub ids: Vec<EntityId>,
 }
 
+/// A component added on a [child](Children) entity to store the relation with its parent.
 pub struct Parent {
     pub id: EntityId,
 }

@@ -3,7 +3,7 @@ use std::mem;
 pub use wgpu::PrimitiveTopology;
 use wgpu::{VertexAttribute, VertexFormat};
 
-use crate::{render_assets::{Buffer, IntoRenderAsset}, renderer::palette, system::SystemsContext, ecs::world::EntityId};
+use crate::{render_assets::{Buffer, IntoRenderAsset}, renderer::palette, system::SystemsContext, ecs::entities::EntityId};
 
 use super::Color;
 

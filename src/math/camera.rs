@@ -1,6 +1,6 @@
 use glam::Mat4;
 
-use crate::{assets::Handle, render_assets::{BindGroup, Buffer, IntoRenderAsset, RenderAssets}, renderer::{palette, Color, Image}, system::SystemsContext, ecs::world::EntityId};
+use crate::{assets::Handle, render_assets::{BindGroup, Buffer, IntoRenderAsset, RenderAssets}, renderer::{palette, Color, Image}, system::SystemsContext, ecs::entities::EntityId};
 
 use super::{GlobalTransform, Rect};
 

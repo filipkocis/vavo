@@ -1,6 +1,6 @@
 use std::any::TypeId;
 
-use crate::{core::graph::{CustomRenderGraphContext, RenderGraphContext}, query::Query, ecs::world::entities::Entities};
+use crate::{core::graph::{CustomRenderGraphContext, RenderGraphContext}, query::Query, ecs::entities::Entities};
 
 use super::{IntoSystemCondition, SystemsContext};
 

@@ -1,12 +1,17 @@
+pub mod archetype;
+pub mod relation;
+
 use std::{
     any::{Any, TypeId}, collections::HashMap, hash::Hash, ops::{Add, Sub}
 };
 
 use crate::query::filter::Filters;
 
-use super::{archetype::{Archetype, ArchetypeId}, Children, Parent};
+use archetype::{Archetype, ArchetypeId};
+use relation::{Children, Parent};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+/// Unique identifier for an [entity](Entities) in a [`World`](crate::ecs::world::World)
 pub struct EntityId(u32);
 
 impl EntityId {

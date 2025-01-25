@@ -1,6 +1,6 @@
 use std::{any::TypeId, collections::HashMap, ops::Deref, sync::Arc};
 
-use crate::{assets::{Asset, Assets, Handle}, prelude::Res, ecs::resources::Resource, system::SystemsContext, ecs::world::EntityId};
+use crate::{assets::{Asset, Assets, Handle}, prelude::Res, ecs::resources::Resource, system::SystemsContext, ecs::entities::EntityId};
 
 use super::{RenderAsset, RenderHandle};
 
