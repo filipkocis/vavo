@@ -5,6 +5,7 @@ use winit::{dpi::PhysicalSize, window::Window};
 
 use super::AppState;
 
+/// Safe wrapper around a [render context](RenderContext).
 pub struct Renderer<'a>(*mut RenderContext<'a>);
 
 impl<'a> Deref for Renderer<'a> {

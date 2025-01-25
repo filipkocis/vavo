@@ -2,7 +2,7 @@ mod app;
 mod query;
 mod system;
 pub mod assets;
-mod window;
+pub mod window;
 pub mod renderer;
 pub mod render_assets;
 mod math;
