@@ -5,7 +5,7 @@ use winit::keyboard::PhysicalKey;
 use winit::event::ElementState;
 
 use crate::core::graph::RenderGraph;
-use crate::prelude::FixedTime;
+use crate::prelude::{FixedTime, Resource};
 use crate::system::{Commands, IntoSystem, SystemHandler, SystemStage, SystemsContext};
 use crate::window::{AppHandler, AppState, RenderContext, Renderer};
 
@@ -61,6 +61,20 @@ impl App {
     /// Add new state with a specified value to the app
     pub fn add_state<S: States>(&mut self, state: S) -> &mut Self {
         self.add_state_internal(State(state));
+        self
+    }
+
+    /// Add new resource with a default value to the app if it doesn't exist
+    pub fn init_resource<R: Resource + Default>(&mut self) -> &mut Self {
+        if self.world.resources.get::<R>().is_none() {
+            self.world.resources.insert(R::default());
+        }
+        self
+    }
+
+    /// Add new resource with a specified value to the app
+    pub fn set_resource<R: Resource>(&mut self, resource: R) -> &mut Self {
+        self.world.resources.insert(resource);
         self
     }
 
