@@ -2,6 +2,7 @@ use std::any::{type_name, TypeId};
 
 use winit::dpi::PhysicalSize;
 use winit::keyboard::PhysicalKey;
+use winit::event::ElementState;
 
 use crate::core::graph::RenderGraph;
 use crate::prelude::FixedTime;
@@ -197,7 +198,7 @@ impl App {
         };
 
         let mut input = self.world.resources.get_mut::<Input<KeyCode>>().expect("Input<KeyCode> resource not found");
-        if event.state == winit::event::ElementState::Pressed {
+        if event.state == ElementState::Pressed {
             input.press(event.code);
         } else {
             input.release(event.code);
@@ -213,7 +214,7 @@ impl App {
         };
 
         let mut input = self.world.resources.get_mut::<Input<MouseButton>>().expect("Input<MouseButton> resource not found");
-        if event.state == winit::event::ElementState::Pressed {
+        if event.state == ElementState::Pressed {
             input.press(event.button);
         } else {
             input.release(event.button);
