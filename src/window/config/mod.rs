@@ -7,9 +7,13 @@ pub use icon::*;
 use glam::IVec2;
 
 /// Configuration used when creating a window.
-#[derive(Debug, Clone)]
+#[derive(crate::macros::Resource, Debug, Clone)]
 pub struct WindowConfig {
     pub title: String,
+    /// Size of the window.
+    ///
+    /// # Usage
+    /// You can use `(u32, u32).into()` to convert a tuple into [`WindowResolution`].
     pub resolution: WindowResolution, 
     pub resize_constraints: WindowResizeConstraints,
     pub mode: WindowMode,
@@ -21,6 +25,11 @@ pub struct WindowConfig {
 
     pub preferred_theme: PreferredTheme,
     pub icon: Icon,
+    /// Cursor icon.
+    ///
+    /// # Usage
+    /// For [`CursorIcon`] you can call `.into()` to convert it into a [`Cursor`],
+    /// or call `from_rgba` / `from_path` to create a [`CustomCursor`] variant.
     pub cursor: Cursor,
 
     pub resizable: bool,
@@ -41,6 +50,16 @@ pub struct WindowResolution {
     pub scale_factor: f64,
 }
 
+impl WindowResolution {
+    pub fn new(physical_width: u32, physical_height: u32, scale_factor: f64) -> Self {
+        Self {
+            physical_width,
+            physical_height,
+            scale_factor,
+        }
+    }
+}
+
 impl Default for WindowResolution {
     fn default() -> Self {
         Self {
@@ -48,6 +67,16 @@ impl Default for WindowResolution {
             physical_height: 720,
             scale_factor: 1.0,
         }
+    }
+}
+
+impl From<(u32, u32)> for WindowResolution {
+    fn from(value: (u32, u32)) -> Self {
+        Self {
+            physical_width: value.0,
+            physical_height: value.1,
+            scale_factor: 1.0,
+        } 
     }
 }
 
@@ -180,7 +209,8 @@ impl Default for WindowConfig {
             window_level: Default::default(),
 
             preferred_theme: PreferredTheme::None,
-            icon: WindowIcon::None,
+            icon: Icon::None,
+            cursor: Default::default(),
 
             resizable: true,
             maximized: false,

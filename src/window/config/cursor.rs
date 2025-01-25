@@ -60,6 +60,12 @@ pub struct CustomCursor {
     pub(crate) hotspot_y: u16,
 }
 
+impl From<CursorIcon> for Cursor {
+    fn from(value: CursorIcon) -> Self {
+        Cursor::Icon(value) 
+    }
+}
+
 #[derive(Default, Clone, Copy, Debug, PartialEq, Eq)]
 /// See [`winit::window::CursorIcon`].
 pub enum CursorIcon {
