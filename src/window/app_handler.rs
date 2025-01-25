@@ -5,7 +5,7 @@ use winit::{
 
 use crate::{app::App, event::events::{CursorMoved, MouseMotion, MouseWheel}};
 
-use super::AppState;
+use super::{config::WindowConfig, AppState};
 
 pub struct AppHandler<'a> {
     app: &'a mut App,
@@ -34,8 +34,10 @@ impl<'a> AppHandler<'a> {
 
 impl<'a> ApplicationHandler for AppHandler<'a> {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        let window_attrs = Window::default_attributes()
-            .with_title("Game");
+        let window_attrs = match self.app.world.resources.get::<WindowConfig>() {
+            Some(config) => config.get_window_attributes(),
+            None => Window::default_attributes(),
+        };
 
         let window = event_loop.create_window(window_attrs).unwrap();
         let mut state = AppState::new(window);

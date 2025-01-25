@@ -5,6 +5,7 @@ pub use cursor::*;
 pub use icon::*;
 
 use glam::IVec2;
+use winit::window::{WindowAttributes, WindowButtons};
 
 /// Configuration used when creating a window.
 #[derive(crate::macros::Resource, Debug, Clone)]
@@ -77,6 +78,15 @@ impl From<(u32, u32)> for WindowResolution {
             physical_height: value.1,
             scale_factor: 1.0,
         } 
+    }
+}
+
+impl From<WindowResolution> for Option<winit::dpi::Size> {
+    fn from(value: WindowResolution) -> Self {
+        Some(winit::dpi::Size::Physical(winit::dpi::PhysicalSize::new(
+            value.physical_width,
+            value.physical_height,
+        )))
     }
 }
 
@@ -176,6 +186,16 @@ impl Default for EnabledButtons {
     }
 }
 
+impl From<EnabledButtons> for WindowButtons {
+    fn from(value: EnabledButtons) -> Self {
+        let mut buttons = WindowButtons::empty();
+        buttons.set(WindowButtons::CLOSE, value.close);
+        buttons.set(WindowButtons::MINIMIZE, value.minimize);
+        buttons.set(WindowButtons::MAXIMIZE, value.maximize);
+        buttons 
+    }
+}
+
 /// See [`winit::window::WindowLevel`].
 #[derive(Default, Debug, Clone, Copy)]
 pub enum WindowLevel {
@@ -185,6 +205,16 @@ pub enum WindowLevel {
     AlwaysOnTop,
 }
 
+impl From<WindowLevel> for winit::window::WindowLevel {
+    fn from(value: WindowLevel) -> Self {
+        match value {
+            WindowLevel::AlwaysOnBottom => Self::AlwaysOnBottom,
+            WindowLevel::Normal => Self::Normal,
+            WindowLevel::AlwaysOnTop => Self::AlwaysOnTop,
+        } 
+    }
+}
+
 /// See [`winit::window::Theme`].
 #[derive(Default, Debug, Clone, Copy)]
 pub enum PreferredTheme {
@@ -192,6 +222,16 @@ pub enum PreferredTheme {
     None,
     Light,
     Dark,
+}
+
+impl From<PreferredTheme> for Option<winit::window::Theme> {
+    fn from(value: PreferredTheme) -> Self {
+        match value {
+            PreferredTheme::None => None,
+            PreferredTheme::Light => Some(winit::window::Theme::Light),
+            PreferredTheme::Dark => Some(winit::window::Theme::Dark),
+        } 
+    }
 }
 
 impl Default for WindowConfig {
@@ -221,5 +261,33 @@ impl Default for WindowConfig {
             content_protected: false,
             active: true,
         }
+    }
+}
+
+impl WindowConfig {
+    pub fn get_window_attributes(&self) -> WindowAttributes {
+        let mut attrs = WindowAttributes::default();
+
+        attrs.inner_size = self.resolution.into();
+        // min_inner_size: None,
+        // max_inner_size: None,
+        // position: None,
+        attrs.resizable = self.resizable;
+        attrs.enabled_buttons = self.enabled_buttons.into();
+        attrs.title = self.title.clone();
+        attrs.maximized = self.maximized;
+        // fullscreen: None,
+        attrs.visible = self.visible;
+        attrs.transparent = self.transparent;
+        attrs.blur = self.blur;
+        attrs.decorations = self.decorations;
+        attrs.window_level = self.window_level.into();
+        // window_icon: None,
+        attrs.preferred_theme = self.preferred_theme.into();
+        attrs.content_protected = self.content_protected;
+        // cursor: Cursor::default(),
+        attrs.active = self.active;
+
+        attrs
     }
 }
