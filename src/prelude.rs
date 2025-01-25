@@ -6,7 +6,7 @@ pub use super::{
     renderer::{Material, Texture, Image, Color, Face, Mesh, Meshable, shapes},
     math::*,
     plugins::{DefaultPlugin},
-    events::{KeyboardInput, MouseInput, MouseWheel, MouseMotion, CursorMoved},
+    event::events::{KeyboardInput, MouseInput, MouseWheel, MouseMotion, CursorMoved},
     input::Input,
 
     ecs::prelude::*,

@@ -1,4 +1,4 @@
-use crate::{app::{EventReader, EventWriter, Events}, core::graph::RenderGraph, ecs::resources::Resources, window::Renderer, ecs::world::World};
+use crate::{event::{event_handler::{EventReader, EventWriter}, Events}, core::graph::RenderGraph, ecs::resources::Resources, window::Renderer, ecs::world::World};
 
 use super::Commands;
 

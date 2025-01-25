@@ -11,10 +11,10 @@ use crate::window::{AppHandler, AppState, RenderContext, Renderer};
 
 use crate::ecs::state::{NextState, State, States, systems::apply_state_transition};
 use crate::ecs::world::World;
+use crate::event::{Events, events::{KeyboardInput, MouseInput}};
 
-use super::events::{KeyboardInput, MouseInput};
 use super::input::{Input, KeyCode, MouseButton};
-use super::{Events, Plugin};
+use super::Plugin;
 
 pub struct App {
     system_handler: SystemHandler,

@@ -10,9 +10,10 @@ pub mod core;
 pub mod plugins;
 pub mod ui;
 pub mod ecs;
+pub mod event;
 
 pub use renderer::{shapes, palette};
-pub use app::{input, events};
+pub use app::{input};
 
 pub mod prelude;
 

@@ -3,7 +3,7 @@ use winit::{
     application::ApplicationHandler, dpi::PhysicalSize, event::*, event_loop::{ActiveEventLoop, ControlFlow, EventLoop}, keyboard::{KeyCode, PhysicalKey}, window::{Window, WindowId}
 };
 
-use crate::{app::App, events::{CursorMoved, MouseMotion, MouseWheel}};
+use crate::{app::App, event::events::{CursorMoved, MouseMotion, MouseWheel}};
 
 use super::AppState;
 

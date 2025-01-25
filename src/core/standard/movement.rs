@@ -1,7 +1,7 @@
 use glam::{EulerRot, Quat, Vec3};
 use winit::keyboard::KeyCode;
 
-use crate::{events::MouseMotion, input::Input, prelude::*};
+use crate::prelude::*;
 
 pub fn movement_system<'a>(ctx: &mut SystemsContext, mut query: Query<(&'a mut Transform, &'a mut Projection, &'a Camera), With<Camera3D>>) {
     let time = ctx.resources.get::<Time>().unwrap(); 

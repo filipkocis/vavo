@@ -1,18 +1,12 @@
 use std::{collections::HashSet, hash::Hash};
 
-pub use winit::{
-    keyboard::KeyCode, 
-    event::{
-        ElementState,
-        MouseButton,
-        MouseScrollDelta,
-    },
-};
+pub use winit::{keyboard::KeyCode, event::MouseButton};
 
 use crate::{query::Query, system::{SystemStage, SystemsContext}};
 
 use super::{App, Plugin};
 
+/// A type which can be used as input data in the [`Input`](Input) resource.
 trait InputData: Eq + Hash + Copy + Send + Sync + 'static {}
 
 impl InputData for KeyCode {}
