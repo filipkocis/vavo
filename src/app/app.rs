@@ -5,11 +5,11 @@ use winit::keyboard::PhysicalKey;
 
 use crate::core::graph::RenderGraph;
 use crate::prelude::FixedTime;
-use crate::state::systems::apply_state_transition;
-use crate::state::{NextState, State, States};
 use crate::system::{Commands, IntoSystem, SystemHandler, SystemStage, SystemsContext};
 use crate::window::{AppHandler, AppState, RenderContext, Renderer};
-use crate::world::World;
+
+use crate::ecs::state::{NextState, State, States, systems::apply_state_transition};
+use crate::ecs::world::World;
 
 use super::events::{KeyboardInput, MouseInput};
 use super::input::{Input, KeyCode, MouseButton};

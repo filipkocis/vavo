@@ -1,6 +1,6 @@
 use std::any::{Any, TypeId};
 
-use crate::{math::{GlobalTransform, Transform}, resources::Resource, world::{entities::EntityId, World}};
+use crate::{math::{GlobalTransform, Transform}, ecs::resources::Resource, ecs::world::{entities::EntityId, World}};
 
 enum Command {
     InsertResource(TypeId, Box<dyn Any>),

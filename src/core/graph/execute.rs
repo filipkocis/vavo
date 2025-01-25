@@ -1,6 +1,6 @@
 use wgpu::RenderPass;
 
-use crate::{core::graph::NodeColorTarget, system::SystemsContext, world::entities::Entities};
+use crate::{core::graph::NodeColorTarget, system::SystemsContext, ecs::world::entities::Entities};
 
 use super::{data::{ColorTargetData, DepthTargetData}, GraphNode, NodeDepthTarget, RenderGraph};
 

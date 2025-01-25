@@ -1,6 +1,6 @@
 use glam::{Mat4, Quat, Vec3, Vec4Swizzles};
 
-use crate::{render_assets::{BindGroup, Buffer, IntoRenderAsset, RenderAssets}, system::SystemsContext, world::EntityId};
+use crate::{render_assets::{BindGroup, Buffer, IntoRenderAsset, RenderAssets}, system::SystemsContext, ecs::world::EntityId};
 
 #[derive(Debug, Clone, Copy)]
 /// Represents the local transform of an entity, relative to its parent or the world space if it

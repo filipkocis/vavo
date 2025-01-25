@@ -1,4 +1,4 @@
-use crate::{assets::Handle, render_assets::{BindGroup, Buffer, IntoRenderAsset}, system::SystemsContext, world::EntityId};
+use crate::{assets::Handle, render_assets::{BindGroup, Buffer, IntoRenderAsset}, system::SystemsContext, ecs::world::EntityId};
 
 use super::{palette, Color, Face, Image};
 

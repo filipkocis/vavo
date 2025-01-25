@@ -3,7 +3,7 @@ pub mod filter;
 
 pub use run::RunQuery;
 
-use crate::{world::entities::Entities};
+use crate::ecs::world::entities::Entities;
 
 pub struct Query<T, F = ()> {
     /// World's entities raw pointer to bypass lifetime limitations.

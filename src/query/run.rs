@@ -1,6 +1,6 @@
 use std::any::{Any, TypeId};
 
-use crate::world::EntityId;
+use crate::ecs::world::EntityId;
 
 use super::{Query, filter::{Filters, QueryFilter}};
 

@@ -2,7 +2,7 @@ use std::sync::Mutex;
 
 use glyphon::{Attrs, Buffer, FontSystem, Metrics, Shaping};
 
-use crate::{prelude::Color, render_assets::IntoRenderAsset, resources::Resource};
+use crate::{prelude::{Color, Resource}, render_assets::IntoRenderAsset};
 
 // TODO: use newtype pattern and derive
 impl Resource for glyphon::FontSystem {}
