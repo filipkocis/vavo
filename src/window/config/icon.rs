@@ -2,28 +2,28 @@ use std::path::Path;
 
 #[derive(Default, Debug, Clone)]
 /// See `window_icon` as defined in [`winit::window::WindowAttributes`]
-pub enum WindowIcon {
+pub enum Icon {
     #[default]
     None,
-    Icon(CustomWindowIcon),
+    Icon(CustomIcon),
 }
 
 #[derive(Debug, Clone)]
 /// See [`winit::window::Icon`].
-pub struct CustomWindowIcon {
+pub struct CustomIcon {
     pub(crate) rgba: Vec<u8>,
     pub(crate) width: u16,
     pub(crate) height: u16,
 }
 
-impl WindowIcon {
+impl Icon {
     /// Load custom cursor from RGBA data.
     pub fn from_rgba(
         rgba: impl Into<Vec<u8>>,
         width: u16,
         height: u16,
     ) -> Self {
-        let custom_icon = CustomWindowIcon {
+        let custom_icon = CustomIcon {
             rgba: rgba.into(),
             width,
             height,

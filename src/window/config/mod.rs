@@ -20,7 +20,8 @@ pub struct WindowConfig {
     pub window_level: WindowLevel,
 
     pub preferred_theme: PreferredTheme,
-    pub icon: WindowIcon,
+    pub icon: Icon,
+    pub cursor: Cursor,
 
     pub resizable: bool,
     pub maximized: bool,
