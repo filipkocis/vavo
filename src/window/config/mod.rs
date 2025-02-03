@@ -5,7 +5,7 @@ pub use cursor::*;
 pub use icon::*;
 
 use glam::IVec2;
-use winit::window::{WindowAttributes, WindowButtons};
+use winit::{dpi::{LogicalSize, Size}, window::{Fullscreen, WindowAttributes, WindowButtons}};
 
 /// Configuration used when creating a window.
 #[derive(crate::macros::Resource, Debug, Clone)]
@@ -99,6 +99,30 @@ pub struct WindowResizeConstraints {
     pub max_height: f32,
 }
 
+impl WindowResizeConstraints {
+    pub fn into_min_size(&self) -> Option<Size> {
+        if self.min_width == 0.0 && self.min_height == 0.0 {
+            return None;
+        }
+
+        Some(Size::Logical(LogicalSize::new(
+            self.min_width as f64, 
+            self.min_height as f64
+        )))
+    }
+
+    pub fn into_max_size(&self) -> Option<Size> {
+        if self.max_width == f32::INFINITY && self.max_height == f32::INFINITY {
+            return None;
+        }
+
+        Some(Size::Logical(LogicalSize::new(
+            self.max_width as f64, 
+            self.max_height as f64
+        )))
+    }
+}
+
 impl Default for WindowResizeConstraints {
     fn default() -> Self {
         Self {
@@ -117,6 +141,16 @@ pub enum WindowMode {
     Windowed,
     Fullscreen,
     Borderless,
+}
+
+impl From<WindowMode> for Option<Fullscreen> {
+    fn from(value: WindowMode) -> Self {
+        match value {
+            WindowMode::Windowed => None,
+            WindowMode::Fullscreen => unimplemented!("WindowMode::Fullscreen"),
+            WindowMode::Borderless => Some(Fullscreen::Borderless(None)),
+        } 
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -150,6 +184,16 @@ pub enum WindowPosition {
     Auto,
     Centered,
     Physical(IVec2),
+}
+
+impl From<WindowPosition> for Option<winit::dpi::Position> {
+    fn from(value: WindowPosition) -> Self {
+        match value {
+            WindowPosition::Auto => None,
+            WindowPosition::Centered => unimplemented!("WindowPosition::Centered"),
+            WindowPosition::Physical(pos) => Some(winit::dpi::Position::Physical(winit::dpi::PhysicalPosition::new(pos.x, pos.y)))
+        }
+    }
 }
 
 /// See [`winit::window::WindowButtons`].
@@ -269,23 +313,23 @@ impl WindowConfig {
         let mut attrs = WindowAttributes::default();
 
         attrs.inner_size = self.resolution.into();
-        // min_inner_size: None,
-        // max_inner_size: None,
-        // position: None,
+        attrs.min_inner_size = self.resize_constraints.into_min_size();
+        attrs.max_inner_size = self.resize_constraints.into_max_size();
+        attrs.position = self.position.into();
         attrs.resizable = self.resizable;
         attrs.enabled_buttons = self.enabled_buttons.into();
         attrs.title = self.title.clone();
         attrs.maximized = self.maximized;
-        // fullscreen: None,
+        attrs.fullscreen = self.mode.into();
         attrs.visible = self.visible;
         attrs.transparent = self.transparent;
         attrs.blur = self.blur;
         attrs.decorations = self.decorations;
         attrs.window_level = self.window_level.into();
-        // window_icon: None,
+        attrs.window_icon = self.icon.clone().into();
         attrs.preferred_theme = self.preferred_theme.into();
         attrs.content_protected = self.content_protected;
-        // cursor: Cursor::default(),
+        attrs.cursor = self.cursor.clone().into();
         attrs.active = self.active;
 
         attrs

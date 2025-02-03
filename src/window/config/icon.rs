@@ -12,16 +12,16 @@ pub enum Icon {
 /// See [`winit::window::Icon`].
 pub struct CustomIcon {
     pub(crate) rgba: Vec<u8>,
-    pub(crate) width: u16,
-    pub(crate) height: u16,
+    pub(crate) width: u32,
+    pub(crate) height: u32,
 }
 
 impl Icon {
     /// Load custom cursor from RGBA data.
     pub fn from_rgba(
         rgba: impl Into<Vec<u8>>,
-        width: u16,
-        height: u16,
+        width: u32,
+        height: u32,
     ) -> Self {
         let custom_icon = CustomIcon {
             rgba: rgba.into(),
@@ -38,9 +38,26 @@ impl Icon {
             let image = image::open(path)?.into_rgba8();
             let (width, height) = image.dimensions();
             let rgba = image.into_raw();
-            (rgba, width as u16, height as u16)
+            (rgba, width, height)
         };
 
         Ok(Self::from_rgba(rgba, width, height))
+    }
+}
+
+impl From<Icon> for Option<winit::window::Icon> {
+    fn from(value: Icon) -> Self {
+        match value {
+            Icon::None => None,
+            Icon::Icon(ico) => {
+                match winit::window::Icon::from_rgba(ico.rgba, ico.width, ico.height) {
+                    Ok(icon) => Some(icon),
+                    Err(err) => {
+                        eprintln!("Failed to window create icon: {}", err);
+                        None
+                    }
+                }
+            }
+        } 
     }
 }
