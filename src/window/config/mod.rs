@@ -163,10 +163,6 @@ impl WindowMode {
                     }
                 };
 
-                for h in monitor.video_modes() {
-                    dbg!(h);
-                }
-
                 let Some(video_mode_handle) = monitor.video_modes()
                     // TODO: Is this necessary?
                     .max_by_key(|mode| {
@@ -362,7 +358,7 @@ impl WindowConfig {
         attrs.window_icon = self.icon.clone().into();
         attrs.preferred_theme = self.preferred_theme.into();
         attrs.content_protected = self.content_protected;
-        attrs.cursor = self.cursor.clone().into();
+        // attrs.cursor = self.cursor.clone().into();
         attrs.active = self.active;
 
         attrs
@@ -371,8 +367,10 @@ impl WindowConfig {
     pub fn post_apply(&self, window: &winit::window::Window, event_loop: &winit::event_loop::ActiveEventLoop) {
         // fullscreen
         let fullscreen = self.mode.into_winit_fullscreen(window);
-        dbg!(&fullscreen);
         window.set_fullscreen(fullscreen);
 
+        // cursor
+        let cursor = self.cursor.into_winit_cursor(event_loop);
+        window.set_cursor(cursor);
     }
 }

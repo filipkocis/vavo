@@ -68,11 +68,26 @@ impl From<CursorIcon> for Cursor {
     }
 }
 
-impl From<Cursor> for winit::window::Cursor {
-    fn from(value: Cursor) -> Self {
-        match value {
-            Cursor::Icon(icon) => winit::window::Cursor::Icon(icon),
-            Cursor::Custom(_) => unimplemented!("Cursor::Custom") 
+impl Cursor {
+    pub fn into_winit_cursor(&self, event_loop: &winit::event_loop::ActiveEventLoop) -> winit::window::Cursor {
+        match self.clone() {
+            Self::Icon(icon) => winit::window::Cursor::Icon(icon),
+            Self::Custom(custom) => {
+                match winit::window::CustomCursor::from_rgba(
+                    custom.rgba,
+                    custom.width,
+                    custom.height,
+                    custom.hotspot_x,
+                    custom.hotspot_y
+                ) {
+                    Ok(source) => event_loop.create_custom_cursor(source).into(),
+                    Err(err) => {
+                        eprintln!("Failed to create custom cursor: {}", err);
+                        winit::window::Cursor::default()
+                    }
+                }
+
+            }
         }
     }
 }
