@@ -143,13 +143,46 @@ pub enum WindowMode {
     Borderless,
 }
 
-impl From<WindowMode> for Option<Fullscreen> {
-    fn from(value: WindowMode) -> Self {
-        match value {
-            WindowMode::Windowed => None,
-            WindowMode::Fullscreen => unimplemented!("WindowMode::Fullscreen"),
-            WindowMode::Borderless => Some(Fullscreen::Borderless(None)),
-        } 
+impl WindowMode {
+    pub fn into_winit_fullscreen(&self, window: &winit::window::Window) -> Option<Fullscreen> {
+        match self {
+            Self::Windowed => None,
+            Self::Borderless => Some(Fullscreen::Borderless(None)),
+            Self::Fullscreen => Some(Fullscreen::Exclusive({
+                let monitor = match (
+                    window.current_monitor(),
+                    window.primary_monitor(),
+                    window.available_monitors().next(),
+                ) {
+                    (Some(monitor), _, _) => monitor,
+                    (_, Some(monitor), _) => monitor,
+                    (_, _, Some(monitor)) => monitor,
+                    _ => {
+                        eprintln!("No monitor found, falling back to windowed mode");
+                        return None;
+                    }
+                };
+
+                for h in monitor.video_modes() {
+                    dbg!(h);
+                }
+
+                let Some(video_mode_handle) = monitor.video_modes()
+                    // TODO: Is this necessary?
+                    .max_by_key(|mode| {
+                        let w = mode.size().width as u64;
+                        let h = mode.size().height as u64;
+                        let r = mode.refresh_rate_millihertz() as u64;
+
+                        w.saturating_mul(h).saturating_mul(r)
+                    }) else {
+                        eprintln!("No video mode found, falling back to windowed mode");
+                        return None;
+                    };
+                
+                video_mode_handle
+            })),
+        }
     }
 }
 
@@ -320,7 +353,7 @@ impl WindowConfig {
         attrs.enabled_buttons = self.enabled_buttons.into();
         attrs.title = self.title.clone();
         attrs.maximized = self.maximized;
-        attrs.fullscreen = self.mode.into();
+        // attrs.fullscreen = self.mode.into();
         attrs.visible = self.visible;
         attrs.transparent = self.transparent;
         attrs.blur = self.blur;
@@ -333,5 +366,13 @@ impl WindowConfig {
         attrs.active = self.active;
 
         attrs
+    }
+
+    pub fn post_apply(&self, window: &winit::window::Window, event_loop: &winit::event_loop::ActiveEventLoop) {
+        // fullscreen
+        let fullscreen = self.mode.into_winit_fullscreen(window);
+        dbg!(&fullscreen);
+        window.set_fullscreen(fullscreen);
+
     }
 }

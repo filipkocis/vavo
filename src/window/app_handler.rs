@@ -34,12 +34,19 @@ impl<'a> AppHandler<'a> {
 
 impl<'a> ApplicationHandler for AppHandler<'a> {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        let window_attrs = match self.app.world.resources.get::<WindowConfig>() {
-            Some(config) => config.get_window_attributes(),
+        let window_config = self.app.world.resources.get::<WindowConfig>();
+
+        let window_attrs = match window_config {
+            Some(ref config) => config.get_window_attributes(),
             None => Window::default_attributes(),
         };
 
         let window = event_loop.create_window(window_attrs).unwrap();
+
+        if let Some(config) = window_config {
+            config.post_apply(&window, event_loop);
+        }
+
         let mut state = AppState::new(window);
 
         if self.state.is_none() {
