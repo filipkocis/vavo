@@ -29,10 +29,6 @@ pub fn ui_render_system(
     let ui_mesh = buffers.get_by_resource(&ui_mesh, ctx, true);
     let ui_mesh_transparent = buffers.get_by_resource(&ui_mesh_transparent, ctx, true);
 
-    if ui_mesh.num_vertices == 0 && ui_mesh_transparent.num_indices == 0 {
-        return;
-    }
-
     // holds the transform of every ui node
     let ui_transforms = ctx.resources.get::<UiTransformStorage>().expect("UiTransformStorage resource not found");
 
