@@ -206,6 +206,16 @@ pub enum CursorGrabMode {
     Locked,
 }
 
+impl From<CursorGrabMode> for winit::window::CursorGrabMode {
+    fn from(value: CursorGrabMode) -> Self {
+        match value {
+            CursorGrabMode::None => Self::None,
+            CursorGrabMode::Confined => Self::Confined,
+            CursorGrabMode::Locked => Self::Locked,
+        }
+    }
+}
+
 /// See `position` as defined in [`winit::window::WindowAttributes`]
 #[derive(Default, Debug, Clone, Copy)]
 pub enum WindowPosition {
@@ -372,5 +382,12 @@ impl WindowConfig {
         // cursor
         let cursor = self.cursor.into_winit_cursor(event_loop);
         window.set_cursor(cursor);
+
+        // cursor mode
+        let grab_mode = self.cursor_mode.grab_mode.into();
+        if let Err(err) = window.set_cursor_grab(grab_mode) {
+            eprintln!("Failed to set cursor grab mode: {}", err);
+        };
+        window.set_cursor_visible(self.cursor_mode.visible);
     }
 }
