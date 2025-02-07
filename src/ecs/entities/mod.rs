@@ -280,7 +280,12 @@ impl Entities {
         if let Some(children) = self.get_component_mut::<Children>(parent_id) {
             if children.ids.contains(&child_id) {
                 children.remove(child_id);
+                let children_len = children.ids.len();
                 self.remove_component(child_id, TypeId::of::<Parent>());
+
+                if children_len == 0 {
+                    self.remove_component(parent_id, TypeId::of::<Children>());
+                }
             }
         }
     }
