@@ -35,8 +35,30 @@ pub fn has_resized(ctx: &SystemsContext) -> bool {
     })
 }
 
+/// Clear glyphon's text_renderer. Used when all nodes are removed.
+fn clear_text_renderer(ctx: &mut SystemsContext) {
+    let mut text_renderer = ctx.resources.get_mut::<TextRenderer>().expect("TextRenderer resource not found");     
+    let mut font_system = ctx.resources.get_mut::<FontSystem>().expect("FontSystem resource not found");
+    let mut text_atlas = ctx.resources.get_mut::<TextAtlas>().expect("TextAtlas resource not found");
+    let viewport = ctx.resources.get::<Viewport>().expect("Viewport resource not found");
+    let mut swash_cache = ctx.resources.get_mut::<SwashCache>().expect("SwashCache resource not found");
+    
+    text_renderer.prepare(
+        ctx.renderer.device(), 
+        ctx.renderer.queue(), 
+        &mut font_system, 
+        &mut text_atlas, 
+        &viewport, 
+        [], 
+        &mut swash_cache,
+    ).unwrap();
+}
+
+// TODO: add tracking system when only some nodes get removed, because now it will not trigger the update.
+// Implement Local<T> storage or Removed<T> filter/resource for this to work.
+
 /// System to update the UI mesh and UI transform storage, runs only if some nodes have `Changed<Transform>` filter.
-/// The filter should return true after `compute_node` system which runs on `Changed<Node>` filter and updates transforms.
+/// The filter should return true after `compute_nodes_and_transforms` system which runs on `Changed<Node>` filter and updates transforms.
 ///
 /// # Resize
 /// It will run on window resize even if no nodes have changed. That is because glyphon text gets
@@ -69,6 +91,7 @@ pub fn update_ui_mesh_and_transforms(ctx: &mut SystemsContext, mut query: Query<
             ui_mesh.clear();
             ui_mesh_transparent.clear();
             ui_mesh_images.clear();
+            clear_text_renderer(ctx);
         }
         return;
     }

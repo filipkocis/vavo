@@ -504,7 +504,7 @@ impl TempNode<'_> {
             (p.node.width == Val::Auto, p.node.height == Val::Auto)
         }).unwrap_or((false, false)); // if no parent, screen size is fixed
         // text height, if label is present first compute the width to get correct height from text
-        // wrrapping, this may be needed if parent has fixed width but auto height
+        // wrapping, this may be needed if parent has fixed width but auto height
         if self.text_rae.is_some() && !parent_width_auto && parent_height_auto {
             self.compute_width_and_box(parent, ctx);
         }
