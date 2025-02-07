@@ -38,7 +38,7 @@ impl<'a> ApplicationHandler for AppHandler<'a> {
 
         let window_attrs = match window_config {
             Some(ref config) => config.get_window_attributes(),
-            None => Window::default_attributes(),
+            None => WindowConfig::default().get_window_attributes(),
         };
 
         let window = event_loop.create_window(window_attrs).unwrap();
