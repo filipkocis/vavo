@@ -111,8 +111,14 @@ impl Entities {
             .insert_entity(entity_id, components);
     }
 
-    /// Despawn entity
+    /// Despawn entity and break all relations
     pub(crate) fn despawn_entity(&mut self, entity_id: EntityId) {
+        // Remove relations
+        if let Some(parent) = self.get_component::<Parent>(entity_id) {
+            self.remove_child(parent.id, entity_id);
+        }
+
+        // Remove entity
         let mut emptied_archetype = None;
         if let Some((id, archetype)) = self.archetypes.iter_mut().find(|(_, a)| a.entity_ids.contains(&entity_id)) {
             archetype.remove_entity(entity_id);
@@ -122,6 +128,7 @@ impl Entities {
             }
         }
 
+        // Remove archetype if empty
         if let Some(id) = emptied_archetype {
             self.archetypes.remove(&id);
         }
