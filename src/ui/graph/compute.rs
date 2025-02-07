@@ -291,16 +291,17 @@ impl TempNode<'_> {
         is_width: bool
     ) -> (f32, f32) {
         let map_max = |val: Val| if val == Val::Auto {
+            // TODO: cap the max only if its text width or flex row parent
             // use parent content size as max, or self computed size if parent is auto
-            if let Some(parent) = parent {
-                if unsafe { &*parent }.node.width == Val::Auto {
+            // if let Some(parent) = parent {
+                // if unsafe { &*parent }.node.width == Val::Auto {
                     f32::INFINITY
-                } else {
-                    parent_content
-                }
-            } else {
-                parent_content
-            }
+            //     } else {
+            //         parent_content
+            //     }
+            // } else {
+            //     parent_content
+            // }
         } else {
             val.compute_val(parent_content, ctx)
         };
