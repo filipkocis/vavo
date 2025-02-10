@@ -260,4 +260,127 @@ impl TempNode<'_> {
             }
         } 
     }
+
+    /// Returns the offsets for `align-items` for each child node.
+    /// `result.len() == self.children.len()`
+    ///
+    /// Only the main cross-axis field is used in a flex container, otherwise fields are 0.0.
+    fn align_items_offsets(&self) -> Vec<Vec3> {
+        if self.node.display != Display::Flex {
+            return self.offsets_from(Vec3::ZERO);
+        }
+
+        match self.node.flex_direction {
+            FlexDirection::Row | FlexDirection::RowReverse => {
+                self.children.iter().map(|child| {
+                    let diff = self.computed.height.content - child.computed.height.total;
+                    let offset = match self.node.align_items {
+                        AlignItems::FlexStart => 0.0,
+                        AlignItems::FlexEnd => diff,
+                        AlignItems::Center => diff / 2.0,
+                        AlignItems::Stretch => 0.0,
+                    };
+                    Vec3::new(0.0, offset, 0.0)
+                }).collect()
+            },
+            FlexDirection::Column | FlexDirection::ColumnReverse => {
+                self.children.iter().map(|child| {
+                    let diff = self.computed.width.content - child.computed.width.total;
+                    let offset = match self.node.align_items {
+                        AlignItems::FlexStart => 0.0,
+                        AlignItems::FlexEnd => diff,
+                        AlignItems::Center => diff / 2.0,
+                        AlignItems::Stretch => 0.0,
+                    };
+                    Vec3::new(offset, 0.0, 0.0)
+                }).collect()
+            }
+        }
+    }
+
+    /// Internal calculation for `justify_content_offsets` method 
+    fn justify_content_offsets_internal(&self, is_row: bool, gaps_num: f32) -> Vec<Vec3> {
+        let new_vec3 = |val: f32| {
+            if is_row {
+                Vec3::new(val, 0.0, 0.0)
+            } else {
+                Vec3::new(0.0, val, 0.0)
+            }
+        };
+
+        let computed_gap = if is_row {
+            self.computed.column_gap
+        } else {
+            self.computed.row_gap
+        };
+
+        let content_size = self.children.iter().fold(gaps_num * computed_gap, |acc, child| 
+            acc + if is_row {
+                child.computed.width.total
+            } else {
+                child.computed.height.total
+            }
+        );
+
+        let offset = if is_row {
+            self.computed.width.content
+        } else {
+            self.computed.height.content
+        } - content_size;
+
+        match self.node.justify_content {
+            JustifyContent::FlexStart => return self.offsets_from(Vec3::ZERO),
+            JustifyContent::FlexEnd => return self.offsets_from(new_vec3(offset)),
+            JustifyContent::Center => return self.offsets_from(new_vec3(offset / 2.0)), 
+            JustifyContent::SpaceBetween => {
+                let offset = offset.max(0.0);
+                let between_gap = offset / gaps_num;
+                self.children.iter().enumerate().map(|(i, _)| {
+                    let gap = if i == 0 { 0.0 } else { between_gap * i as f32 };
+                    new_vec3(gap)
+                }).collect()
+            },
+            JustifyContent::SpaceAround => {
+                let offset = offset.max(0.0);
+                let around_gap = offset / (gaps_num + 1.0);  
+                self.children.iter().enumerate().map(|(i, _)| {
+                    let gap = (around_gap * i as f32) + around_gap / 2.0;
+                    new_vec3(gap)
+                }).collect()
+            }
+            JustifyContent::SpaceEvenly => {
+                let offset = offset.max(0.0);
+                let even_gap = offset / (gaps_num + 2.0);  
+                self.children.iter().enumerate().map(|(i, _)| {
+                    let gap = even_gap * (i + 1) as f32;
+                    new_vec3(gap)
+                }).collect()
+            }
+        }
+    }
+
+
+    /// Returns the offsets for `justify-content` for each child node.
+    /// `result.len() == self.children.len()`
+    ///
+    /// Only the main axis field is used in a flex container, otherwise fields are 0.0.
+    fn justify_content_offsets(&self) -> Vec<Vec3> {
+        if self.node.display != Display::Flex {
+            return self.offsets_from(Vec3::ZERO); 
+        }
+
+        let gaps_num = (self.children.len() as isize - 1).max(0) as f32;
+
+        if self.node.flex_direction.is_row() {
+            self.justify_content_offsets_internal(true, gaps_num)
+        } else {
+            self.justify_content_offsets_internal(false, gaps_num)
+        }
+    }
+
+    /// Utility function used to create offsets of the same value for `align_items` and
+    /// `justify_content`
+    fn offsets_from(&self, v: Vec3) -> Vec<Vec3> {
+        (0..self.children.len()).map(|_| v).collect::<Vec<_>>()
+    }
 }
