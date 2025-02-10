@@ -27,6 +27,7 @@ pub fn compute_nodes_and_transforms(ctx: &mut SystemsContext, mut q: Query<()>) 
         node.compute_percent_size(screen_width, screen_height); // recompute after auto size
         
         node.apply_constraints(ctx, None);
+        node.compute_gaps(ctx);
 
         node.compute_translation();
     }
@@ -287,6 +288,91 @@ impl TempNode<'_> {
         }
     }
 
+    /// Computes the row and column gaps
+    /// Traversal: BOTTOM UP
+    fn compute_gaps(&mut self, ctx: &mut SystemsContext) {
+        let mut total_width_diff = 0.0;
+        let mut max_width_diff: f32 = 0.0;
+        let mut total_height_diff = 0.0;
+        let mut max_height_diff: f32 = 0.0;
+
+        for child in &mut self.children {
+            let original_width = child.computed.width.content;
+            let original_height = child.computed.height.content;
+
+            child.compute_gaps(ctx);
+
+            let width_diff = child.computed.width.content - original_width;
+            let height_diff = child.computed.height.content - original_height;
+
+            let width_growth = (child.computed.width.total - self.computed.width.content).max(0.0);
+            let height_growth = (child.computed.height.total - self.computed.height.content).max(0.0);
+
+            total_width_diff += width_diff;
+            max_width_diff = max_width_diff.max(width_growth);
+            total_height_diff += height_diff;
+            max_height_diff = max_height_diff.max(height_growth);
+        }
+
+        // adjust size based on children growth
+        if self.node.display == Display::Flex {
+            if self.node.width == Val::Auto {
+                match self.node.flex_direction.is_row() {
+                    true => self.computed.width.add(total_width_diff),
+                    false => self.computed.width.add(max_width_diff),
+                }
+            }
+
+            if self.node.height == Val::Auto {
+                match self.node.flex_direction.is_row() {
+                    true => self.computed.height.add(max_height_diff),
+                    false => self.computed.height.add(total_height_diff),
+                }
+            }
+        }
+
+        if self.node.display == Display::Grid {
+            unimplemented!("Grid gaps");
+        }
+
+        // compute gaps
+        if self.node.display == Display::Grid || self.node.display == Display::Flex {
+            self.computed.column_gap = self.node.column_gap.compute_val(self.computed.width.content, ctx);
+            self.computed.row_gap = self.node.row_gap.compute_val(self.computed.height.content, ctx);
+        }
+        if self.node.display == Display::Grid || self.node.is_flex_row() {
+            self.computed.base_width += self.computed.column_gap * self.children.len().saturating_sub(1) as f32;
+        }
+
+        // apply gaps
+        if self.node.display == Display::Flex {
+            let gaps_num = self.children.len().saturating_sub(1) as f32;
+
+            if self.node.width == Val::Auto && self.node.flex_direction.is_row() {
+                self.computed.width.add(self.computed.column_gap * gaps_num);
+            }
+
+            if self.node.height == Val::Auto && self.node.flex_direction.is_column() {
+                self.computed.height.add(self.computed.row_gap * gaps_num);
+            }
+        }
+
+        if self.node.display == Display::Grid {
+            if self.node.width == Val::Auto {
+                let gaps_num = self.node.grid_template_columns.len().saturating_sub(1) as f32;
+                self.computed.width.add(self.computed.column_gap * gaps_num);
+            }
+
+            if self.node.height == Val::Auto {
+                let gaps_num = self.node.grid_template_rows.len().saturating_sub(1) as f32;
+                self.computed.height.add(self.computed.row_gap * gaps_num);
+            }
+        }
+
+        self.constrain_to_width();
+        self.constrain_to_height();
+    }
+
     /// Applies min / max constraints, computes box sizing.
     /// In addition to that it also resolves the text color.
     /// Traversal: TOP DOWN
@@ -489,5 +575,43 @@ impl TempNode<'_> {
     /// `justify_content`
     fn offsets_from(&self, v: Vec3) -> Vec<Vec3> {
         (0..self.children.len()).map(|_| v).collect::<Vec<_>>()
+    }
+
+    /// clamp one node in respect to min / max width
+    fn constrain_to_width(&mut self) {
+        let (min_diff, max_diff) = if self.node.box_sizing == BoxSizing::ContentBox {
+            let min = (self.computed.min_width - self.computed.width.content).max(0.0);
+            let max = (self.computed.max_width - self.computed.width.content).min(0.0);
+            (min, max)
+        } else {
+            let min = (self.computed.min_width - self.computed.width.border).max(0.0);
+            let max = (self.computed.max_width - self.computed.width.border).min(0.0);
+            (min, max)
+        };
+
+        if min_diff > 0.0 {
+            self.computed.width.add(min_diff);
+        } else {
+            self.computed.width.add(max_diff);
+        }
+    }
+
+    /// clamp one node in respect to min / max height
+    fn constrain_to_height(&mut self) {
+         let (min_diff, max_diff) = if self.node.box_sizing == BoxSizing::ContentBox {
+            let min = (self.computed.min_height - self.computed.height.content).max(0.0);
+            let max = (self.computed.max_height - self.computed.height.content).min(0.0);
+            (min, max)
+        } else {
+            let min = (self.computed.min_height - self.computed.height.border).max(0.0);
+            let max = (self.computed.max_height - self.computed.height.border).min(0.0);
+            (min, max)
+        };
+        
+        if min_diff > 0.0 {
+            self.computed.height.add(min_diff);
+        } else {
+            self.computed.height.add(max_diff);
+        }
     }
 }
