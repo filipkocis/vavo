@@ -22,6 +22,7 @@ pub fn compute_nodes_and_transforms(ctx: &mut SystemsContext, mut q: Query<()>) 
     
     for node in &mut root_temp_nodes {
         node.measure_intrinsic_size(ctx);
+        node.compute_percent_size(screen_width, screen_height);
     }
 }
 
@@ -122,5 +123,21 @@ impl TempNode<'_> {
         self.computed.width.set(width); 
         self.computed.height.set(height);
         self.computed.base_width = base_width;
+    }
+
+    /// Computes percent size based on parent size
+    /// Traversal: TOP DOWN
+    fn compute_percent_size(&mut self, parent_width: f32, parent_height: f32) {
+        if let Val::Percent(val) = self.node.width {
+            self.computed.width.set(parent_width * val / 100.0);
+        } 
+
+        if let Val::Percent(val) = self.node.height {
+            self.computed.height.set(parent_height * val / 100.0);
+        }
+
+        for child in &mut self.children {
+            child.compute_percent_size(self.computed.width.content, self.computed.height.content);
+        }
     }
 }
