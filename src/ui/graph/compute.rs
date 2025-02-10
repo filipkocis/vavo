@@ -32,6 +32,8 @@ pub fn compute_nodes_and_transforms(ctx: &mut SystemsContext, mut q: Query<()>) 
         node.fit_auto_size();
 
         node.resolve_flex(ctx);
+        node.recalculate_percent_size();
+        // TODO: wrap text after percent width change and readjust auto heights
 
         node.compute_translation();
     }
@@ -757,6 +759,36 @@ impl TempNode<'_> {
             }
 
             child.resolve_flex(ctx);
+        }
+    }
+
+    /// Recalculates percent sized elements after finalized parents
+    /// Traversal: TOP DOWN
+    fn recalculate_percent_size(&mut self) {
+        if self.node.display == Display::None {
+            return;
+        }
+
+        for child in &mut self.children {
+            if !self.node.is_flex_row() {
+                if let Val::Percent(val) = child.node.width {
+                    let new_width = self.computed.width.content * val / 100.0;
+                    let diff = new_width - child.computed.width.total;
+                    child.computed.width.add(diff); 
+                    child.constrain_to_width();
+                }
+            }
+
+            if !self.node.is_flex_column() {
+                if let Val::Percent(val) = child.node.height {
+                    let new_height = self.computed.height.content * val / 100.0;
+                    let diff = new_height - child.computed.height.total;
+                    child.computed.height.add(diff); 
+                    child.constrain_to_height();
+                }
+            }
+
+            child.recalculate_percent_size();
         }
     }
 }
