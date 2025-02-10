@@ -190,21 +190,20 @@ impl Entities {
         assert_ne!(type_id, TypeId::of::<EntityId>(), "Cannot remove builtin EntityId component");
 
         let mut emptied_archetype = None;
-        if let Some((id, archetype)) = self.archetypes.iter_mut().find(|(_, a)| a.entity_ids.contains(&entity_id)) {
-            if !archetype.has_type(&type_id) {
+        if let Some((id, archetype)) = self.archetypes.iter_mut().find(|(_, a)| a.has_entity(&entity_id)) {
+            let Some(component_index) = archetype.get_component_index(&type_id) else {
                 return;
-            }
+            };
 
             let mut old_components = archetype.remove_entity(entity_id).expect("entity_id should exist in archetype");
-            let index = archetype.types[&type_id];
-            old_components.remove(index);
+            old_components.remove(component_index);
 
             if archetype.len() == 0 {
                 emptied_archetype = Some(*id);
             }
 
             let mut types = archetype.types_vec();
-            types.remove(index);
+            types.remove(component_index);
 
             let archetype_id = Archetype::hash_types(types.clone());
             self.archetypes.entry(archetype_id)
@@ -226,7 +225,7 @@ impl Entities {
                 None => continue,
             };
 
-            if let Some(component_index) = archetype.types.get(&type_id).cloned() {
+            if let Some(component_index) = archetype.get_component_index(&type_id) {
                 archetype.mark_mutated_single(entity_index, component_index);
                 let component = &mut archetype.components[component_index][entity_index];
                 return component.downcast_mut::<T>();
@@ -247,8 +246,8 @@ impl Entities {
                 None => continue,
             };
 
-            if let Some(component_index) = archetype.types.get(&type_id) {
-                let component = &archetype.components[*component_index][entity_index];
+            if let Some(component_index) = archetype.get_component_index(&type_id) {
+                let component = &archetype.components[component_index][entity_index];
                 return component.downcast_ref::<T>();
             } else {
                 return None

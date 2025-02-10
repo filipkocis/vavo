@@ -187,6 +187,11 @@ impl Archetype {
         self.entity_ids.iter().position(|id| *id == entity_id)
     }
 
+    /// Get component index in `types` if it exists
+    pub fn get_component_index(&self, component_id: &TypeId) -> Option<usize> {
+        self.types.get(component_id).copied()
+    }
+
     /// Returns hash of sorted types as [`ArchetypeId`]
     pub(super) fn hash_types(types: Vec<TypeId>) -> ArchetypeId {
         let mut hasher = DefaultHasher::new();
