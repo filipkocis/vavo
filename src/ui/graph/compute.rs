@@ -28,6 +28,7 @@ pub fn compute_nodes_and_transforms(ctx: &mut SystemsContext, mut q: Query<()>) 
         
         node.apply_constraints(ctx, None);
         node.compute_gaps(ctx);
+        node.resolve_text_wrap(ctx, &mut font_system);
 
         node.compute_translation();
     }
@@ -575,6 +576,60 @@ impl TempNode<'_> {
     /// `justify_content`
     fn offsets_from(&self, v: Vec3) -> Vec<Vec3> {
         (0..self.children.len()).map(|_| v).collect::<Vec<_>>()
+    }
+
+    /// Resolves text wrapping and adjusts auto-sized elements
+    /// Traversal: TOP DOWN
+    fn resolve_text_wrap(&mut self, ctx: &mut SystemsContext, font_system: &mut FontSystem) {
+        if self.node.display == Display::None {
+            return;
+        }
+
+        // wrap text
+        if let Some(ref mut rae) = self.text_rae {
+            let max_width = self.computed.width.content;
+            let prev_heigh = rae.height();
+            rae.set_size(font_system, Some(max_width), None);
+            let new_height = rae.height();
+
+            // adjust height
+            let diff = new_height - prev_heigh;
+            if self.node.height == Val::Auto {
+                self.computed.height.add(diff);
+                self.constrain_to_height();
+            }
+        }
+
+        // adjust width for flex row shrink
+        if self.node.is_flex_row() {
+            let total = self.children.iter().fold(0.0, |acc, child| acc + child.computed.width.total);
+            let overflow = self.computed.width.content - total;
+            let diff = overflow / self.children.len() as f32;
+            
+            if diff < 0.0 {
+                for child in &mut self.children {
+                    child.computed.width.add(diff);
+                    child.constrain_to_width();
+                }
+            }
+        }
+
+        for child in &mut self.children { 
+            // TODO: take box sizing into account ? 
+            // fit x-overflowing element which can be sized to parent
+            if matches!(child.node.width, Val::Auto) {
+                if child.computed.width.total > self.computed.width.content &&
+                    child.computed.base_width <= self.computed.width.content {
+                    // shrink width to parent width
+                    // byproduct is wrapping text to fit screen-width
+                    let diff = child.computed.width.total - self.computed.width.content;
+                    child.computed.width.add(-diff);
+                    child.constrain_to_width(); 
+                }
+            }
+
+            child.resolve_text_wrap(ctx, font_system);
+        }
     }
 
     /// clamp one node in respect to min / max width
