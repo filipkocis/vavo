@@ -209,3 +209,25 @@ pub struct Node {
     pub min_height: Val,
     pub max_height: Val,
 }
+
+impl Node {
+    /// True for Display::Flex and flex_direction.is_column()
+    pub fn is_flex_column(&self) -> bool {
+        self.display == Display::Flex && self.flex_direction.is_column()
+    }
+
+    /// True for Display::Flex and flex_direction.is_row()
+    pub fn is_flex_row(&self) -> bool {
+        self.display == Display::Flex && self.flex_direction.is_row()
+    }
+
+    /// True for AlignItems::Stretch and node.is_flex_column()
+    pub fn does_stretch_width(&self) -> bool {
+        self.is_flex_column() && self.align_items == AlignItems::Stretch
+    }
+
+    /// True for AlignItems::Stretch and node.is_flex_row()
+    pub fn does_stretch_height(&self) -> bool {
+        self.is_flex_row() && self.align_items == AlignItems::Stretch
+    }
+}
