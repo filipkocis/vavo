@@ -26,6 +26,8 @@ pub fn compute_nodes_and_transforms(ctx: &mut SystemsContext, mut q: Query<()>) 
         node.compute_auto_size();
         node.compute_percent_size(screen_width, screen_height); // recompute after auto size
         
+        node.apply_constraints(ctx, None);
+
         node.compute_translation();
     }
 }
@@ -220,6 +222,84 @@ impl TempNode<'_> {
 
         self.computed.width.set(self.computed.width.content.min(self.computed.max_width).max(self.computed.min_width));
         self.computed.height.set(self.computed.height.content.min(self.computed.max_height).max(self.computed.min_height));
+    }
+
+    /// Computes the box sizing for one node
+    fn compute_box_sizing(&mut self, ctx: &mut SystemsContext, parent: Option<*mut TempNode>) {
+        let parent_content_width = if let Some(parent) = parent {
+            let parent = unsafe { &mut *parent };
+            parent.computed.width.content 
+        } else {
+            let size = ctx.renderer.size();
+            size.width as f32
+        };
+
+        let padding = self.node.padding.compute_rect(parent_content_width, ctx);
+        let border = self.node.border.compute_rect(parent_content_width, ctx);
+        let margin = self.node.margin.compute_rect(parent_content_width, ctx);
+
+        self.computed.padding = padding;
+        self.computed.border = border;
+        self.computed.margin = margin;
+
+        let padding_border_horizontal = padding.horizontal() + border.horizontal();
+        let padding_border_vertical = padding.vertical() + border.vertical();
+
+        let mut set_content_box_width = || {
+            self.computed.width.border += padding_border_horizontal;
+            self.computed.width.total += padding_border_horizontal + margin.horizontal();
+        };
+
+        let mut set_content_box_height = || {
+            self.computed.height.border += padding_border_vertical;
+            self.computed.height.total += padding_border_vertical + margin.vertical();
+        };
+
+        if self.node.box_sizing == BoxSizing::ContentBox {
+            set_content_box_width();
+            set_content_box_height();   
+        } else {
+            if self.node.width == Val::Auto {
+                set_content_box_width();
+            } else {
+                self.computed.width.content -= padding_border_horizontal; 
+                self.computed.width.total += margin.vertical(); 
+
+                if self.computed.width.content < 0.0 {
+                    self.computed.width.border += self.computed.width.content.abs();
+                    self.computed.width.total += self.computed.width.content.abs();
+                    self.computed.width.content = 0.0;
+                }
+            }
+
+            if self.node.height == Val::Auto {
+                set_content_box_height();
+            } else {
+                self.computed.height.content -= padding_border_vertical;
+                self.computed.height.total += margin.vertical();
+
+                if self.computed.height.content < 0.0 {
+                    self.computed.height.border += self.computed.height.content.abs();
+                    self.computed.height.total += self.computed.height.content.abs();
+                    self.computed.height.content = 0.0;
+                }
+            } 
+        }
+    }
+
+    /// Applies min / max constraints, computes box sizing.
+    /// In addition to that it also resolves the text color.
+    /// Traversal: TOP DOWN
+    fn apply_constraints(&mut self, ctx: &mut SystemsContext, parent: Option<*mut TempNode>) {
+        self.compute_min_max(ctx, parent);
+        self.compute_box_sizing(ctx, parent);
+
+        for child in &mut self.children {
+            child.apply_constraints(ctx, parent);
+
+            // text color
+            child.computed.color = child.node.color.unwrap_or(self.computed.color);
+        }
     }
 
     /// Computes the translations (screen space position)
