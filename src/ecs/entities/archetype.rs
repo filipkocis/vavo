@@ -151,43 +151,43 @@ impl Archetype {
         &self.types
     }
 
-    /// Exposes sorted types as vector
+    /// Exposes `self.types` as a sorted vector
     pub fn types_vec(&self) -> Vec<TypeId> {
         let types: Vec<_> = self.types.iter().map(|(k, _)| *k).collect();
         Self::sort_types(types)
     }
 
-    /// Check if type_id exists in self
+    /// Check if `type_id` exists in self
     pub fn has_type(&self, type_id: &TypeId) -> bool {
         self.types.contains_key(type_id)
     }
 
-    /// Check if all type_ids exist in self
+    /// Check if all `type_ids` exist in self
     pub fn has_types(&self, type_ids: &[TypeId]) -> bool {
         type_ids.iter().all(|type_id| self.has_type(type_id))
     }
 
-    /// Check if all type_ids exist in self, no more no less
+    /// Check if all `type_ids` exist in self, no more no less
     pub fn has_types_all(&self, type_ids: &[TypeId]) -> bool {
         self.types.len() == type_ids.len() && self.has_types(type_ids)
     }
 
-    /// Same as has_type but with generic T type
+    /// Same as [`Self::has_type`] but with generic T type
     pub fn has_t<T: 'static>(self) -> bool {
         self.has_type(&TypeId::of::<T>())
     }
 
-    /// Check if archetype has entity_id
-    pub fn has_entity(&self, entity_id: EntityId) -> bool {
-        self.entity_ids.contains(&entity_id)
+    /// Check if archetype has `entity_id`
+    pub fn has_entity(&self, entity_id: &EntityId) -> bool {
+        self.entity_ids.contains(entity_id)
     }
 
-    /// Get entity index in entity_ids if it exists
+    /// Get entity index in `entity_ids` if it exists
     pub fn get_entity_index(&self, entity_id: EntityId) -> Option<usize> {
         self.entity_ids.iter().position(|id| *id == entity_id)
     }
 
-    /// Returns hash of sorted types
+    /// Returns hash of sorted types as [`ArchetypeId`]
     pub(super) fn hash_types(types: Vec<TypeId>) -> ArchetypeId {
         let mut hasher = DefaultHasher::new();
         let types = Self::sort_types(types);
@@ -202,6 +202,8 @@ impl Archetype {
 }
 
 impl Archetype {
+    /// Evaluates filters against this archetype. 
+    /// Does **NOT** check `changed` filters, only their type existence in the archetype.
     pub fn matches_filters(&self, filters: &Filters) -> bool {
         if filters.empty {
             return true
@@ -237,14 +239,17 @@ impl Archetype {
         })
     }
 
+    /// True if archetype contains all types in `filters.changed`
     fn match_filter_changed(&self, filters: &Filters) -> bool {
         filters.changed.iter().all(|type_id| self.has_type(type_id))
     }
 
+    /// True if archetype contains all types in `filters.with`
     fn match_filter_with(&self, filters: &Filters) -> bool {
         filters.with.iter().all(|type_id| self.has_type(type_id))
     }
 
+    /// True if archetype deosn't contain any type in `filters.without`
     fn match_filter_without(&self, filters: &Filters) -> bool {
         filters.without.iter().all(|type_id| !self.has_type(type_id)) 
     }
