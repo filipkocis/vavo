@@ -60,7 +60,8 @@ impl Entities {
         }
     }
 
-    /// Initialize tick pointer, necessary for entity creation. Done in `TimePlugin`
+    /// Initialize tick pointer, necessary for entity creation. Done in
+    /// [`TimePlugin`](crate::plugins::TimePlugin)
     pub fn initialize_tick(&mut self, current_tick: *const u64) {
         self.current_tick = current_tick
     }
@@ -120,7 +121,7 @@ impl Entities {
 
         // Remove entity
         let mut emptied_archetype = None;
-        if let Some((id, archetype)) = self.archetypes.iter_mut().find(|(_, a)| a.entity_ids.contains(&entity_id)) {
+        if let Some((id, archetype)) = self.archetypes.iter_mut().find(|(_, a)| a.has_entity(&entity_id)) {
             archetype.remove_entity(entity_id);
 
             if archetype.len() == 0 {
@@ -154,7 +155,7 @@ impl Entities {
         assert_ne!(type_id, TypeId::of::<EntityId>(), "Cannot insert EntityId as a component");
 
         let mut emptied_archetype = None;
-        if let Some((id, archetype)) = self.archetypes.iter_mut().find(|(_, a)| a.entity_ids.contains(&entity_id)) {
+        if let Some((id, archetype)) = self.archetypes.iter_mut().find(|(_, a)| a.has_entity(&entity_id)) {
             if archetype.has_type(&type_id) {
                 assert!(archetype.update_component(entity_id, component), "Failed to update component");
                 return;
@@ -263,8 +264,8 @@ impl Entities {
     /// Panics if parent or child does not exist, or if child == parent
     pub(crate) fn add_child(&mut self, parent_id: EntityId, child_id: EntityId) {
         assert_ne!(parent_id, child_id, "Parent and child cannot be the same entity");
-        assert!(self.archetypes.values().any(|a| a.entity_ids.contains(&parent_id)), "Parent entity does not exist");
-        assert!(self.archetypes.values().any(|a| a.entity_ids.contains(&child_id)), "Child entity does not exist");
+        assert!(self.archetypes.values().any(|a| a.has_entity(&parent_id)), "Parent entity does not exist");
+        assert!(self.archetypes.values().any(|a| a.has_entity(&child_id)), "Child entity does not exist");
 
         if let Some(children) = self.get_component_mut::<Children>(parent_id) {
             children.add(child_id);
