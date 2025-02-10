@@ -29,6 +29,7 @@ pub fn compute_nodes_and_transforms(ctx: &mut SystemsContext, mut q: Query<()>) 
         node.apply_constraints(ctx, None);
         node.compute_gaps(ctx);
         node.resolve_text_wrap(ctx, &mut font_system);
+        node.fit_auto_size();
 
         node.compute_translation();
     }
@@ -667,6 +668,64 @@ impl TempNode<'_> {
             self.computed.height.add(min_diff);
         } else {
             self.computed.height.add(max_diff);
+        }
+    }
+
+    /// Recalculates auto-sized elements 
+    /// Traversal: BOTTOM UP
+    fn fit_auto_size(&mut self) {
+        if self.children.is_empty() {
+            return;
+        }
+
+        let mut total_width = 0.0;
+        let mut total_height = 0.0;
+
+        let mut max_width = 0.0f32;
+        let mut max_height = 0.0f32;
+
+        for child in &mut self.children {
+            child.fit_auto_size();
+
+            total_width += child.computed.width.total;
+            total_height += child.computed.height.total;
+
+            max_width = max_width.max(child.computed.width.total);
+            max_height = max_height.max(child.computed.height.total);
+        }
+
+        let gaps_num = self.children.len().saturating_sub(1) as f32;
+
+        if self.node.width == Val::Auto {
+            let width = match (
+                self.node.display,
+                self.node.flex_direction.is_row(),
+            ) {
+                (Display::Flex, true) => total_width + self.computed.column_gap * gaps_num,
+                (Display::Block, _) |
+                (Display::Flex, false) => max_width,
+                (Display::None, _) => return,
+                (Display::Grid, _) => unimplemented!("Grid fit auto size"),
+            };
+
+            let growth = width - self.computed.width.content;
+            self.computed.width.add(growth);
+        }
+
+        if self.node.height == Val::Auto {
+            let height = match (
+                self.node.display,
+                self.node.flex_direction.is_row(),
+            ) {
+                (Display::Flex, true) => max_height,
+                (Display::Block, _) => total_height,
+                (Display::Flex, false) => total_height + self.computed.row_gap * gaps_num,
+                (Display::None, _) => return,
+                (Display::Grid, _) => unimplemented!("Grid fit auto size"),
+            };
+
+            let growth = height - self.computed.height.content;
+            self.computed.height.add(growth);
         }
     }
 }
