@@ -9,8 +9,11 @@ pub(super) struct ArchetypeId(u64);
 
 #[derive(Debug)]
 pub(crate) struct Archetype {
-    pub(super) entity_ids: Vec<EntityId>,
-    pub(super) types: HashMap<TypeId, usize>,
+    /// Vec of entity ids in this archetype, where the index corresponds to the entity's component
+    /// in `self.components[component_index]`
+    entity_ids: Vec<EntityId>,
+    /// Stores component type ids and their index in `self.components`
+    types: HashMap<TypeId, usize>,
     /// Same layout as components, stores the last tick the component was updated
     ticks: Vec<Vec<u64>>,
     current_tick: *const u64,
