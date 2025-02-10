@@ -31,6 +31,8 @@ pub fn compute_nodes_and_transforms(ctx: &mut SystemsContext, mut q: Query<()>) 
         node.resolve_text_wrap(ctx, &mut font_system);
         node.fit_auto_size();
 
+        node.resolve_flex(ctx);
+
         node.compute_translation();
     }
 }
@@ -726,6 +728,35 @@ impl TempNode<'_> {
 
             let growth = height - self.computed.height.content;
             self.computed.height.add(growth);
+        }
+    }
+
+    /// Resolves flex grow and shrink
+    /// Traverse: TOP DOWN
+    fn resolve_flex(&mut self, ctx: &mut SystemsContext) {
+        if self.node.display == Display::Grid {
+            unimplemented!("Grid flex grow and shrink");
+        }
+
+        if self.node.display != Display::Flex {
+            return;
+        }
+
+        for child in &mut self.children {
+            if child.node.width == Val::Auto && self.node.align_items == AlignItems::Stretch && 
+                (self.node.is_flex_column() || self.node.display == Display::Block) {
+                let diff = self.computed.width.content - child.computed.width.total;
+                child.computed.width.add(diff);
+                child.constrain_to_width();
+            }
+
+            if child.node.height == Val::Auto && self.node.does_stretch_height() {
+                let diff = self.computed.height.content - child.computed.height.total;
+                child.computed.height.add(diff);
+                child.constrain_to_height();
+            }
+
+            child.resolve_flex(ctx);
         }
     }
 }
