@@ -25,6 +25,8 @@ pub fn compute_nodes_and_transforms(ctx: &mut SystemsContext, mut q: Query<()>) 
         node.compute_percent_size(screen_width, screen_height);
         node.compute_auto_size();
         node.compute_percent_size(screen_width, screen_height); // recompute after auto size
+        
+        node.compute_translation();
     }
 }
 
@@ -191,5 +193,71 @@ impl TempNode<'_> {
         for child in &mut self.children {
             child.compute_percent_size(self.computed.width.content, self.computed.height.content);
         }
+    }
+
+    /// Computes the translations (screen space position)
+    /// Traversal: BOTTOM UP
+    fn compute_translation(&mut self) {
+        // apply box offset
+        let self_offset_x = self.computed.border.left
+                    + self.computed.padding.left;
+        let self_offset_y = self.computed.border.top
+                    + self.computed.padding.top;
+
+        self.transform.translation = Vec3::new(
+            self.computed.margin.left, 
+            self.computed.margin.top, 
+            self.computed.z_index as f32
+        );
+
+        match self.node.display {
+            Display::None => {},
+            Display::Grid => unimplemented!("Grid translation"),
+            Display::Block => {
+                let offset_x = self_offset_x;
+                let mut offset_y = self_offset_y;
+
+                for child in &mut self.children {
+                    child.compute_translation();
+                    child.transform.translation.x += offset_x;
+                    child.transform.translation.y += offset_y;
+
+                    offset_y += child.computed.height.total;
+                }
+            },
+            Display::Flex => {
+                let justify_content_offsets = self.justify_content_offsets();
+                let align_items_offsets = self.align_items_offsets();
+                let is_reverse = self.node.flex_direction.is_reverse();
+
+                let mut offset_x = self_offset_x;
+                let mut offset_y = self_offset_y;
+
+                for mut i in 0..self.children.len() {
+                    if is_reverse {
+                        i = self.children.len() - 1 - i;
+                    } 
+                    let child = &mut self.children[i];
+                
+                    let justify_content_offset = justify_content_offsets[i];
+                    let align_items_offset = align_items_offsets[i];
+
+                    child.compute_translation();
+                    child.transform.translation.x += offset_x;
+                    child.transform.translation.y += offset_y;
+
+                    child.transform.translation += justify_content_offset;
+                    child.transform.translation += align_items_offset;
+
+                    if self.node.flex_direction.is_row() {
+                        offset_x += child.computed.width.total
+                            + self.computed.column_gap;
+                    } else {
+                        offset_y += child.computed.height.total
+                            + self.computed.row_gap;
+                    }
+                }
+            }
+        } 
     }
 }
