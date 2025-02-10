@@ -1,16 +1,13 @@
-use std::any::TypeId;
+use std::{any::TypeId, marker::PhantomData};
 
-pub struct Changed<T> {
-    _marker: std::marker::PhantomData<T>,
-}
+/// A filter that checks if a component is marked as changed in the current frame.
+pub struct Changed<T>(PhantomData<T>);
 
-pub struct With<T> {
-    _marker: std::marker::PhantomData<T>,
-}
+/// A filter that checks if a component is present.
+pub struct With<T>(PhantomData<T>);
 
-pub struct Without<T> {
-    _marker: std::marker::PhantomData<T>,
-}
+/// A filter that checks if a component is **not** present.
+pub struct Without<T>(PhantomData<T>);
 
 /// This trait defines what can be applied as a filter to a query
 pub(crate) trait QueryFilter {
