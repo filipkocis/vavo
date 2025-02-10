@@ -14,6 +14,17 @@ impl Val {
             Val::Vh(val) => window_size.height as f32 * *val / 100.0,
         }
     }
+
+    /// Computes the intrinsic value of the Val
+    pub fn compute_intrinsic(&self, ctx: &SystemsContext) -> f32 {
+        match *self {
+            Self::Px(val) => val,
+            Self::Rem(val) => val * 16.0,
+            Self::Vw(val) => ctx.renderer.size().width as f32 * val / 100.0,
+            Self::Vh(val) => ctx.renderer.size().height as f32 * val / 100.0,
+            _ => 0.0,
+        }
+    }
 }
 
 #[derive(Default, Debug, Clone, Copy)]
@@ -65,6 +76,29 @@ impl ComputedBox {
     /// `(border - content) / 2 = offset`
     pub fn offset(&self) -> f32 {
         (self.border - self.content) / 2.0
+    }
+
+    /// Sets the content, border, and total size to the same value
+    pub fn set(&mut self, value: f32) {
+        self.content = value;
+        self.border = value;
+        self.total = value;
+    }
+
+    /// Adds a value to the content, border, and total size while ensuring they are not negative.
+    /// If negative it will subtract at most `self.content` from all fields
+    pub fn add(&mut self, mut value: f32) {
+        if value < 0.0 && self.content < value.abs() {
+            value = -self.content;
+        }
+
+        self.content += value;
+        self.border += value;
+        self.total += value;
+
+        self.content = self.content.max(0.0);
+        self.border = self.border.max(0.0);
+        self.total = self.total.max(0.0);
     }
 }
 
