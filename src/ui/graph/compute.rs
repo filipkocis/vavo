@@ -21,7 +21,7 @@ pub fn compute_nodes_and_transforms(ctx: &mut SystemsContext, mut q: Query<()>) 
     let screen_height = ctx.renderer.size().height as f32;
     
     for node in &mut root_temp_nodes {
-        
+        node.measure_intrinsic_size(ctx);
     }
 }
 
@@ -57,5 +57,70 @@ fn resolve_z_index(
 }
 
 impl TempNode<'_> {
+    /// Measures the intrinsic size of the node, and sets the computed content size
+    /// Traversal: BOTTOM UP
+    fn measure_intrinsic_size(&mut self, ctx: &mut SystemsContext) {
+        let mut total_width = 0.0;
+        let mut total_height = 0.0;
+        let mut total_base_width = 0.0;
 
+        let mut max_width = 0.0f32;
+        let mut max_height = 0.0f32;
+        let mut max_base_width = 0.0f32;
+
+        for child in &mut self.children {
+            child.measure_intrinsic_size(ctx);
+
+            total_width += child.computed.width.total;
+            total_height += child.computed.height.total;
+            total_base_width += child.computed.base_width;
+
+            max_width = max_width.max(child.computed.width.total);
+            max_height = max_height.max(child.computed.height.total);
+            max_base_width = max_base_width.max(child.computed.base_width);
+        }
+
+        let (base_width, width) = if self.node.width == Val::Auto {
+            let text_width = self.text_rae.as_ref()
+                .map(|rae| rae.width())
+                .unwrap_or_default();
+
+            match (
+                self.node.display,
+                self.node.flex_direction.is_row(),
+            ) {
+                (Display::Flex, true) => (total_base_width, total_width + text_width),
+                (Display::Block, _) |
+                (Display::Flex, false) => (max_base_width, max_width.max(text_width)),
+                (Display::None, _) => (0.0, 0.0),
+                (Display::Grid, _) => unimplemented!("Grid auto size"),
+            }
+        } else {
+            let val = self.node.width.compute_val(0.0, ctx);
+            (val, val)
+        };
+
+        let height = if self.node.height == Val::Auto {
+            let text_height = self.text_rae.as_ref()
+                .map(|rae| rae.height())
+                .unwrap_or_default();
+
+            match (
+                self.node.display,
+                self.node.flex_direction.is_row(),
+            ) {
+                (Display::Flex, true) => max_height.max(text_height),
+                (Display::Block, _) |
+                (Display::Flex, false) => total_height + text_height,
+                (Display::None, _) => 0.0,
+                (Display::Grid, _) => unimplemented!("Grid auto size"),
+            }
+        } else {
+            self.node.height.compute_val(0.0, ctx)
+        };
+
+        self.computed.width.set(width); 
+        self.computed.height.set(height);
+        self.computed.base_width = base_width;
+    }
 }
