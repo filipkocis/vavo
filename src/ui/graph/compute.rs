@@ -195,6 +195,33 @@ impl TempNode<'_> {
         }
     }
 
+    /// Computes min / max values for one node
+    fn compute_min_max(&mut self, ctx: &mut SystemsContext, parent: Option<*mut TempNode>) {
+        let (parent_content_width, parent_content_height) = if let Some(parent) = parent {
+            let parent = unsafe { &mut *parent };
+            (parent.computed.width.content, parent.computed.height.content) 
+        } else {
+            let size = ctx.renderer.size();
+            (size.width as f32, size.height as f32)
+        };
+
+        self.computed.min_width = self.node.min_width.compute_val(parent_content_width, ctx);
+        self.computed.max_width = self.node.max_width.compute_val(parent_content_width, ctx);
+        self.computed.min_height = self.node.min_height.compute_val(parent_content_height, ctx);
+        self.computed.max_height = self.node.max_height.compute_val(parent_content_height, ctx);
+
+        if self.node.max_width == Val::Auto {
+            self.computed.max_width = f32::INFINITY;
+        }
+
+        if self.node.max_height == Val::Auto {
+            self.computed.max_height = f32::INFINITY;
+        }
+
+        self.computed.width.set(self.computed.width.content.min(self.computed.max_width).max(self.computed.min_width));
+        self.computed.height.set(self.computed.height.content.min(self.computed.max_height).max(self.computed.min_height));
+    }
+
     /// Computes the translations (screen space position)
     /// Traversal: BOTTOM UP
     fn compute_translation(&mut self) {
