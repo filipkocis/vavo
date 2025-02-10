@@ -23,6 +23,8 @@ pub fn compute_nodes_and_transforms(ctx: &mut SystemsContext, mut q: Query<()>) 
     for node in &mut root_temp_nodes {
         node.measure_intrinsic_size(ctx);
         node.compute_percent_size(screen_width, screen_height);
+        node.compute_auto_size();
+        node.compute_percent_size(screen_width, screen_height); // recompute after auto size
     }
 }
 
@@ -123,6 +125,56 @@ impl TempNode<'_> {
         self.computed.width.set(width); 
         self.computed.height.set(height);
         self.computed.base_width = base_width;
+    }
+
+    /// Computes auto size based on children
+    /// Traversal: BOTTOM UP
+    fn compute_auto_size(&mut self) {
+        if self.children.is_empty() {
+            return;
+        }
+
+        let mut total_width = 0.0;
+        let mut total_height = 0.0;
+
+        let mut max_width = 0.0f32;
+        let mut max_height = 0.0f32;
+
+        for child in &mut self.children {
+            child.compute_auto_size();
+
+            total_width += child.computed.width.total;
+            total_height += child.computed.height.total;
+
+            max_width = max_width.max(child.computed.width.total);
+            max_height = max_height.max(child.computed.height.total);
+        }
+
+        if self.node.width == Val::Auto {
+            match (
+                self.node.display,
+                self.node.flex_direction.is_row(),
+            ) {
+                (Display::Flex, true) => self.computed.width.set(total_width),
+                (Display::Block, _) |
+                (Display::Flex, false) => self.computed.width.set(max_width),
+                (Display::None, _) => self.computed.width.set(0.0),
+                (Display::Grid, _) => unimplemented!("Grid auto size"),
+            }
+        }
+
+        if self.node.height == Val::Auto {
+            match (
+                self.node.display,
+                self.node.flex_direction.is_row(),
+            ) {
+                (Display::Flex, true) => self.computed.height.set(max_height),
+                (Display::Block, _) |
+                (Display::Flex, false) => self.computed.height.set(total_height),
+                (Display::None, _) => self.computed.height.set(0.0),
+                (Display::Grid, _) => unimplemented!("Grid auto size"),
+            }
+        }
     }
 
     /// Computes percent size based on parent size
