@@ -9,8 +9,13 @@ pub struct With<T>(PhantomData<T>);
 /// A filter that checks if a component is **not** present.
 pub struct Without<T>(PhantomData<T>);
 
-/// This trait defines what can be applied as a filter to a query
+/// A special filter that checks if any of the filters evaluate to true. 
+/// Nested Ors are not supported.
+pub struct Or<F: QueryFilter>(PhantomData<F>);
+
+/// This trait defines what can be used as a filter in a query
 pub(crate) trait QueryFilter {
+    /// Parses `Self` and applies it to `filters`
     fn into_filters(filters: &mut Filters);
 }
 
@@ -32,6 +37,13 @@ impl<T: 'static> QueryFilter for Without<T> {
     }
 }
 
+impl<F: QueryFilter> QueryFilter for Or<F> {
+    fn into_filters(filters: &mut Filters) {
+        let or_filters = Filters::from::<F>();
+        filters.or.push(or_filters); 
+    }
+}
+
 macro_rules! impl_query_filter {
     ($($type:ident),+) => {
         impl<$($type: QueryFilter),+> QueryFilter for ($($type,)+) {
@@ -50,11 +62,17 @@ impl_query_filter!(A, B, C, D);
 impl_query_filter!(A, B, C, D, E);
 
 /// Struct to store parsed T query filters
+#[derive(Debug)]
 pub(crate) struct Filters {
     pub changed: Vec<TypeId>,
     pub with: Vec<TypeId>,
     pub without: Vec<TypeId>,
+    pub or: Vec<Filters>,
     pub empty: bool,
+
+    /// Used inside of an `Or` filter, indicates if `with` or `without` filters evaluate to true,
+    /// if so, it skips any further `changed` checks
+    pub matches_existence: bool,
 }
 
 impl Filters {
@@ -63,18 +81,22 @@ impl Filters {
             changed: Vec::new(),
             with: Vec::new(),
             without: Vec::new(),
+            or: Vec::new(),
             empty: true,
+            matches_existence: false,
         }
     }
 
-    pub fn from<T: QueryFilter>() -> Filters {
+    /// Create a new `Filters` instance with populated filters from 'F'
+    pub fn from<F: QueryFilter>() -> Filters {
         let mut filters = Filters::new();
-        filters.add::<T>();
+        filters.add::<F>();
         filters
     }
 
-    pub fn add<T: QueryFilter>(&mut self) {
-        T::into_filters(self);
+    /// Appends filters from 'F'
+    pub fn add<F: QueryFilter>(&mut self) {
+        F::into_filters(self);
         self.empty = false;
     }
 }
