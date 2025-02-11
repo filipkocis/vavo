@@ -212,53 +212,86 @@ impl Archetype {
 impl Archetype {
     /// Evaluates filters against this archetype. 
     /// Does **NOT** check `changed` filters, only their type existence in the archetype.
-    pub fn matches_filters(&self, filters: &Filters) -> bool {
+    pub fn matches_filters(&self, filters: &mut Filters) -> bool {
         if filters.empty {
             return true
         }
 
-        self.match_filter_changed(&filters) &&
-        self.match_filter_with(&filters) &&
-        self.match_filter_without(&filters)
+        self.has_types(&filters.changed) &&
+        self.has_types(&filters.with) &&
+        filters.without.iter().all(|type_id| !self.has_type(type_id)) && 
+        filters.or.iter_mut().all(|filters| self.matches_filters_any(filters))
     }
 
-    /// Returns indices of requested changed fields in this archetype
+    /// Returns true if any of the filters evaluate to true
+    fn matches_filters_any(&self, filters: &mut Filters) -> bool {
+        assert!(filters.or.is_empty(), "Nested OR filters are not supported");
+
+        if filters.empty {
+            return true
+        }
+
+        filters.matches_existence =
+            filters.with.iter().any(|type_id| self.has_type(type_id)) ||
+            filters.without.iter().any(|type_id| !self.has_type(type_id));
+
+        filters.matches_existence ||
+        filters.changed.iter().any(|type_id| self.has_type(type_id))
+    }
+
+    /// Returns indices of requested changed fields in this archetype, where first vec is from
+    /// `filters.changed` and the rest (optional) are from `filters.or[n].changed`.
     ///
     /// # Panics
-    /// Panics if type_id in filters.changed is not found in archetype
-    pub fn get_changed_filter_indices(&self, filters: &Filters) -> Vec<usize> {
-        filters.changed.iter().filter_map(|type_id| 
-            Some(*self.types.get(type_id)
-                .expect("type_id in filters.changed not found in archetype"))
-        ).collect()
+    /// Panics if type_id in `filters.changed` is not found in archetype
+    pub fn get_changed_filter_indices(&self, filters: &Filters) -> Vec<Vec<usize>> {
+        let mut result = Vec::with_capacity(1); 
+
+        let base = filters.changed.iter().map(|component_id|
+            self.get_component_index(component_id).expect("Component from filters.changed not found in archetype")
+        ).collect::<Vec<_>>();
+        result.push(base);
+
+        for or_filters in &filters.or {
+            if or_filters.matches_existence {
+                continue
+            }
+
+            let or_indices = or_filters.changed.iter().filter_map(|component_id|
+                self.get_component_index(component_id)
+            ).collect::<Vec<_>>();
+
+            if or_indices.is_empty() {
+                if or_filters.with.len() + or_filters.without.len() == 0 {
+                    panic!("Or<T> filter only contains changed filters, but none of the types are found in archetype");
+                } else {
+                    panic!("Or<T> filter doesn't match existence filters, and none of the Changed<T> types are found in archetype");
+                } 
+            }
+
+            result.push(or_indices);
+        }
+
+        result
     }
 
     /// Checks if requested fields (indices) are marked as changed in entities[at]
     ///
     /// # Note
     /// To get the correct indices call `archetype.get_changed_filter_indices(filters)`
-    pub fn check_changed_fields(&self, at: usize, indices: &[usize]) -> bool {
-        if indices.is_empty() {
+    pub fn check_changed_fields(&self, at: usize, indices: &[Vec<usize>]) -> bool {
+        if indices.len() == 1 && indices[0].is_empty() {
             return true
         }
 
-        indices.iter().all(|&index| {
-            self.ticks[index][at] == self.current_tick()
-        })
-    }
+        let current_tick = self.current_tick();
 
-    /// True if archetype contains all types in `filters.changed`
-    fn match_filter_changed(&self, filters: &Filters) -> bool {
-        filters.changed.iter().all(|type_id| self.has_type(type_id))
-    }
+        // base filter
+        indices[0].iter().all(|&index| self.ticks[index][at] == current_tick)
 
-    /// True if archetype contains all types in `filters.with`
-    fn match_filter_with(&self, filters: &Filters) -> bool {
-        filters.with.iter().all(|type_id| self.has_type(type_id))
-    }
-
-    /// True if archetype deosn't contain any type in `filters.without`
-    fn match_filter_without(&self, filters: &Filters) -> bool {
-        filters.without.iter().all(|type_id| !self.has_type(type_id)) 
+        // optional Or<T>
+        && indices.iter().skip(1).all(|or_indices| 
+            or_indices.iter().any(|&index| self.ticks[index][at] == current_tick)
+        )
     }
 }
