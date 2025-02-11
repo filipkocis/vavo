@@ -2,6 +2,7 @@ use std::fmt::Debug;
 
 use crate::prelude::*;
 use crate::render_assets::{RenderAssetEntry, RenderAssets};
+use crate::ui::image::UiImage;
 use crate::ui::node::{ComputedNode, Node};
 use crate::ui::text::{Text, TextBuffer};
 
@@ -28,11 +29,14 @@ impl Debug for TempNode<'_> {
 }
 
 /// Returns temp nodes with populated children, or empty if zero nodes were updated.
-/// Runs on `Changed<Node>` filter, or `WindowEvent::Resized` event
+/// Runs on `Changed<Node | Text | UiImage>` filters, or `WindowEvent::Resized` event
 pub fn nodes_to_temp_graph<'a>(ctx: &mut SystemsContext, q: &mut Query<()>) -> Vec<TempNode<'a>> {
     let mut check_updated = q.cast::<
         &EntityId,
-        (With<Node>, With<ComputedNode>, With<Transform>, Changed<Node>)
+        (
+            With<Node>, With<ComputedNode>, With<Transform>, 
+            Or<(Changed<Node>, Changed<Text>, Changed<UiImage>)>
+        )
     >();
 
     // if zero nodes where updated and window has not been resized,
