@@ -77,7 +77,7 @@ macro_rules! impl_run_query {
                 let requested_types = vec![$($types::get_type_id()),+];
                 let mut result = Vec::new();
 
-                for archetype in unsafe { &mut *self.entities }.archetypes_filtered(&requested_types, &filters) {
+                for archetype in unsafe { &mut *self.entities }.archetypes_filtered(&requested_types, &mut filters) {
                     // Extract specific component vecs into a $type variable
                     $(
                         #[allow(non_snake_case)]
@@ -119,7 +119,7 @@ macro_rules! impl_run_query {
 
                 let requested_types = vec![$($types::get_type_id()),+];
 
-                for archetype in unsafe { &mut *self.entities }.archetypes_filtered(&requested_types, &filters) {
+                for archetype in unsafe { &mut *self.entities }.archetypes_filtered(&requested_types, &mut filters) {
                     let entity_index = match archetype.get_entity_index(entity_id) {
                         Some(index) => index,
                         None => continue,

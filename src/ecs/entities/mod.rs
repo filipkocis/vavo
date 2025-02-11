@@ -74,7 +74,7 @@ impl Entities {
     }
 
     /// Returns archetypes containing type_ids  
-    pub(crate) fn archetypes_filtered(&mut self, type_ids: &[TypeId], filters: &Filters) -> Vec<&mut Archetype> {
+    pub(crate) fn archetypes_filtered(&mut self, type_ids: &[TypeId], filters: &mut Filters) -> Vec<&mut Archetype> {
         self.archetypes.values_mut().filter(|a| {
             a.has_types(type_ids) && a.matches_filters(filters)
         }).collect()
