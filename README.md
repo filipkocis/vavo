@@ -1,4 +1,4 @@
-# Vavo Game Engine
+# Vavo
 
 Vavo is a simple, fast and modular ECS game engine built in Rust. Designed for performance, scalability, and ease of use, while being completely free and open-source!
 
