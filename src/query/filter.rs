@@ -9,8 +9,9 @@ pub struct With<T>(PhantomData<T>);
 /// A filter that checks if a component is **not** present.
 pub struct Without<T>(PhantomData<T>);
 
-/// A special filter that checks if any of the filters evaluate to true. 
+/// A special filter that checks if any of the [filters](QueryFilter) evaluate to true. 
 /// Nested Ors are not supported.
+#[allow(private_bounds)]
 pub struct Or<F: QueryFilter>(PhantomData<F>);
 
 /// This trait defines what can be used as a filter in a query
