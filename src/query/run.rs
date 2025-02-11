@@ -116,7 +116,6 @@ macro_rules! impl_run_query {
                 let mut filters = Filters::new();
                 $(filters.add::<$filter>();)*
 
-
                 let requested_types = vec![$($types::get_type_id()),+];
 
                 for archetype in unsafe { &mut *self.entities }.archetypes_filtered(&requested_types, &mut filters) {
@@ -125,19 +124,14 @@ macro_rules! impl_run_query {
                         None => continue,
                     };
 
-                    // Extract specific component vecs into a $type variable
+                    // Extract specific component vecs and their indices into a $type variable
                     $(
                         #[allow(non_snake_case)]
                         let $types = {
                             let type_id = $types::get_type_id();
-                            let index = *archetype.types().get(&type_id).expect("type should exist in archetype");
+                            let index = archetype.get_component_index(&type_id).expect("type should exist in archetype");
 
-                            if $types::is_mut() {
-                                // Mark components as mutated if $type is &mut T
-                                archetype.mark_mutated(index);
-                            }
-
-                            archetype.components_at_mut(index)
+                            (archetype.components_at_mut(index), index)
                         };
                     )+
 
@@ -148,8 +142,13 @@ macro_rules! impl_run_query {
                     }
 
                     // SAFETY: We know that the components are of the correct type $type
-                    return Some(($(unsafe { 
-                        $types::get_downcasted(&mut (&mut *$types)[entity_index])
+                    return Some(($(unsafe {
+                        if $types::is_mut() {
+                            // Mark entity's component as mutated if $type is &mut T
+                            archetype.mark_mutated_single(entity_index, $types.1);
+                        }
+
+                        $types::get_downcasted(&mut (&mut *$types.0)[entity_index])
                     }),+));
                 }
 
