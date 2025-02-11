@@ -72,38 +72,44 @@ macro_rules! impl_run_query {
                 #[allow(unused_mut)]
                 let mut filters = Filters::new();
                 $(filters.add::<$filter>();)*
-
+                let has_changed_filters = filters.has_changed_filters();
 
                 let requested_types = vec![$($types::get_type_id()),+];
                 let mut result = Vec::new();
 
                 for archetype in unsafe { &mut *self.entities }.archetypes_filtered(&requested_types, &mut filters) {
-                    // Extract specific component vecs into a $type variable
+                    // Extract specific component vecs and their indices into a $type variable
                     $(
                         #[allow(non_snake_case)]
                         let $types = {
                             let type_id = $types::get_type_id();
-                            let index = *archetype.types().get(&type_id).expect("type should exist in archetype");
+                            let index = archetype.get_component_index(&type_id).expect("type should exist in archetype");
 
-                            if $types::is_mut() {
-                                // TODO: do not update every component, some might be filtered out
-                                // Mark components as mutated if $type is &mut T
+                            // marks the whole column if query doesn't contain `changed` filters
+                            if !has_changed_filters && $types::is_mut() {
+                                // Mark all components as mutated if $type is &mut T
                                 archetype.mark_mutated(index);
                             }
 
-                            archetype.components_at_mut(index)
+                            (archetype.components_at_mut(index), index)
                         };
                     )+
 
                     let component_indices_filter = archetype.get_changed_filter_indices(&filters);
-                    for i in 0..archetype.len() {
-                        if !archetype.check_changed_fields(i, &component_indices_filter) {
+                    for entity_index in 0..archetype.len() {
+                        if !archetype.check_changed_fields(entity_index, &component_indices_filter) {
                             continue;
                         }
 
                         // SAFETY: We know that the components are of the correct type $type
-                        result.push(($(unsafe { 
-                            $types::get_downcasted(&mut (&mut *$types)[i])
+                        result.push(($(unsafe {
+                            // marks only specific components if query contains `changed` filters
+                            if has_changed_filters && $types::is_mut() {
+                                // Mark entity's component as mutated if $type is &mut T
+                                archetype.mark_mutated_single(entity_index, $types.1);
+                            }
+
+                            $types::get_downcasted(&mut (&mut *$types.0)[entity_index])
                         }),+));
                     }
                 }
