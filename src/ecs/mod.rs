@@ -2,6 +2,7 @@ pub mod resources;
 pub mod state;
 pub mod world;
 pub mod entities;
+pub mod components;
 
 pub mod prelude {
     pub use super::resources::{
