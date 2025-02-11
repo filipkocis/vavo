@@ -1,6 +1,6 @@
 pub use super::{
     app::{App, Plugin},
-    query::{Query, RunQuery, filter::{Changed, With, Without}},
+    query::{Query, RunQuery, filter::{Changed, With, Without, Or}},
     system::{System, GraphSystem, SystemsContext, Commands, SystemStage, IntoSystem, IntoSystemCondition},
     assets::{Assets, Handle, AssetLoader, Asset, ShaderLoader},
     renderer::{Material, Texture, Image, Color, Face, Mesh, Meshable, shapes},
