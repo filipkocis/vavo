@@ -7,9 +7,7 @@ pub fn update_camera_buffers<'a>(
     ctx: &mut SystemsContext, 
     mut query: Query< 
         (&'a EntityId, &'a Camera, &'a Projection, &'a GlobalTransform), 
-        // TODO: add OR<T> since camera needs both proj and trans to be mutated to update
-        // (With<Camera3D>, Changed<Projection>, Changed<Transform>)
-        (With<Camera3D>, With<Projection>, Changed<GlobalTransform>)
+        (With<Camera3D>, Or<(Changed<Projection>, Changed<GlobalTransform>)>)
     >
 ) {
     let mut buffers = ctx.resources.get_mut::<RenderAssets<Buffer>>().unwrap();
