@@ -100,4 +100,11 @@ impl Filters {
         F::into_filters(self);
         self.empty = false;
     }
+
+    /// Checks if any relevant `changed` filters are present
+    pub fn has_changed_filters(&self) -> bool {
+        !self.changed.is_empty() || self.or.iter().any(|f| 
+            !f.changed.is_empty() && !f.matches_existence
+        )
+    }
 }
