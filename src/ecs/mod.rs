@@ -19,4 +19,5 @@ pub mod prelude {
         Entities, EntityId, 
         relation::{Children, Parent},
     };
+    pub use super::components::Component;
 }

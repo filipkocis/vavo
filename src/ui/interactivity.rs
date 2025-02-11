@@ -9,7 +9,7 @@ use crate::{prelude::*, ui::prelude::*};
 pub struct Button;
 
 /// Enables mouse event tracking for an UI entity, automatically added with `Button`
-#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Component, Default, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Interaction {
     /// Mouse is hovering over the node's bounding box
     Hover,

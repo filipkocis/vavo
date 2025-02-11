@@ -176,6 +176,7 @@ pub enum BoxSizing {
 }
 
 #[derive(Default, Debug, Clone)]
+#[derive(crate::macros::Component)]
 pub struct Node {
     pub background_color: Color,
     /// None - inherit
