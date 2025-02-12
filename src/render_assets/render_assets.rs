@@ -1,6 +1,6 @@
 use std::{any::TypeId, collections::HashMap, ops::Deref, sync::Arc};
 
-use crate::{assets::{Asset, Assets, Handle}, prelude::Res, ecs::resources::Resource, system::SystemsContext, ecs::entities::EntityId};
+use crate::{assets::{Asset, Assets, Handle}, ecs::{entities::EntityId, resources::Resource}, prelude::{Component, Res}, system::SystemsContext};
 
 use super::{RenderAsset, RenderHandle};
 
@@ -53,9 +53,9 @@ impl<T: 'static> Into<AssetHandleId> for &Handle<T> {
     }
 }
 
-impl<T: 'static> Into<EntityComponentId> for (&EntityId, &T) {
+impl<C: Component> Into<EntityComponentId> for (&EntityId, &C) {
     fn into(self) -> EntityComponentId {
-        EntityComponentId(self.0.raw(), TypeId::of::<T>())
+        EntityComponentId(self.0.raw(), TypeId::of::<C>())
     }
 }
 
@@ -95,13 +95,13 @@ impl<RA: RenderAsset> RenderAssets<RA> {
         self.storage.get(&handle).cloned()
     }
 
-    pub fn get_by_entity<A>(
+    pub fn get_by_entity<C>(
         &mut self, 
         entity_id: &EntityId, 
-        component: &A, 
+        component: &C, 
         ctx: &mut SystemsContext,
     ) -> RenderAssetEntry<RA>
-    where A: IntoRenderAsset<RA> + 'static {
+    where C: Component + IntoRenderAsset<RA> {
         let entity_component_id = (entity_id, component).into();
 
         let rae = match self.entity_component_map.get(&entity_component_id){
@@ -189,7 +189,7 @@ impl<RA: RenderAsset> RenderAssets<RA> {
     }
     
     /// Remove render asset created by `get_by_entity` method
-    pub fn remove_by_entity<A: 'static>(&mut self, entity_id: &EntityId, component: &A) -> Option<Arc<RA>> {
+    pub fn remove_by_entity<C: Component>(&mut self, entity_id: &EntityId, component: &C) -> Option<Arc<RA>> {
         let entity_component_id = (entity_id, component).into();
         let key = self.entity_component_map.remove(&entity_component_id)?;
         self.storage.remove(&key)
