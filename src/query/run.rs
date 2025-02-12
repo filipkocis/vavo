@@ -21,6 +21,12 @@ trait QueryGetType {
     }
 }
 
+impl QueryGetType for EntityId {
+    fn get_type_id() -> TypeId {
+        <EntityId as Component>::get_type_id()
+    }
+}
+
 impl<C: Component> QueryGetType for &C {
     fn get_type_id() -> TypeId {
         C::get_type_id()
@@ -43,17 +49,24 @@ trait QueryGetDowncasted<'a> {
     fn get_downcasted(comp: &'a mut Box<dyn Any>) -> Self::Output;
 }
 
-impl<'a, Type: 'static> QueryGetDowncasted<'a> for &Type {
-    type Output = &'a Type;
+impl<'a> QueryGetDowncasted<'a> for EntityId {
+    type Output = EntityId;
     fn get_downcasted(comp: &'a mut Box<dyn Any>) -> Self::Output {
-        comp.downcast_ref::<Type>().expect("downcast failed")
+        *comp.downcast_ref::<EntityId>().expect("downcast failed")
     }
 }
 
-impl<'a, T: 'static> QueryGetDowncasted<'a> for &mut T {
-    type Output = &'a mut T;
+impl<'a, C: Component> QueryGetDowncasted<'a> for &C {
+    type Output = &'a C;
     fn get_downcasted(comp: &'a mut Box<dyn Any>) -> Self::Output {
-        comp.downcast_mut::<T>().expect("downcast failed")
+        comp.downcast_ref::<C>().expect("downcast failed")
+    }
+}
+
+impl<'a, C: Component> QueryGetDowncasted<'a> for &mut C {
+    type Output = &'a mut C;
+    fn get_downcasted(comp: &'a mut Box<dyn Any>) -> Self::Output {
+        comp.downcast_mut::<C>().expect("downcast failed")
     }
 }
 
