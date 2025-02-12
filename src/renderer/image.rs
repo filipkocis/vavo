@@ -1,8 +1,8 @@
-use crate::{assets::Assets, render_assets::{IntoRenderAsset, RenderAssetEntry, RenderAssets}, system::SystemsContext};
+use crate::{assets::Assets, render_assets::{IntoRenderAsset, RenderAssetEntry, RenderAssets}, system::SystemsContext, macros::{RenderAsset, Asset}};
 
 use super::Color;
 
-#[derive(crate::macros::RenderAsset)]
+#[derive(RenderAsset)]
 pub struct Texture {
     pub texture: wgpu::Texture,
     pub view: wgpu::TextureView,
@@ -46,7 +46,7 @@ impl SingleColorTexture {
     }
 }
 
-#[derive(Clone, Debug, crate::macros::Asset)]
+#[derive(Clone, Debug, Asset)]
 pub struct Image {
     /// Image data, if set, will be used to write to the texture during creation
     pub data: Vec<u8>,
