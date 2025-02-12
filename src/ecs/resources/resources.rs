@@ -10,29 +10,29 @@ pub struct Resources {
 
 /// Immutable resource reference. 
 /// Holds a raw pointer to the resource.
-pub struct Res<T>(pub(crate) *const T);
+pub struct Res<R: Resource>(pub(crate) *const R);
 
 /// Mutable resource reference.
 /// Holds a raw mutable pointer to the resource.
-pub struct ResMut<T>(pub(crate) *mut T);
+pub struct ResMut<R: Resource>(pub(crate) *mut R);
 
-impl<T> Deref for Res<T> {
-    type Target = T;
-
-    fn deref(&self) -> &Self::Target {
-        unsafe { &*self.0 }
-    }
-}
-
-impl<T> Deref for ResMut<T> {
-    type Target = T;
+impl<R: Resource> Deref for Res<R> {
+    type Target = R;
 
     fn deref(&self) -> &Self::Target {
         unsafe { &*self.0 }
     }
 }
 
-impl<T> DerefMut for ResMut<T> {
+impl<R: Resource> Deref for ResMut<R> {
+    type Target = R;
+
+    fn deref(&self) -> &Self::Target {
+        unsafe { &*self.0 }
+    }
+}
+
+impl<R: Resource> DerefMut for ResMut<R> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         unsafe { &mut *self.0 }
     }
