@@ -91,7 +91,7 @@ macro_rules! impl_run_query {
                 $(filters.add::<$filter>();)*
                 let has_changed_filters = filters.has_changed_filters();
 
-                let requested_types = vec![$($types::get_type_id()),+];
+                let requested_types = [$($types::get_type_id()),+];
                 let mut result = Vec::new();
 
                 for archetype in unsafe { &mut *self.entities }.archetypes_filtered(&requested_types, &mut filters) {
@@ -139,7 +139,7 @@ macro_rules! impl_run_query {
                 let mut filters = Filters::new();
                 $(filters.add::<$filter>();)*
 
-                let requested_types = vec![$($types::get_type_id()),+];
+                let requested_types = [$($types::get_type_id()),+];
 
                 for archetype in unsafe { &mut *self.entities }.archetypes_filtered(&requested_types, &mut filters) {
                     let entity_index = match archetype.get_entity_index(entity_id) {
