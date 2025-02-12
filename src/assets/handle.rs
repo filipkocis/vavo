@@ -1,12 +1,15 @@
 use std::{fmt::Debug, hash::Hash};
 
+use super::Asset;
+
 /// Handle to an asset resource
-pub struct Handle<T> {
+#[derive(crate::macros::Component)]
+pub struct Handle<A: Asset> {
     id: u64,
-    _marker: std::marker::PhantomData<T>,
+    _marker: std::marker::PhantomData<A>,
 }
 
-impl<T> Handle<T> {
+impl<A: Asset> Handle<A> {
     pub(super) fn new(id: u64) -> Self {
         Self {
             id,
@@ -19,27 +22,27 @@ impl<T> Handle<T> {
     }
 }
 
-impl<T> Hash for Handle<T> {
+impl<A: Asset> Hash for Handle<A> {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.id.hash(state);
     }
 }
 
-impl<T> Debug for Handle<T> {
+impl<A: Asset> Debug for Handle<A> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "AssetHandle({})", self.id)
     }
 }
 
-impl<T> Clone for Handle<T> {
+impl<A: Asset> Clone for Handle<A> {
     fn clone(&self) -> Self {
         Self::new(self.id)
     }
 }
 
-impl<T> PartialEq for Handle<T> {
+impl<A: Asset> PartialEq for Handle<A> {
     fn eq(&self, other: &Self) -> bool {
         self.id == other.id
     }
 }
-impl<T> Eq for Handle<T> {}
+impl<A: Asset> Eq for Handle<A> {}
