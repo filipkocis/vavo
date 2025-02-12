@@ -12,17 +12,17 @@ pub trait IntoRenderAsset<R: RenderAsset> {
     ) -> R;
 }
 
-/// Wrapper for render asset entry to allow multiple mutable borrows for RenderAssets<T>
-pub struct RenderAssetEntry<T>(Arc<T>);
+/// Wrapper for render asset entry to allow multiple mutable borrows for RenderAssets<RA>
+pub struct RenderAssetEntry<RA: RenderAsset>(Arc<RA>);
 
-impl<T> Clone for RenderAssetEntry<T> {
+impl<RA: RenderAsset> Clone for RenderAssetEntry<RA> {
     fn clone(&self) -> Self {
         RenderAssetEntry(self.0.clone())
     }
 }
 
-impl<T> Deref for RenderAssetEntry<T> {
-    type Target = T;
+impl<RA: RenderAsset> Deref for RenderAssetEntry<RA> {
+    type Target = RA;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -41,15 +41,15 @@ struct AssetHandleId(TypeId, u64);
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct EntityComponentId(u32, TypeId);
 
-impl<T: 'static> Into<ResourceId> for &Res<T> {
+impl<R: Resource> Into<ResourceId> for &Res<R> {
     fn into(self) -> ResourceId {
-        ResourceId(TypeId::of::<T>())
+        ResourceId(TypeId::of::<R>())
     }
 }
 
-impl<T: 'static> Into<AssetHandleId> for &Handle<T> {
+impl<A: Asset> Into<AssetHandleId> for &Handle<A> {
     fn into(self) -> AssetHandleId {
-        AssetHandleId(TypeId::of::<T>(), self.id())
+        AssetHandleId(TypeId::of::<A>(), self.id())
     }
 }
 
@@ -182,7 +182,7 @@ impl<RA: RenderAsset> RenderAssets<RA> {
         render_asset
     }
 
-    pub fn remove<A: 'static>(&mut self, handle: &Handle<A>) -> Option<Arc<RA>> {
+    pub fn remove<A: Asset>(&mut self, handle: &Handle<A>) -> Option<Arc<RA>> {
         // TODO: should we remove both the handle and the asset? 
         let key = self.handle_map.remove(&handle.into())?;
         self.storage.remove(&key)
