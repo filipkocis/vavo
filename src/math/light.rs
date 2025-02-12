@@ -2,7 +2,7 @@ use std::ops::{BitOr, BitOrAssign};
 
 use glam::{Mat4, Quat, Vec3};
 
-use crate::{palette, prelude::Color};
+use crate::{palette, prelude::Color, macros::{Resource, Component}};
 
 use super::CubeFace;
 
@@ -30,7 +30,7 @@ impl BitOrAssign<LightFlags> for u32 {
 }
 
 #[repr(C)]
-#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Component, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Light {
     pub view_proj: [[f32; 4]; 4],
     pub color: [f32; 4], // required alignment of 16 bytes
@@ -56,7 +56,7 @@ pub struct Light {
 } 
 
 /// Ambient light source affecting all objects in the scene equally, set as a resource
-#[derive(crate::macros::Resource)]
+#[derive(Resource)]
 pub struct AmbientLight {
     pub color: Color,
     pub intensity: f32,
@@ -65,6 +65,7 @@ pub struct AmbientLight {
 /// Light source emitting light orthogonally in a specific direction with a orthographic projection
 /// (sunlight)
 /// Direction is extracted from the transform component
+#[derive(Component)]
 pub struct DirectionalLight {
     pub color: Color,
     pub intensity: f32,
@@ -73,6 +74,7 @@ pub struct DirectionalLight {
 
 /// Light source emitting light in all directions from a point in space (light bulb)
 /// Position is extracted from the transform component
+#[derive(Component)]
 pub struct PointLight {
     pub color: Color,
     pub intensity: f32,
@@ -83,6 +85,7 @@ pub struct PointLight {
 /// Light source emitting cone light in a specific direction with a perspective projection
 /// (flashlight or car headlight)
 /// Position and direction are extracted from the transform component
+#[derive(Component)]
 pub struct SpotLight {
     pub color: Color,
     pub intensity: f32,

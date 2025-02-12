@@ -5,7 +5,7 @@ use winit::event::MouseButton;
 use crate::{prelude::*, ui::prelude::*};
 
 /// Marks an UI entity as interactive, enabling mouse events via `Interaction`
-#[derive(Debug, Clone, Copy)]
+#[derive(Component, Debug, Clone, Copy)]
 pub struct Button;
 
 /// Enables mouse event tracking for an UI entity, automatically added with `Button`

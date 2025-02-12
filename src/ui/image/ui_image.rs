@@ -1,7 +1,7 @@
 use crate::{prelude::*, render_assets::{BindGroup, Buffer, IntoRenderAsset}};
 
 /// An image UI node component.
-#[derive(Clone, Debug)]
+#[derive(Component, Clone, Debug)]
 pub struct UiImage {
     pub image: Handle<Image>,
     /// Image color gets multiplied by this tint color, defaults to white
