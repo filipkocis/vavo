@@ -10,8 +10,11 @@ use crate::query::filter::Filters;
 use archetype::{Archetype, ArchetypeId};
 use relation::{Children, Parent};
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+use super::prelude::Component;
+
 /// Unique identifier for an [entity](Entities) in a [`World`](crate::ecs::world::World)
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(crate::macros::Component)]
 pub struct EntityId(u32);
 
 impl EntityId {
@@ -217,8 +220,8 @@ impl Entities {
     }
 
     /// Get component mutably
-    pub(crate) fn get_component_mut<T: 'static>(&mut self, entity_id: EntityId) -> Option<&mut T> {
-        let type_id = TypeId::of::<T>();
+    pub(crate) fn get_component_mut<C: Component>(&mut self, entity_id: EntityId) -> Option<&mut C> {
+        let type_id = TypeId::of::<C>();
         for archetype in self.archetypes.values_mut() {
             let entity_index = match archetype.get_entity_index(entity_id) {
                 Some(index) => index,
@@ -228,7 +231,7 @@ impl Entities {
             if let Some(component_index) = archetype.get_component_index(&type_id) {
                 archetype.mark_mutated_single(entity_index, component_index);
                 let component = &mut archetype.components[component_index][entity_index];
-                return component.downcast_mut::<T>();
+                return component.downcast_mut::<C>();
             } else {
                 return None
             }
@@ -238,8 +241,8 @@ impl Entities {
     }
 
     /// Get component
-    pub(crate) fn get_component<T: 'static>(&self, entity_id: EntityId) -> Option<&T> {
-        let type_id = TypeId::of::<T>();
+    pub(crate) fn get_component<C: Component>(&self, entity_id: EntityId) -> Option<&C> {
+        let type_id = TypeId::of::<C>();
         for archetype in self.archetypes.values() {
             let entity_index = match archetype.get_entity_index(entity_id) {
                 Some(index) => index,
@@ -248,7 +251,7 @@ impl Entities {
 
             if let Some(component_index) = archetype.get_component_index(&type_id) {
                 let component = &archetype.components[component_index][entity_index];
-                return component.downcast_ref::<T>();
+                return component.downcast_ref::<C>();
             } else {
                 return None
             }

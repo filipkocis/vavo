@@ -1,6 +1,6 @@
 use std::any::{Any, TypeId};
 
-use crate::{math::{GlobalTransform, Transform}, ecs::{resources::Resource, world::World, entities::EntityId}};
+use crate::{ecs::{entities::EntityId, resources::Resource, world::World, components::Component}, math::{GlobalTransform, Transform}};
 
 enum Command {
     InsertResource(TypeId, Box<dyn Any>),
@@ -78,16 +78,16 @@ impl<'a> EntityCommands<'a> {
             .push(Command::DespawnEntityRecursive(self.entity_id));
     }
 
-    pub fn insert<T: 'static>(mut self, component: T) -> Self {
+    pub fn insert<C: Component>(mut self, component: C) -> Self {
         self.handle_insert_types(&component);
         self.insert_internal(component);
         self
     }
 
-    pub fn remove<T: 'static>(self) -> Self {
+    pub fn remove<C: Component>(self) -> Self {
         self.commands
             .commands
-            .push(Command::RemoveComponent(self.entity_id, TypeId::of::<T>()));
+            .push(Command::RemoveComponent(self.entity_id, TypeId::of::<C>()));
         self
     }
 
@@ -115,15 +115,15 @@ impl<'a> EntityCommands<'a> {
         self
     }
 
-    fn insert_internal<T: 'static>(&mut self, component: T) {
+    fn insert_internal<C: Component>(&mut self, component: C) {
         self.commands.commands.push(Command::InsertComponent(
             self.entity_id,
             Box::new(component),
         ));
     }
 
-    fn handle_insert_types<T: 'static>(&mut self, component: &T) {
-        let type_id = TypeId::of::<T>();
+    fn handle_insert_types<C: Component>(&mut self, component: &C) {
+        let type_id = TypeId::of::<C>();
 
         if type_id == TypeId::of::<EntityId>() {
             panic!("Cannot insert EntityId component");
@@ -132,7 +132,7 @@ impl<'a> EntityCommands<'a> {
         }
 
         if type_id == TypeId::of::<Transform>() {
-            let transform = component as *const T as *const Transform;
+            let transform = component as *const C as *const Transform;
             self.insert_internal(GlobalTransform::from_transform(unsafe { &*transform }));
         }
     }

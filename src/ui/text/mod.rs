@@ -2,7 +2,7 @@ use std::sync::Mutex;
 
 use glyphon::{Attrs, Buffer, FontSystem, Metrics, Shaping};
 
-use crate::{prelude::{Color, Resource}, render_assets::IntoRenderAsset};
+use crate::{prelude::{Color, Resource}, render_assets::IntoRenderAsset, macros::{RenderAsset, Component}};
 
 // TODO: use newtype pattern and derive
 impl Resource for glyphon::FontSystem {}
@@ -11,6 +11,7 @@ impl Resource for glyphon::TextAtlas {}
 impl Resource for glyphon::SwashCache {}
 impl Resource for glyphon::Viewport {}
 
+#[derive(Component)]
 pub struct Text {
     pub content: String,
     pub font_size: f32,
@@ -19,7 +20,7 @@ pub struct Text {
     pub shaping: Shaping,
 }
 
-#[derive(crate::macros::RenderAsset)]
+#[derive(RenderAsset)]
 pub struct TextBuffer {
     pub buffer: Mutex<Buffer>,
 }

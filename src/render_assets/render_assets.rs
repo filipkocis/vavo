@@ -1,6 +1,6 @@
 use std::{any::TypeId, collections::HashMap, ops::Deref, sync::Arc};
 
-use crate::{assets::{Asset, Assets, Handle}, prelude::Res, ecs::resources::Resource, system::SystemsContext, ecs::entities::EntityId};
+use crate::{assets::{Asset, Assets, Handle}, ecs::{entities::EntityId, resources::Resource}, prelude::{Component, Res}, system::SystemsContext};
 
 use super::{RenderAsset, RenderHandle};
 
@@ -12,17 +12,17 @@ pub trait IntoRenderAsset<R: RenderAsset> {
     ) -> R;
 }
 
-/// Wrapper for render asset entry to allow multiple mutable borrows for RenderAssets<T>
-pub struct RenderAssetEntry<T>(Arc<T>);
+/// Wrapper for render asset entry to allow multiple mutable borrows for RenderAssets<RA>
+pub struct RenderAssetEntry<RA: RenderAsset>(Arc<RA>);
 
-impl<T> Clone for RenderAssetEntry<T> {
+impl<RA: RenderAsset> Clone for RenderAssetEntry<RA> {
     fn clone(&self) -> Self {
         RenderAssetEntry(self.0.clone())
     }
 }
 
-impl<T> Deref for RenderAssetEntry<T> {
-    type Target = T;
+impl<RA: RenderAsset> Deref for RenderAssetEntry<RA> {
+    type Target = RA;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -41,21 +41,21 @@ struct AssetHandleId(TypeId, u64);
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct EntityComponentId(u32, TypeId);
 
-impl<T: 'static> Into<ResourceId> for &Res<T> {
+impl<R: Resource> Into<ResourceId> for &Res<R> {
     fn into(self) -> ResourceId {
-        ResourceId(TypeId::of::<T>())
+        ResourceId(TypeId::of::<R>())
     }
 }
 
-impl<T: 'static> Into<AssetHandleId> for &Handle<T> {
+impl<A: Asset> Into<AssetHandleId> for &Handle<A> {
     fn into(self) -> AssetHandleId {
-        AssetHandleId(TypeId::of::<T>(), self.id())
+        AssetHandleId(TypeId::of::<A>(), self.id())
     }
 }
 
-impl<T: 'static> Into<EntityComponentId> for (&EntityId, &T) {
+impl<C: Component> Into<EntityComponentId> for (&EntityId, &C) {
     fn into(self) -> EntityComponentId {
-        EntityComponentId(self.0.raw(), TypeId::of::<T>())
+        EntityComponentId(self.0.raw(), TypeId::of::<C>())
     }
 }
 
@@ -95,13 +95,13 @@ impl<RA: RenderAsset> RenderAssets<RA> {
         self.storage.get(&handle).cloned()
     }
 
-    pub fn get_by_entity<A>(
+    pub fn get_by_entity<C>(
         &mut self, 
         entity_id: &EntityId, 
-        component: &A, 
+        component: &C, 
         ctx: &mut SystemsContext,
     ) -> RenderAssetEntry<RA>
-    where A: IntoRenderAsset<RA> + 'static {
+    where C: Component + IntoRenderAsset<RA> {
         let entity_component_id = (entity_id, component).into();
 
         let rae = match self.entity_component_map.get(&entity_component_id){
@@ -182,14 +182,14 @@ impl<RA: RenderAsset> RenderAssets<RA> {
         render_asset
     }
 
-    pub fn remove<A: 'static>(&mut self, handle: &Handle<A>) -> Option<Arc<RA>> {
+    pub fn remove<A: Asset>(&mut self, handle: &Handle<A>) -> Option<Arc<RA>> {
         // TODO: should we remove both the handle and the asset? 
         let key = self.handle_map.remove(&handle.into())?;
         self.storage.remove(&key)
     }
     
     /// Remove render asset created by `get_by_entity` method
-    pub fn remove_by_entity<A: 'static>(&mut self, entity_id: &EntityId, component: &A) -> Option<Arc<RA>> {
+    pub fn remove_by_entity<C: Component>(&mut self, entity_id: &EntityId, component: &C) -> Option<Arc<RA>> {
         let entity_component_id = (entity_id, component).into();
         let key = self.entity_component_map.remove(&entity_component_id)?;
         self.storage.remove(&key)

@@ -4,6 +4,8 @@ use crate::ecs::entities::EntityId;
 
 use super::{Query, filter::{Filters, QueryFilter}};
 
+use crate::ecs::components::Component;
+
 pub trait RunQuery {
     type Output;
 
@@ -11,28 +13,34 @@ pub trait RunQuery {
     fn get(&mut self, entity_id: EntityId) -> Option<Self::Output>;
 }
 
+/// Retrieve information about the requested component type in the query
 trait QueryGetType {
     fn get_type_id() -> TypeId;
-}
-
-impl<T: 'static> QueryGetType for &T {
-    fn get_type_id() -> TypeId {
-        TypeId::of::<T>()
-    }
-}
-
-impl<T: 'static> QueryGetType for &mut T {
-    fn get_type_id() -> TypeId {
-        TypeId::of::<T>()
-    }
-}
-
-trait QueryGetDowncasted<'a> {
-    type Output;
-    fn get_downcasted(comp: &'a mut Box<dyn Any>) -> Self::Output;
     fn is_mut() -> bool {
         false
     }
+}
+
+impl<C: Component> QueryGetType for &C {
+    fn get_type_id() -> TypeId {
+        C::get_type_id()
+    }
+}
+
+impl<C: Component> QueryGetType for &mut C {
+    fn get_type_id() -> TypeId {
+        C::get_type_id()
+    }
+
+    fn is_mut() -> bool {
+        true
+    }
+}
+
+/// Downcast the requested component archetype data into the correct target type
+trait QueryGetDowncasted<'a> {
+    type Output;
+    fn get_downcasted(comp: &'a mut Box<dyn Any>) -> Self::Output;
 }
 
 impl<'a, Type: 'static> QueryGetDowncasted<'a> for &Type {
@@ -46,10 +54,6 @@ impl<'a, T: 'static> QueryGetDowncasted<'a> for &mut T {
     type Output = &'a mut T;
     fn get_downcasted(comp: &'a mut Box<dyn Any>) -> Self::Output {
         comp.downcast_mut::<T>().expect("downcast failed")
-    }
-
-    fn is_mut() -> bool {
-        true
     }
 }
 

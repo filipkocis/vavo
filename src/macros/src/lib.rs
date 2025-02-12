@@ -81,3 +81,18 @@ pub fn derive_states(item: proc_macro::TokenStream) -> TokenStream {
 
     TokenStream::from(expanded)
 }
+
+#[proc_macro_derive(Component)]
+pub fn derive_component(item: proc_macro::TokenStream) -> TokenStream {
+    let path = resolve_path_name();
+    let input = parse_macro_input!(item as DeriveInput);
+    let name = &input.ident;
+    let generics = &input.generics;
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+    
+    let expanded = quote! {
+        impl #impl_generics #path::ecs::components::Component for #name #ty_generics #where_clause {}
+    };
+
+    TokenStream::from(expanded)
+}

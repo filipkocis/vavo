@@ -1,23 +1,23 @@
 use glam::{Mat4, Quat, Vec3, Vec4Swizzles};
 
-use crate::{render_assets::{BindGroup, Buffer, IntoRenderAsset, RenderAssets}, system::SystemsContext, ecs::entities::EntityId};
+use crate::{render_assets::{BindGroup, Buffer, IntoRenderAsset, RenderAssets}, system::SystemsContext, ecs::entities::EntityId, macros::Component};
 
-#[derive(Debug, Clone, Copy)]
 /// Represents the local transform of an entity, relative to its parent or the world space if it
 /// has no parent.
+#[derive(Component, Debug, Clone, Copy)]
 pub struct Transform {
     pub scale: Vec3,
     pub rotation: Quat,
     pub translation: Vec3,
 }
 
-#[derive(Debug, Clone, Copy)]
 /// GlobalTransform represents the world-space transform of an entity.
 /// If an entity has a parent, it will be calculated as the parent's GlobalTransform * child's
 /// local Transform.
 ///
 /// # Note
 /// This component is added automatically when a Transform component is added to an entity.
+#[derive(Component, Debug, Clone, Copy)]
 pub struct GlobalTransform {
     pub matrix: Mat4,
 }

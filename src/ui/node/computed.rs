@@ -103,6 +103,7 @@ impl ComputedBox {
 }
 
 #[derive(Default, Debug, Clone)]
+#[derive(crate::macros::Component)]
 pub struct ComputedNode {
     pub color: Color,
     pub z_index: i32,
