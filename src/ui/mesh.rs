@@ -143,7 +143,7 @@ impl IntoRenderAsset<Buffer> for UiMesh {
     fn create_render_asset(
         &self, 
         ctx: &mut SystemsContext,
-        _: Option<&EntityId>
+        _: Option<EntityId>
     ) -> Buffer {
         let device = ctx.renderer.device();
 
@@ -171,7 +171,7 @@ impl IntoRenderAsset<Buffer> for UiMeshTransparent {
     fn create_render_asset(
         &self, 
         ctx: &mut SystemsContext,
-        entity_id: Option<&EntityId>
+        entity_id: Option<EntityId>
     ) -> Buffer {
         self.0.create_render_asset(ctx, entity_id)
     }
@@ -195,7 +195,7 @@ impl IntoRenderAsset<Buffer> for UiMeshImages {
     fn create_render_asset(
         &self, 
         ctx: &mut SystemsContext,
-        entity_id: Option<&EntityId>
+        entity_id: Option<EntityId>
     ) -> Buffer {
         self.0.create_render_asset(ctx, entity_id)
     }

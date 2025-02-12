@@ -61,7 +61,7 @@ pub fn ui_image_render_system(
     for entity_id in &ui_mesh_images.entity_ids {
         // get image
         let image = query.get(*entity_id).expect("UiImage component not found");
-        let image_bind_group = bind_groups.get_by_entity(entity_id, image, ctx);
+        let image_bind_group = bind_groups.get_by_entity(*entity_id, image, ctx);
 
         // per entity bind group
         render_pass.set_bind_group(2, &*image_bind_group, &[]);

@@ -113,7 +113,7 @@ impl IntoRenderAsset<Buffer> for Mesh {
     fn create_render_asset(
         &self, 
         ctx: &mut SystemsContext,
-        _: Option<&EntityId>
+        _: Option<EntityId>
     ) -> Buffer {
         let device = ctx.renderer.device();
 

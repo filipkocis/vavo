@@ -108,8 +108,8 @@ impl Image {
 impl IntoRenderAsset<Texture> for Image {
     fn create_render_asset(
         &self, 
-        ctx: &mut crate::prelude::SystemsContext,
-        _: Option<&crate::prelude::EntityId>
+        ctx: &mut SystemsContext,
+        _: Option<crate::prelude::EntityId>
     ) -> Texture {
         let device = ctx.renderer.device();
         let queue = ctx.renderer.queue();

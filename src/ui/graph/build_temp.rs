@@ -132,7 +132,7 @@ fn build_temp_node_for<'a>(ctx: &mut SystemsContext, id: EntityId, query: &mut Q
     let text = query.cast::<&mut Text, ()>().get(id);
     // HINT: currently this will be replaced in compute_z_index every time, we will keep it anyways
     let text_rae = text.as_ref().map(|text| {
-        text_buffers.get_by_entity(&id, &**text, ctx)
+        text_buffers.get_by_entity(id, &**text, ctx)
     });
 
     // TODO: add other node types as options, like Image, Button, etc.

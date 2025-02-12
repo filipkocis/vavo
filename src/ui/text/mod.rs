@@ -93,7 +93,7 @@ impl IntoRenderAsset<TextBuffer> for Text {
     fn create_render_asset(
         &self, 
         ctx: &mut crate::prelude::SystemsContext,
-        _: Option<&crate::prelude::EntityId>
+        _: Option<crate::prelude::EntityId>
     ) -> TextBuffer {
         let mut font_system = ctx.resources.get_mut::<FontSystem>().expect("FontSystem resource not found");
 

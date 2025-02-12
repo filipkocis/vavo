@@ -57,7 +57,7 @@ impl IntoRenderAsset<Buffer> for UiImage {
     fn create_render_asset(
         &self, 
         ctx: &mut SystemsContext,
-        _: Option<&EntityId>
+        _: Option<EntityId>
     ) -> Buffer {
         Buffer::new("ui_image")
             .create_uniform_buffer(&self.uniform_data(), None, ctx.renderer.device())
@@ -68,7 +68,7 @@ impl IntoRenderAsset<BindGroup> for UiImage {
     fn create_render_asset(
         &self, 
         ctx: &mut SystemsContext,
-        _: Option<&EntityId>
+        _: Option<EntityId>
     ) -> BindGroup {
         let image = Some(self.image.clone());
 

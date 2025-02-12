@@ -144,13 +144,13 @@ impl IntoRenderAsset<Buffer> for Camera {
     fn create_render_asset(
             &self, 
             ctx: &mut SystemsContext,
-            entity_id: Option<&EntityId>
+            entity_id: Option<EntityId>
     ) -> Buffer {
         let id = entity_id.expect("EntityId should be provided for Camera Buffer");
 
         let world = unsafe { &mut *ctx.world };
-        let projection = world.entities.get_component(*id).expect("Camera should have a Projection component");
-        let global_transform = world.entities.get_component(*id).expect("Camera should have a GlobalTransform component");
+        let projection = world.entities.get_component(id).expect("Camera should have a Projection component");
+        let global_transform = world.entities.get_component(id).expect("Camera should have a GlobalTransform component");
 
         let data = Camera::get_buffer_data(projection, global_transform);
         
@@ -163,7 +163,7 @@ impl IntoRenderAsset<BindGroup> for Camera {
     fn create_render_asset(
             &self, 
             ctx: &mut SystemsContext,
-            entity_id: Option<&EntityId>
+            entity_id: Option<EntityId>
     ) -> BindGroup {
         let id = entity_id.expect("EntityId should be provided for Camera BindGroup");
 

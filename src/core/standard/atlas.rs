@@ -36,7 +36,7 @@ impl IntoRenderAsset<BindGroup> for ShadowMapAtlas {
     fn create_render_asset(
         &self, 
         ctx: &mut crate::prelude::SystemsContext,
-        _: Option<&crate::prelude::EntityId>
+        _: Option<crate::prelude::EntityId>
     ) -> BindGroup {
         BindGroup::build("shadow_map_atlas")
             .add_texture(

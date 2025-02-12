@@ -106,7 +106,7 @@ impl IntoRenderAsset<Buffer> for Transform {
     fn create_render_asset(
         &self, 
         ctx: &mut SystemsContext,
-        _: Option<&EntityId>
+        _: Option<EntityId>
     ) -> Buffer {
         let data = self.as_matrix().to_cols_array_2d();
 
@@ -119,7 +119,7 @@ impl IntoRenderAsset<BindGroup> for Transform {
     fn create_render_asset(
         &self, 
         ctx: &mut SystemsContext,
-        entity_id: Option<&EntityId>
+        entity_id: Option<EntityId>
     ) -> BindGroup {
         let id = entity_id.expect("EntityId should be provided for Transform BindGroup");
 

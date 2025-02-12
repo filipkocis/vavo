@@ -22,7 +22,7 @@ impl EntityId {
         Self(raw)
     }
 
-    pub(crate) fn raw(&self) -> u32 {
+    pub(crate) fn raw(self) -> u32 {
         self.0
     }
 }

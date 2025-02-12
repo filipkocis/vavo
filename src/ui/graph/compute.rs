@@ -58,8 +58,8 @@ fn resolve_z_index(
             
             // simply remove the render asset, to recreate it with the new metadata, since buffer
             // does not have a `set_attrs` method, bufferlines do, but it gets reset
-            text_buffers.remove_by_entity(&node.id, &**text);
-            let text_rae = text_buffers.get_by_entity(&node.id, &**text, ctx);
+            text_buffers.remove_by_entity(node.id, &**text);
+            let text_rae = text_buffers.get_by_entity(node.id, &**text, ctx);
             node.text_rae = Some(text_rae);
         }
 

@@ -67,7 +67,7 @@ impl IntoRenderAsset<Buffer> for Material {
     fn create_render_asset(
         &self, 
         ctx: &mut SystemsContext,
-        _: Option<&EntityId>
+        _: Option<EntityId>
     ) -> Buffer {
         Buffer::new("material")
             .create_uniform_buffer(&self.uniform_data(), None, ctx.renderer.device())
@@ -78,7 +78,7 @@ impl IntoRenderAsset<BindGroup> for Material {
     fn create_render_asset(
         &self, 
         ctx: &mut SystemsContext,
-        _: Option<&EntityId>
+        _: Option<EntityId>
     ) -> BindGroup {
         let buffer: Buffer = self.create_render_asset(ctx, None);
         let uniform = buffer.uniform.expect("Material buffer should be an uniform buffer");

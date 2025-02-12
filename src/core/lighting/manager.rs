@@ -133,7 +133,7 @@ impl IntoRenderAsset<BindGroup> for LightAndShadowManager {
     fn create_render_asset(
         &self, 
         ctx: &mut SystemsContext,
-        _: Option<&crate::prelude::EntityId>
+        _: Option<crate::prelude::EntityId>
     ) -> BindGroup {
         let visibility = wgpu::ShaderStages::FRAGMENT;
         let binding_type = wgpu::BindingType::Texture { 

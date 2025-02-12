@@ -8,7 +8,7 @@ pub trait IntoRenderAsset<R: RenderAsset> {
     fn create_render_asset(
         &self, 
         ctx: &mut SystemsContext,
-        entity_id: Option<&EntityId>
+        entity_id: Option<EntityId>
     ) -> R;
 }
 
@@ -53,7 +53,7 @@ impl<A: Asset> Into<AssetHandleId> for &Handle<A> {
     }
 }
 
-impl<C: Component> Into<EntityComponentId> for (&EntityId, &C) {
+impl<C: Component> Into<EntityComponentId> for (EntityId, &C) {
     fn into(self) -> EntityComponentId {
         EntityComponentId(self.0.raw(), TypeId::of::<C>())
     }
@@ -97,7 +97,7 @@ impl<RA: RenderAsset> RenderAssets<RA> {
 
     pub fn get_by_entity<C>(
         &mut self, 
-        entity_id: &EntityId, 
+        entity_id: EntityId, 
         component: &C, 
         ctx: &mut SystemsContext,
     ) -> RenderAssetEntry<RA>
@@ -189,7 +189,7 @@ impl<RA: RenderAsset> RenderAssets<RA> {
     }
     
     /// Remove render asset created by `get_by_entity` method
-    pub fn remove_by_entity<C: Component>(&mut self, entity_id: &EntityId, component: &C) -> Option<Arc<RA>> {
+    pub fn remove_by_entity<C: Component>(&mut self, entity_id: EntityId, component: &C) -> Option<Arc<RA>> {
         let entity_component_id = (entity_id, component).into();
         let key = self.entity_component_map.remove(&entity_component_id)?;
         self.storage.remove(&key)
