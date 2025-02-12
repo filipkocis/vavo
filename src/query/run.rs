@@ -95,12 +95,16 @@ macro_rules! impl_run_query {
                 let mut result = Vec::new();
 
                 for archetype in unsafe { &mut *self.entities }.archetypes_filtered(&requested_types, &mut filters) {
+                    let mut type_index = 0;
                     // Extract specific component vecs and their indices into a $type variable
                     $(
                         #[allow(non_snake_case)]
                         let $types = {
-                            let type_id = $types::get_type_id();
-                            let index = archetype.get_component_index(&type_id).expect("type should exist in archetype");
+                            // let type_id = $types::get_type_id();
+                            // TODO: use [${index()}] once meta vars are stabilized
+                            let type_id = &requested_types[type_index];
+                            type_index += 1;
+                            let index = archetype.get_component_index(type_id).expect("type should exist in archetype");
 
                             // marks the whole column if query doesn't contain `changed` filters
                             if !has_changed_filters && $types::is_mut() {
@@ -147,12 +151,15 @@ macro_rules! impl_run_query {
                         None => continue,
                     };
 
+                    let mut type_index = 0;
                     // Extract specific component vecs and their indices into a $type variable
                     $(
                         #[allow(non_snake_case)]
                         let $types = {
-                            let type_id = $types::get_type_id();
-                            let index = archetype.get_component_index(&type_id).expect("type should exist in archetype");
+                            // let type_id = $types::get_type_id();
+                            let type_id = &requested_types[type_index];
+                            type_index += 1;
+                            let index = archetype.get_component_index(type_id).expect("type should exist in archetype");
 
                             (archetype.components_at_mut(index), index)
                         };
