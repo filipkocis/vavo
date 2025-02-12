@@ -32,7 +32,7 @@ impl Debug for TempNode<'_> {
 /// Runs on `Changed<Node | Text | UiImage>` filters, or `WindowEvent::Resized` event
 pub fn nodes_to_temp_graph<'a>(ctx: &mut SystemsContext, q: &mut Query<()>) -> Vec<TempNode<'a>> {
     let mut check_updated = q.cast::<
-        &EntityId,
+        EntityId,
         (
             With<Node>, With<ComputedNode>, With<Transform>, 
             Or<(Changed<Node>, Changed<Text>, Changed<UiImage>)>
@@ -46,7 +46,7 @@ pub fn nodes_to_temp_graph<'a>(ctx: &mut SystemsContext, q: &mut Query<()>) -> V
     }
 
     let mut root_query = q.cast::<
-        (&EntityId, &Node, &mut ComputedNode, &mut Transform), 
+        (EntityId, &Node, &mut ComputedNode, &mut Transform), 
         Without<Parent>
     >();
     
@@ -54,7 +54,7 @@ pub fn nodes_to_temp_graph<'a>(ctx: &mut SystemsContext, q: &mut Query<()>) -> V
     let mut root_nodes = Vec::new();
     for (id, node, computed, transform) in root_query.iter_mut() {
         let root = TempNode {
-            id: *id,
+            id,
             node,
             computed,
             transform,
@@ -67,19 +67,19 @@ pub fn nodes_to_temp_graph<'a>(ctx: &mut SystemsContext, q: &mut Query<()>) -> V
     }
 
     let mut nonui_root_query = q.cast::<
-        (&EntityId, &Node, &mut ComputedNode, &mut Transform), 
+        (EntityId, &Node, &mut ComputedNode, &mut Transform), 
         With<Parent>
     >();
 
     // populate with root nodes that have nonui parents
     for (id, node, computed, transform) in nonui_root_query.iter_mut() {
-        let parent = q.cast::<&Parent, ()>().get(*id).expect("Parent not found");
+        let parent = q.cast::<&Parent, ()>().get(id).expect("Parent not found");
         if q.cast::<&Node, ()>().get(parent.id).is_some() {
             continue;
         }
 
         let root = TempNode {
-            id: *id,
+            id,
             node,
             computed,
             transform,

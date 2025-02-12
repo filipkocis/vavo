@@ -47,7 +47,7 @@ fn main_render_system(
     let transforms_storage = ctx.resources.get::<TransformStorage>().expect("TransformStorage resource not found");
 
     // Camera
-    let mut camera_query = query.cast::<(&EntityId, &Camera), (With<Transform>, With<Projection>, With<Camera3D>)>(); 
+    let mut camera_query = query.cast::<(EntityId, &Camera), (With<Transform>, With<Projection>, With<Camera3D>)>(); 
     let active_camera = camera_query.iter_mut().into_iter().filter(|(_, c)| c.active).take(1).next();
     let camera_bind_group;
     if let Some((id, camera)) = active_camera {

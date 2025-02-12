@@ -22,7 +22,7 @@ pub enum Interaction {
 /// System to update UI interactions, runs in the First stage. So old computed values are used
 pub fn ui_interaction_update<'a>(
     ctx: &mut SystemsContext, 
-    mut query: Query<(&'a EntityId, &'a Node, &'a ComputedNode, &'a GlobalTransform, &'a Interaction)>
+    mut query: Query<(EntityId, &'a Node, &'a ComputedNode, &'a GlobalTransform, &'a Interaction)>
 ) {
     let nodes = query.iter_mut();
     if nodes.is_empty() {
@@ -36,7 +36,7 @@ pub fn ui_interaction_update<'a>(
         if interaction == Interaction::None {
             None
         } else {
-            Some((*e.0, Interaction::None))
+            Some((e.0, Interaction::None))
         }
     }).collect();
 
@@ -60,7 +60,7 @@ pub fn ui_interaction_update<'a>(
 /// Get nodes with new interactions
 fn get_interactions(
     ctx: &mut SystemsContext,
-    nodes: &[(&EntityId, &Node, &ComputedNode, &GlobalTransform, &Interaction)],
+    nodes: &[(EntityId, &Node, &ComputedNode, &GlobalTransform, &Interaction)],
 ) -> Option<(
         Vec<(EntityId, Interaction)>, // new
         Vec<EntityId>, // keep
@@ -119,9 +119,9 @@ fn get_interactions(
 
         // only add new non-none interactions
         if state != **interaction {
-            interactions.push((**id, state));
+            interactions.push((*id, state));
         } else {
-            keep.push(**id)
+            keep.push(*id)
         }
     }
 

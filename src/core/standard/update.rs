@@ -6,7 +6,7 @@ use crate::{prelude::*, render_assets::*};
 pub fn update_camera_buffers<'a>(
     ctx: &mut SystemsContext, 
     mut query: Query< 
-        (&'a EntityId, &'a Camera, &'a Projection, &'a GlobalTransform), 
+        (EntityId, &'a Camera, &'a Projection, &'a GlobalTransform), 
         (With<Camera3D>, Or<(Changed<Projection>, Changed<GlobalTransform>)>)
     >
 ) {
@@ -51,9 +51,9 @@ pub fn update_global_transforms(_: &mut SystemsContext, mut q: Query<()>) {
     }
 
     // recursively update children of updated entities
-    let mut query = q.cast::<(&EntityId, &mut GlobalTransform), (With<Children>, Changed<Transform>)>();
+    let mut query = q.cast::<(EntityId, &mut GlobalTransform), (With<Children>, Changed<Transform>)>();
     for (id, global) in query.iter_mut() {
-        update_children(*id, global, q.cast());
+        update_children(id, global, q.cast());
     }
 }
 

@@ -11,10 +11,10 @@ use super::text::TextBuffer;
 /// System to initialize new UI nodes, it adds Transform and ComputedNode components
 pub fn initialize_ui_nodes(
     ctx: &mut SystemsContext,
-    mut query: Query<&EntityId, (With<Node>, Without<Transform>, Without<ComputedNode>)>,
+    mut query: Query<EntityId, (With<Node>, Without<Transform>, Without<ComputedNode>)>,
 ) {
     for id in query.iter_mut() {
-        ctx.commands.entity(*id)
+        ctx.commands.entity(id)
             .insert(Transform::default())
             .insert(ComputedNode::default());
 
@@ -25,10 +25,10 @@ pub fn initialize_ui_nodes(
 /// System to initialize new button UI nodes, adds Interaction component
 pub fn initialize_button_ui_nodes(
     ctx: &mut SystemsContext,
-    mut query: Query<&EntityId, (With<Node>, With<Button>, Without<Interaction>)>,
+    mut query: Query<EntityId, (With<Node>, With<Button>, Without<Interaction>)>,
 ) {
     for id in query.iter_mut() {
-        ctx.commands.entity(*id)
+        ctx.commands.entity(id)
             .insert(Interaction::default());
 
         println!("Initialized button ui node: {:?}", id);

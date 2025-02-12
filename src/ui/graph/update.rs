@@ -74,13 +74,13 @@ pub fn update_ui_mesh_and_transforms(ctx: &mut SystemsContext, mut query: Query<
     let mut ui_mesh_images = ctx.resources.get_mut::<UiMeshImages>().expect("UiMeshImages resource not found");
 
     // get the amount of changed nodes
-    let mut changed_query = query.cast::<&EntityId, (
+    let mut changed_query = query.cast::<EntityId, (
         With<Transform>, With<GlobalTransform>, With<Node>, With<ComputedNode>, Changed<Transform>
     )>();
     let changed_len = changed_query.iter_mut().len();
 
     // query all nodes
-    let mut nodes_query = query.cast::<(&EntityId, &GlobalTransform, &Node, &ComputedNode), ()>();
+    let mut nodes_query = query.cast::<(EntityId, &GlobalTransform, &Node, &ComputedNode), ()>();
     let ui_nodes = nodes_query.iter_mut();
 
     // return if nothing changed
@@ -120,14 +120,14 @@ pub fn update_ui_mesh_and_transforms(ctx: &mut SystemsContext, mut query: Query<
     let ui_nodes = ui_nodes.into_iter().map(|(id, global_transform, node, computed)| {
         // HINT: if node has text, get the text buffer rae, add it to intermediate storage for RefCell
         // lifetime issues, then later in code retrieve it and push its borrow to text_borrows
-        if let Some(text) = text_query.get(*id) {
+        if let Some(text) = text_query.get(id) {
             let text = text_buffers.get_by_entity(id, text, ctx);
             intermediate_text_rae.push(Some(text));
         } else {
             intermediate_text_rae.push(None);
         };
 
-        let has_image = image_query.get(*id).is_some();
+        let has_image = image_query.get(id).is_some();
         
         // return core ui node
         (id, global_transform, node, computed, has_image)
@@ -172,15 +172,15 @@ pub fn update_ui_mesh_and_transforms(ctx: &mut SystemsContext, mut query: Query<
         for (x, y, w, h, color, has_image) in quads {
             if w > 0.0 && h > 0.0 && color.a > 0.0 {
                 if color.a == 1.0 {
-                    ui_mesh.add_rect(x, y, computed.z_index as f32, w, h, color, transform_index, *id);
+                    ui_mesh.add_rect(x, y, computed.z_index as f32, w, h, color, transform_index, id);
                 } else {
-                    ui_mesh_transparent.add_rect(x, y, computed.z_index as f32, w, h, color, transform_index, *id);
+                    ui_mesh_transparent.add_rect(x, y, computed.z_index as f32, w, h, color, transform_index, id);
                 }
             }
 
             if w > 0.0 && h > 0.0 {
                 if has_image {
-                    ui_mesh_images.add_rect(x, y, computed.z_index as f32, w, h, color::WHITE, transform_index, *id);
+                    ui_mesh_images.add_rect(x, y, computed.z_index as f32, w, h, color::WHITE, transform_index, id);
                 }
             }
         }

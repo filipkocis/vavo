@@ -32,7 +32,7 @@ pub fn ui_render_system(
     // holds the transform of every ui node
     let ui_transforms = ctx.resources.get::<UiTransformStorage>().expect("UiTransformStorage resource not found");
 
-    let mut camera_query = query.cast::<(&EntityId, &Camera), (With<Transform>, With<Projection>, With<Camera3D>)>(); 
+    let mut camera_query = query.cast::<(EntityId, &Camera), (With<Transform>, With<Projection>, With<Camera3D>)>(); 
     let active_camera = camera_query.iter_mut().into_iter().filter(|(_, c)| c.active).take(1).next();
     let camera_bind_group;
     if let Some((id, camera)) = active_camera {
