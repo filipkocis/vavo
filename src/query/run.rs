@@ -110,12 +110,12 @@ impl<'a, C: QueryGetDowncasted<'a>> QueryGetDowncasted<'a> for Option<C> {
 }
 
 macro_rules! impl_run_query {
-    ($($types:ident),+; $($filter:ident),*) => {
+    ($($lt:lifetime $types:ident),+; $($filter:ident),*) => {
         #[allow(unused_parens)]
-        impl<'t, $($types),+, $($filter),*> RunQuery for Query<($($types),+), ($($filter),*)>
+        impl<$($lt),+, $($types),+, $($filter),*> RunQuery for Query<($($types),+), ($($filter),*)>
         where
             $(
-                $types: QueryGetType + QueryGetDowncasted<'t, Output = $types>
+                $types: QueryGetType + QueryGetDowncasted<$lt, Output = $types>
             ,)+
             $(
                 $filter: QueryFilter
@@ -281,26 +281,26 @@ macro_rules! impl_run_query {
     };
 }
 
-impl_run_query!(T; );
-impl_run_query!(T; F);
+impl_run_query!('a T; );
+impl_run_query!('a T; F);
 
-impl_run_query!(T, U; );
-impl_run_query!(T, U; F);
+impl_run_query!('a T, 'b U; );
+impl_run_query!('a T, 'b U; F);
 
-impl_run_query!(T, U, V; );
-impl_run_query!(T, U, V; F);
+impl_run_query!('a T, 'b U, 'c V; );
+impl_run_query!('a T, 'b U, 'c V; F);
 
-impl_run_query!(T, U, V, W; );
-impl_run_query!(T, U, V, W; F);
+impl_run_query!('a T, 'b U, 'c V, 'd W; );
+impl_run_query!('a T, 'b U, 'c V, 'd W; F);
 
-impl_run_query!(T, U, V, W, X; );
-impl_run_query!(T, U, V, W, X; F);
+impl_run_query!('a T, 'b U, 'c V, 'd W, 'e X; );
+impl_run_query!('a T, 'b U, 'c V, 'd W, 'e X; F);
 
-impl_run_query!(T, U, V, W, X, Y; );
-impl_run_query!(T, U, V, W, X, Y; F);
+impl_run_query!('a T, 'b U, 'c V, 'd W, 'e X, 'f Y; );
+impl_run_query!('a T, 'b U, 'c V, 'd W, 'e X, 'f Y; F);
 
-impl_run_query!(T, U, V, W, X, Y, Z; );
-impl_run_query!(T, U, V, W, X, Y, Z; F);
+impl_run_query!('a T, 'b U, 'c V, 'd W, 'e X, 'f Y, 'g Z; );
+impl_run_query!('a T, 'b U, 'c V, 'd W, 'e X, 'f Y, 'g Z; F);
 
 // impl<'a, 'b, T: 'static, U: 'static> RunQuery<(&'b mut T, &'b mut U)>
 // for Query<'a, (&'b mut T, &'b mut U)>
