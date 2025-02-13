@@ -80,7 +80,7 @@ pub fn update_ui_mesh_and_transforms(ctx: &mut SystemsContext, mut query: Query<
     let changed_len = changed_query.iter_mut().len();
 
     // query all nodes
-    let mut nodes_query = query.cast::<(EntityId, &GlobalTransform, &Node, &ComputedNode), ()>();
+    let mut nodes_query = query.cast::<(EntityId, &GlobalTransform, &Node, &ComputedNode, Option<&Text>, Option<&UiImage>), ()>();
     let ui_nodes = nodes_query.iter_mut();
 
     // return if nothing changed
@@ -114,20 +114,17 @@ pub fn update_ui_mesh_and_transforms(ctx: &mut SystemsContext, mut query: Query<
     let mut intermediate_text_rae = Vec::new();
 
     // add other node types as options 
-    // TODO: implement Option<T> to query
-    let mut text_query = query.cast::<&Text, With<Node>>();
-    let mut image_query = query.cast::<&UiImage, With<Node>>();
-    let ui_nodes = ui_nodes.into_iter().map(|(id, global_transform, node, computed)| {
+    let ui_nodes = ui_nodes.into_iter().map(|(id, global_transform, node, computed, text, image)| {
         // HINT: if node has text, get the text buffer rae, add it to intermediate storage for RefCell
         // lifetime issues, then later in code retrieve it and push its borrow to text_borrows
-        if let Some(text) = text_query.get(id) {
+        if let Some(text) = text {
             let text = text_buffers.get_by_entity(id, text, ctx);
             intermediate_text_rae.push(Some(text));
         } else {
             intermediate_text_rae.push(None);
         };
 
-        let has_image = image_query.get(id).is_some();
+        let has_image = image.is_some();
         
         // return core ui node
         (id, global_transform, node, computed, has_image)
