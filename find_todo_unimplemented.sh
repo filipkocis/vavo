@@ -8,13 +8,13 @@ unimplemented_count=0
 
 # Find and display occurrences of "TODO"
 echo "Searching for 'TODO' in the codebase..."
-grep -rniw './src/' -e 'TODO' --include=\*.* | tee temp_todo_results.txt
+grep -rniwI './src/' -e 'TODO' --include=\*.* | tee temp_todo_results.txt
 todo_count=$(wc -l < temp_todo_results.txt)
 echo ""
 
 # Find and display occurrences of "UNIMPLEMENTED"
 echo "Searching for 'UNIMPLEMENTED' in the codebase..."
-grep -rniw './src/' -e 'UNIMPLEMENTED' --include=\*.* | tee temp_unimplemented_results.txt
+grep -rniwI './src/' -e 'UNIMPLEMENTED' --include=\*.* | tee temp_unimplemented_results.txt
 unimplemented_count=$(wc -l < temp_unimplemented_results.txt)
 echo ""
 
