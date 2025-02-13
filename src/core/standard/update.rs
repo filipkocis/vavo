@@ -3,10 +3,10 @@ use winit::event::WindowEvent;
 use crate::{prelude::*, render_assets::*};
 
 /// Internal system that updates active camera buffers with changed projection and transform.
-pub fn update_camera_buffers<'a>(
+pub fn update_camera_buffers(
     ctx: &mut SystemsContext, 
     mut query: Query< 
-        (EntityId, &'a Camera, &'a Projection, &'a GlobalTransform), 
+        (EntityId, &Camera, &Projection, &GlobalTransform), 
         (With<Camera3D>, Or<(Changed<Projection>, Changed<GlobalTransform>)>)
     >
 ) {

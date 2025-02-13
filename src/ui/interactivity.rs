@@ -20,9 +20,9 @@ pub enum Interaction {
 }
 
 /// System to update UI interactions, runs in the First stage. So old computed values are used
-pub fn ui_interaction_update<'a>(
+pub fn ui_interaction_update(
     ctx: &mut SystemsContext, 
-    mut query: Query<(EntityId, &'a Node, &'a ComputedNode, &'a GlobalTransform, &'a Interaction)>
+    mut query: Query<(EntityId, &Node, &ComputedNode, &GlobalTransform, &Interaction)>
 ) {
     let nodes = query.iter_mut();
     if nodes.is_empty() {

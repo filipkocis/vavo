@@ -30,9 +30,9 @@ pub struct GroupedInstances {
 impl GroupedInstances {
     /// Returns new grouped instances, requires transform storage to be a valid resource.
     /// Should be called before rendering and set as a resource.
-    pub fn generate<'a>(
+    pub fn generate(
         ctx: &mut SystemsContext,
-        mut query: Query<(&'a Handle<Material>, &'a Handle<Mesh>, &'a GlobalTransform)>,
+        mut query: Query<(&Handle<Material>, &Handle<Mesh>, &GlobalTransform)>,
     ) -> Self {
         // Prepare sorted storage
         let mut transforms = Vec::new();
