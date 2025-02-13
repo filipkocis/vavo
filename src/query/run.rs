@@ -2,7 +2,7 @@ use std::any::{Any, TypeId};
 
 use crate::ecs::entities::EntityId;
 
-use super::{Query, filter::{Filters, QueryFilter}};
+use super::{filter::{Filters, QueryFilter}, Query, QueryComponentType};
 
 use crate::ecs::components::Component;
 
@@ -15,31 +15,63 @@ pub trait RunQuery {
 
 /// Retrieve information about the requested component type in the query
 trait QueryGetType {
-    fn get_type_id() -> TypeId;
+    /// Get component type wrapped in [`QueryComponentType`]
+    fn get_type_id() -> QueryComponentType;
+
+    /// Check if component type was requested as a mutable reference
     fn is_mut() -> bool {
         false
+    }
+
+    /// Returns `None` for option types, otherwise panics
+    fn get_none() -> Self where Self: Sized {
+        panic!("get_none() should not be called on non-Option types")
     }
 }
 
 impl QueryGetType for EntityId {
-    fn get_type_id() -> TypeId {
-        <EntityId as Component>::get_type_id()
+    fn get_type_id() -> QueryComponentType {
+        QueryComponentType::Normal(<EntityId as Component>::get_type_id())
     }
 }
 
 impl<C: Component> QueryGetType for &C {
-    fn get_type_id() -> TypeId {
-        C::get_type_id()
+    fn get_type_id() -> QueryComponentType {
+        QueryComponentType::Normal(C::get_type_id())
     }
 }
 
 impl<C: Component> QueryGetType for &mut C {
-    fn get_type_id() -> TypeId {
-        C::get_type_id()
+    fn get_type_id() -> QueryComponentType {
+        QueryComponentType::Normal(C::get_type_id())
     }
 
     fn is_mut() -> bool {
         true
+    }
+}
+
+impl<C: Component> QueryGetType for Option<&C> {
+    fn get_type_id() -> QueryComponentType {
+        QueryComponentType::Option(C::get_type_id())
+    }
+
+    fn get_none() -> Self where Self: Sized {
+        None
+    }
+}
+
+impl<C: Component> QueryGetType for Option<&mut C> {
+    fn get_type_id() -> QueryComponentType {
+        QueryComponentType::Option(C::get_type_id())
+    }
+
+    fn is_mut() -> bool {
+        true
+    }
+
+    fn get_none() -> Self where Self: Sized {
+        None
     }
 }
 
@@ -67,6 +99,13 @@ impl<'a, C: Component> QueryGetDowncasted<'a> for &mut C {
     type Output = &'a mut C;
     fn get_downcasted(comp: &'a mut Box<dyn Any>) -> Self::Output {
         comp.downcast_mut::<C>().expect("downcast failed")
+    }
+}
+
+impl<'a, C: QueryGetDowncasted<'a>> QueryGetDowncasted<'a> for Option<C> {
+    type Output = Option<C::Output>;
+    fn get_downcasted(comp: &'a mut Box<dyn Any>) -> Self::Output {
+        Some(C::get_downcasted(comp)) 
     }
 }
 
@@ -100,19 +139,29 @@ macro_rules! impl_run_query {
                     $(
                         #[allow(non_snake_case)]
                         let $types = {
-                            // let type_id = $types::get_type_id();
                             // TODO: use [${index()}] once meta vars are stabilized
-                            let type_id = &requested_types[type_index];
+                            let query_type = &requested_types[type_index];
+                            let type_id = query_type.get_inner_type();
                             type_index += 1;
-                            let index = archetype.get_component_index(type_id).expect("type should exist in archetype");
 
-                            // marks the whole column if query doesn't contain `changed` filters
-                            if !has_changed_filters && $types::is_mut() {
-                                // Mark all components as mutated if $type is &mut T
-                                archetype.mark_mutated(index);
+                            let maybe_index = if query_type.is_option() {
+                                // Don't panic since Option doesn't have to be present
+                                archetype.get_component_index(type_id)
+                            } else {
+                                Some(archetype.get_component_index(type_id).expect("type should exist in archetype"))
+                            };
+
+                            if let Some(index) = maybe_index {
+                                // marks the whole column if query doesn't contain `changed` filters
+                                if !has_changed_filters && $types::is_mut() {
+                                    // Mark all components as mutated if $type is &mut T
+                                    archetype.mark_mutated(index);
+                                }
+
+                                Some((archetype.components_at_mut(index), index))
+                            } else {
+                                None
                             }
-
-                            (archetype.components_at_mut(index), index)
                         };
                     )+
 
@@ -124,13 +173,18 @@ macro_rules! impl_run_query {
 
                         // SAFETY: We know that the components are of the correct type $type
                         result.push(($(unsafe {
-                            // marks only specific components if query contains `changed` filters
-                            if has_changed_filters && $types::is_mut() {
-                                // Mark entity's component as mutated if $type is &mut T
-                                archetype.mark_mutated_single(entity_index, $types.1);
-                            }
+                            if let Some((components, component_index)) = $types {
+                                // marks only specific components if query contains `changed` filters
+                                if has_changed_filters && $types::is_mut() {
+                                    // Mark entity's component as mutated if $type is &mut T
+                                    archetype.mark_mutated_single(entity_index, component_index);
+                                }
 
-                            $types::get_downcasted(&mut (&mut *$types.0)[entity_index])
+                                $types::get_downcasted(&mut (&mut *components)[entity_index])
+                            } else {
+                                // If requested type is Option<T> and isn't present
+                                $types::get_none()
+                            }
                         }),+));
                     }
                 }
@@ -156,29 +210,43 @@ macro_rules! impl_run_query {
                     $(
                         #[allow(non_snake_case)]
                         let $types = {
-                            // let type_id = $types::get_type_id();
-                            let type_id = &requested_types[type_index];
+                            let query_type = &requested_types[type_index];
+                            let type_id = query_type.get_inner_type();
                             type_index += 1;
-                            let index = archetype.get_component_index(type_id).expect("type should exist in archetype");
 
-                            (archetype.components_at_mut(index), index)
+                            let maybe_index = if query_type.is_option() {
+                                // Don't panic since Option doesn't have to be present
+                                archetype.get_component_index(type_id)
+                            } else {
+                                Some(archetype.get_component_index(type_id).expect("type should exist in archetype"))
+                            };
+
+                            if let Some(index) = maybe_index {
+                                Some((archetype.components_at_mut(index), index))
+                            } else {
+                                None 
+                            }
                         };
                     )+
 
                     let component_indices_filter = archetype.get_changed_filter_indices(&filters);
-
                     if !archetype.check_changed_fields(entity_index, &component_indices_filter) {
                         return None;
                     }
 
                     // SAFETY: We know that the components are of the correct type $type
                     return Some(($(unsafe {
-                        if $types::is_mut() {
-                            // Mark entity's component as mutated if $type is &mut T
-                            archetype.mark_mutated_single(entity_index, $types.1);
-                        }
+                        if let Some((components, component_index)) = $types {
+                            if $types::is_mut() {
+                                // Mark entity's component as mutated if $type is &mut T
+                                archetype.mark_mutated_single(entity_index, component_index);
+                            }
 
-                        $types::get_downcasted(&mut (&mut *$types.0)[entity_index])
+                            $types::get_downcasted(&mut (&mut *components)[entity_index])
+                        } else {
+                            // If requested type is Option<T> and isn't present
+                            $types::get_none()
+                        }
                     }),+));
                 }
 
