@@ -5,7 +5,7 @@ use std::{
     any::{Any, TypeId}, collections::HashMap, hash::Hash, ops::{Add, Sub}
 };
 
-use crate::query::filter::Filters;
+use crate::query::{filter::Filters, QueryComponentType};
 
 use archetype::{Archetype, ArchetypeId};
 use relation::{Children, Parent};
@@ -76,10 +76,10 @@ impl Entities {
         self.next_entity_id
     }
 
-    /// Returns archetypes containing type_ids  
-    pub(crate) fn archetypes_filtered(&mut self, type_ids: &[TypeId], filters: &mut Filters) -> Vec<&mut Archetype> {
+    /// Returns archetypes with matching query types and filters
+    pub(crate) fn archetypes_filtered(&mut self, type_ids: &[QueryComponentType], filters: &mut Filters) -> Vec<&mut Archetype> {
         self.archetypes.values_mut().filter(|a| {
-            a.has_types(type_ids) && a.matches_filters(filters)
+            a.has_query_types(type_ids) && a.matches_filters(filters)
         }).collect()
     }
 

@@ -2,7 +2,7 @@ use std::{any::{Any, TypeId}, collections::HashMap, hash::{DefaultHasher, Hash, 
 
 use crate::query::filter::Filters;
 
-use super::EntityId;
+use super::{EntityId, QueryComponentType};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub(super) struct ArchetypeId(u64);
@@ -163,6 +163,16 @@ impl Archetype {
     /// Check if `type_id` exists in self
     pub fn has_type(&self, type_id: &TypeId) -> bool {
         self.types.contains_key(type_id)
+    }
+
+    /// Check if all [`QueryComponentType::Normal`] types exist in self
+    pub(crate) fn has_query_types(&self, type_ids: &[QueryComponentType]) -> bool {
+        type_ids.iter().all(|type_id| {
+            match type_id {
+                QueryComponentType::Normal(type_id) => self.has_type(type_id),
+                QueryComponentType::Option(_) => true,
+            }
+        })
     }
 
     /// Check if all `type_ids` exist in self
