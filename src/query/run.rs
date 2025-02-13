@@ -1,4 +1,4 @@
-use std::any::{Any, TypeId};
+use std::any::Any;
 
 use crate::ecs::entities::EntityId;
 
@@ -123,9 +123,7 @@ macro_rules! impl_run_query {
         {
             type Output = ($($types),+);
 
-            #[allow(unused_parens)]
             fn iter_mut(&mut self) -> Vec<($($types),+)> {
-                #[allow(unused_mut)]
                 let mut filters = Filters::new();
                 $(filters.add::<$filter>();)*
                 let has_changed_filters = filters.has_changed_filters();
@@ -133,11 +131,12 @@ macro_rules! impl_run_query {
                 let requested_types = [$($types::get_type_id()),+];
                 let mut result = Vec::new();
 
-                for archetype in unsafe { &mut *self.entities }.archetypes_filtered(&requested_types, &mut filters) {
+                for (archetype, changed_filter_indices) in unsafe { &mut *self.entities }.archetypes_filtered(&requested_types, &mut filters) {
                     let mut type_index = 0;
                     // Extract specific component vecs and their indices into a $type variable
                     $(
                         #[allow(non_snake_case)]
+                        #[allow(unused_assignments)]
                         let $types = {
                             // TODO: use [${index()}] once meta vars are stabilized
                             let query_type = &requested_types[type_index];
@@ -165,9 +164,8 @@ macro_rules! impl_run_query {
                         };
                     )+
 
-                    let component_indices_filter = archetype.get_changed_filter_indices(&filters);
                     for entity_index in 0..archetype.len() {
-                        if !archetype.check_changed_fields(entity_index, &component_indices_filter) {
+                        if !archetype.check_changed_fields(entity_index, &changed_filter_indices) {
                             continue;
                         }
 
@@ -193,13 +191,12 @@ macro_rules! impl_run_query {
             }
 
             fn get(&mut self, entity_id: EntityId) -> Option<($($types),+)> {
-                #[allow(unused_mut)]
                 let mut filters = Filters::new();
                 $(filters.add::<$filter>();)*
 
                 let requested_types = [$($types::get_type_id()),+];
 
-                for archetype in unsafe { &mut *self.entities }.archetypes_filtered(&requested_types, &mut filters) {
+                for (archetype, changed_filter_indices) in unsafe { &mut *self.entities }.archetypes_filtered(&requested_types, &mut filters) {
                     let entity_index = match archetype.get_entity_index(entity_id) {
                         Some(index) => index,
                         None => continue,
@@ -209,6 +206,7 @@ macro_rules! impl_run_query {
                     // Extract specific component vecs and their indices into a $type variable
                     $(
                         #[allow(non_snake_case)]
+                        #[allow(unused_assignments)]
                         let $types = {
                             let query_type = &requested_types[type_index];
                             let type_id = query_type.get_inner_type();
@@ -229,8 +227,7 @@ macro_rules! impl_run_query {
                         };
                     )+
 
-                    let component_indices_filter = archetype.get_changed_filter_indices(&filters);
-                    if !archetype.check_changed_fields(entity_index, &component_indices_filter) {
+                    if !archetype.check_changed_fields(entity_index, &changed_filter_indices) {
                         return None;
                     }
 

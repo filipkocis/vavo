@@ -76,11 +76,17 @@ impl Entities {
         self.next_entity_id
     }
 
-    /// Returns archetypes with matching query types and filters
-    pub(crate) fn archetypes_filtered(&mut self, type_ids: &[QueryComponentType], filters: &mut Filters) -> Vec<&mut Archetype> {
-        self.archetypes.values_mut().filter(|a| {
-            a.has_query_types(type_ids) && a.matches_filters(filters)
-        }).collect()
+    /// Returns archetypes with matching [`query types`](QueryComponentType) and filters, and component indices for
+    /// `changed` filters acquired from [`Archetype::get_changed_filter_indices`]
+    pub(crate) fn archetypes_filtered<'a>(&'a mut self, type_ids: &'a [QueryComponentType], filters: &'a mut Filters) -> impl Iterator<Item = (&'a mut Archetype, Vec<Vec<usize>>)> {
+        self.archetypes.values_mut().filter_map(|a| {
+            if a.has_query_types(type_ids) && a.matches_filters(filters) {
+                let indices = a.get_changed_filter_indices(filters);
+                Some((a, indices))
+            } else {
+                None
+            }
+        })
     }
 
     /// Exposes next entity ID
