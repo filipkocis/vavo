@@ -22,3 +22,5 @@ winit = "0.30.9"
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 # used by tobj
 getrandom = { version = "0.2", features = ["js"] }
+# unless atomics are enabled, this is a necessary feature and safe to use
+wgpu = { version = "24.0.1", features = ["fragile-send-sync-non-atomic-wasm"] }
