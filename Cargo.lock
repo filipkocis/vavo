@@ -74,12 +74,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "anyhow"
-version = "1.0.95"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "34ac096ce696dc2fcabef30516bb13c0a68a11d30131d3df6f04711467681b04"
-
-[[package]]
 name = "arrayref"
 version = "0.3.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1961,14 +1955,12 @@ checksum = "ebc1c04c71510c7f702b52b7c350734c9ff1295c464a03335b00bb84fc54f853"
 name = "vavo"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "bytemuck",
  "getrandom",
  "glam",
  "glyphon",
  "image",
  "pollster",
- "thiserror 2.0.11",
  "tobj",
  "vavo_macros",
  "web-time",
