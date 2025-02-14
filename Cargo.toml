@@ -15,5 +15,6 @@ image = { version = "0.25.5", features = ["png", "jpeg", "gif", "hdr"], default-
 pollster = "0.4.0"
 thiserror = "2.0.10"
 tobj = "4.0.2"
+web-time = "1.1.0"
 wgpu = "24.0.1"
 winit = "0.30.9"
