@@ -18,3 +18,7 @@ tobj = "4.0.2"
 web-time = "1.1.0"
 wgpu = "24.0.1"
 winit = "0.30.9"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+# used by tobj
+getrandom = { version = "0.2", features = ["js"] }
