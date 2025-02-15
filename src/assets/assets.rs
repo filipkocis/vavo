@@ -10,6 +10,12 @@ pub struct Assets<A: Asset> {
     next_id: u64,
 }
 
+impl<A: Asset> Default for Assets<A> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<A: Asset> Assets<A> {
     /// Create new empty asset storage
     pub fn new() -> Self {
