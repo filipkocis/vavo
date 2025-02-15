@@ -6,11 +6,11 @@ use kira::{backend::Backend, DefaultBackend};
 
 /// World resource that controls the audio
 #[derive(Resource)]
-pub struct AudioManager(kira::AudioManager);
+pub(crate) struct AudioManager(kira::AudioManager);
 
 /// Settings for [`AudioManager`]
 #[derive(Default)]
-pub struct AudioManagerSettings(kira::AudioManagerSettings<DefaultBackend>);
+pub(crate) struct AudioManagerSettings(kira::AudioManagerSettings<DefaultBackend>);
 
 impl AudioManager {
     pub fn new(settings: AudioManagerSettings) -> Result<Self, <DefaultBackend as Backend>::Error> {
