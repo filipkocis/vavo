@@ -12,6 +12,7 @@ pub mod prelude {
 
 use crate::{assets::LoadableAsset, prelude::*};
 
+use apply::apply_audio_track_commands;
 use kira::{sound::static_sound::StaticSoundData, track::TrackBuilder};
 use manager::{AudioManager, AudioManagerSettings};
 
@@ -32,9 +33,11 @@ impl Plugin for AudioPlugin {
         let sub_track = audio_manager.add_sub_track(TrackBuilder::new()).expect("Failed to create main sub track");
         let main_track = AudioTrack::<MainTrack>::new(sub_track);
 
-        app.set_resource(audio_manager);
-        app.set_resource(main_track);
-        app.init_resource::<Assets<AudioSource>>();
+        app
+            .set_resource(audio_manager)
+            .set_resource(main_track)
+            .init_resource::<Assets<AudioSource>>()
+            .add_system(apply_audio_track_commands);
     }
 }
 
