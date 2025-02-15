@@ -11,6 +11,7 @@ pub mod plugins;
 pub mod ui;
 pub mod ecs;
 pub mod event;
+pub mod audio;
 
 pub use renderer::{shapes, palette};
 pub use app::{input};
