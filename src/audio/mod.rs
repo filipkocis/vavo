@@ -22,6 +22,12 @@ pub struct AudioSource {
     source: StaticSoundData,
 }
 
+impl AudioSource {
+    pub fn new(source: StaticSoundData) -> Self {
+        Self { source }
+    }
+}
+
 /// Adds Audio playback functionality
 pub struct AudioPlugin;
 
@@ -41,12 +47,10 @@ impl Plugin for AudioPlugin {
     }
 }
 
-impl Asset for StaticSoundData {}
-
-impl LoadableAsset for StaticSoundData {
+impl LoadableAsset for AudioSource {
     fn load(_: &mut AssetLoader, _: &mut Resources, path: &str) -> Self {
         match StaticSoundData::from_file(path) {
-            Ok(sound_data) => sound_data,
+            Ok(sound_data) => AudioSource::new(sound_data),
             Err(err) => panic!("Failed to load sound from '{}': {}", path, err),
         }   
     }
