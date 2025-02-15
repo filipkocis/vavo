@@ -3,7 +3,7 @@ use std::{collections::VecDeque, marker::PhantomData};
 use kira::{sound::IntoOptionalRegion, track::TrackHandle};
 
 use crate::prelude::*;
-use super::{commands::AudioCommand, sound::Sound, AudioSource, TweenCommand};
+use super::{commands::AudioCommand, sound::Sound, AudioSource, PlayCommand, TweenCommand};
 
 /// Marker for the main [`audio track`](AudioTrack)
 #[derive(Resource)]
@@ -11,14 +11,13 @@ pub struct MainTrack;
 
 /// An audio track that can play multiple sounds, you can create multiple tracks. To use the
 /// default [`main`](MainTrack) track use the [`AudioTrack`] resource
-pub struct AudioTrack<T = MainTrack> {
+#[derive(Resource)]
+pub struct AudioTrack<R: Resource = MainTrack> {
     pub(crate) commands: VecDeque<AudioCommand>,
     pub(crate) track: TrackHandle,
     pub(crate) sounds: Vec<Sound>,
-    _marker: PhantomData<T>,
+    _marker: PhantomData<R>,
 }
-
-impl<R: Resource> Resource for AudioTrack<R> {}
 
 impl<R: Resource> AudioTrack<R> {
     pub fn new(track_handle: TrackHandle) -> Self {
@@ -46,13 +45,12 @@ impl<R: Resource> AudioTrack<R> {
                     let sound = Sound::new(sound, commands);
                     self.sounds.push(sound); 
                 },
+
                 AudioCommand::Pause(tween) => self.track.pause(tween),
                 AudioCommand::Resume(tween) => self.track.resume(tween),
-                AudioCommand::Stop(tween) => self.sounds.iter_mut().for_each(|sound| sound.0.stop(tween)),
                 AudioCommand::SetVolume(volume, tween) => self.track.set_volume(volume, tween),
-                AudioCommand::SetPanning(panning, tween) => self.sounds.iter_mut().for_each(|sound| sound.0.set_panning(panning, tween)),
-                AudioCommand::SetPlaybackRate(rate, tween) => self.sounds.iter_mut().for_each(|sound| sound.0.set_playback_rate(rate, tween)),
-                AudioCommand::SetLoopRegion(region) => self.sounds.iter_mut().for_each(|sound| sound.0.set_loop_region(region)),
+
+                command => self.sounds.iter_mut().for_each(|sound| sound.apply(command.clone()))
             }
         }
     }
@@ -64,8 +62,8 @@ impl<R: Resource> AudioTrack<R> {
     }
 
     /// Plays an audio asset
-    pub fn play(&mut self, source: Handle<AudioSource>) {
-        self.push(AudioCommand::Play(source, Default::default()));
+    pub fn play(&mut self, source: Handle<AudioSource>) -> PlayCommand {
+        self.push(AudioCommand::Play(source, Default::default())).play_command()
     }
 
     /// Stops all sounds

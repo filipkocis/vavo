@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 use kira::sound::static_sound::StaticSoundHandle;
 
 use super::AudioCommand;
@@ -8,7 +10,7 @@ pub(crate) struct Sound(pub(crate) StaticSoundHandle);
 pub type PlaybackState = kira::sound::PlaybackState;
 
 impl Sound {
-    pub fn new(handle: StaticSoundHandle, commands: Vec<AudioCommand>) -> Self {
+    pub fn new(handle: StaticSoundHandle, commands: VecDeque<AudioCommand>) -> Self {
         let mut sound = Self(handle);
         commands.into_iter().for_each(|command| sound.apply(command));
         sound
@@ -19,7 +21,8 @@ impl Sound {
         self.0.state()
     }
 
-    fn apply(&mut self, command: AudioCommand) {
+    /// Apply a command to the sound
+    pub(crate) fn apply(&mut self, command: AudioCommand) {
         match command {
             AudioCommand::Play(..) => panic!("Play command is not valid for a sound"),
             AudioCommand::Pause(tween) => self.0.pause(tween),
