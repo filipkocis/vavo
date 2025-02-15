@@ -10,6 +10,7 @@ pub use super::{
     input::Input,
 
     ecs::prelude::*,
+    audio::prelude::*,
 
     winit::{self},
     image::{self},

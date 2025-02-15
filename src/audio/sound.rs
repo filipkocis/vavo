@@ -2,7 +2,7 @@ use std::collections::VecDeque;
 
 use kira::sound::static_sound::StaticSoundHandle;
 
-use super::AudioCommand;
+use super::commands::AudioCommand;
 
 /// A sound which may or may not be currently playing
 pub(crate) struct Sound(pub(crate) StaticSoundHandle);
