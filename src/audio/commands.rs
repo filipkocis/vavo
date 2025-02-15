@@ -18,19 +18,6 @@ pub(crate) enum AudioCommand {
 }
 
 impl AudioCommand {
-    pub(crate) fn tween(&self) -> &Tween {
-        match self {
-            Self::Play(..) => panic!("Play command does not have a tween"),
-            Self::Pause(tween) => tween,
-            Self::Resume(tween) => tween,
-            Self::Stop(tween) => tween,
-            Self::SetVolume(_, tween) => tween,
-            Self::SetPanning(_, tween) => tween,
-            Self::SetPlaybackRate(_, tween) => tween,
-            Self::SetLoopRegion(_) => panic!("Loop region command does not have a tween"),
-        }
-    }
-
     pub(crate) fn tween_mut(&mut self) -> &mut Tween {
         match self {
             Self::Play(..) => panic!("Play command does not have a tween"),
