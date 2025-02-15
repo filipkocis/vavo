@@ -17,8 +17,7 @@ impl AssetLoader {
         }
     }
 
-    pub fn load<A>(&mut self, path: &str, resources: &mut Resources) -> Handle<A>
-    where A: LoadableAsset + 'static {
+    pub fn load<A: LoadableAsset>(&mut self, path: &str, resources: &mut Resources) -> Handle<A> {
         if let Some(handle) = self.cache.get(path) {
             return handle.downcast_ref::<Handle<A>>()
                 .expect(&format!("Could not downcast asset handle for '{}'", path))
@@ -38,6 +37,7 @@ impl AssetLoader {
 
 /// Trait for assets which can be loaded from a file
 pub trait LoadableAsset: Asset {
+    // TODO: add AsPath
     fn load(loader: &mut AssetLoader, resources: &mut Resources, path: &str) -> Self;
 }
 
