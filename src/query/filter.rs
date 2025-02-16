@@ -1,6 +1,7 @@
 use std::{any::TypeId, marker::PhantomData};
 
-/// A filter that checks if a component is marked as changed in the current frame.
+/// A filter that checks if a component is marked as changed in the current frame. That is, if the
+/// component was requested as a mutable reference in a query.
 pub struct Changed<T>(PhantomData<T>);
 
 /// A filter that checks if a component is present.

@@ -56,6 +56,10 @@ impl<T, F> Query<T, F> {
         }
     }
 
+    /// Creates a new query with a diffrent set of components and filters.
+    ///
+    /// It is possible to query for the same component multiple times, even as a mutable reference
+    /// so you must be careful with this method.
     pub fn cast<U, V>(&mut self) -> Query<U, V> {
         Query {
             entities: self.entities,
