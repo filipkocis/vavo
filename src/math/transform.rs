@@ -32,6 +32,11 @@ impl GlobalTransform {
         self.matrix.w_axis.xyz()
     }
 
+    /// Extract the rotation component
+    pub fn rotation(&self) -> Quat {
+        self.matrix.to_scale_rotation_translation().1            
+    }
+
     pub fn from_transform(transform: &Transform) -> Self {
         Self {
             matrix: transform.as_matrix()
