@@ -21,6 +21,11 @@ impl Sound {
         self.0.state()
     }
 
+    /// Wheter the sound has finished playing, or has been stopped
+    pub fn is_stopped(&self) -> bool {
+        self.0.state() == PlaybackState::Stopped
+    }
+
     /// Apply a command to the sound
     pub(crate) fn apply(&mut self, command: AudioCommand) {
         match command {
