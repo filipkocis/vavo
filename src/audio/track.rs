@@ -1,6 +1,6 @@
-use std::{collections::VecDeque, marker::PhantomData};
+use std::{collections::{HashMap, VecDeque}, marker::PhantomData};
 
-use kira::{sound::IntoOptionalRegion, track::TrackHandle};
+use kira::{sound::IntoOptionalRegion, track::{SpatialTrackHandle, TrackHandle}};
 
 use crate::prelude::*;
 use super::{commands::AudioCommand, sound::Sound, AudioSource, PlayCommand, TweenCommand};
@@ -9,6 +9,13 @@ use super::{commands::AudioCommand, sound::Sound, AudioSource, PlayCommand, Twee
 #[derive(Resource)]
 pub struct MainTrack;
 
+/// A spatial sub-track bound to an [`AudioTrack`]. Represents one [`SpatialEmitter`](crate::audio::spatial::SpatialEmitter)
+#[derive(Resource)]
+pub(crate) struct SpatialAudioTrack {
+    pub(crate) sounds: Vec<Sound>,
+    pub(crate) track: SpatialTrackHandle,
+}
+
 /// An audio track that can play multiple sounds, you can create multiple tracks. To use the
 /// default [`main`](MainTrack) track use the [`AudioTrack`] resource
 #[derive(Resource)]
@@ -16,6 +23,7 @@ pub struct AudioTrack<R: Resource = MainTrack> {
     pub(crate) commands: VecDeque<AudioCommand>,
     pub(crate) track: TrackHandle,
     pub(crate) sounds: Vec<Sound>,
+    pub(crate) spatial_tracks: HashMap<EntityId, SpatialAudioTrack>,
     _marker: PhantomData<R>,
 }
 
@@ -25,6 +33,7 @@ impl<R: Resource> AudioTrack<R> {
             commands: VecDeque::new(),
             track: track_handle,
             sounds: Vec::new(),
+            spatial_tracks: HashMap::new(),
             _marker: PhantomData,
         }
     }
@@ -46,9 +55,18 @@ impl<R: Resource> AudioTrack<R> {
                     self.sounds.push(sound); 
                 },
 
-                AudioCommand::Pause(tween) => self.track.pause(tween),
-                AudioCommand::Resume(tween) => self.track.resume(tween),
-                AudioCommand::SetVolume(volume, tween) => self.track.set_volume(volume, tween),
+                AudioCommand::Pause(tween) => {
+                    self.track.pause(tween);
+                    self.spatial_tracks.values_mut().for_each(|track| track.track.pause(tween));
+                },
+                AudioCommand::Resume(tween) => {
+                    self.track.resume(tween);
+                    self.spatial_tracks.values_mut().for_each(|track| track.track.resume(tween));
+                },
+                AudioCommand::SetVolume(volume, tween) => {
+                    self.track.set_volume(volume, tween);
+                    self.spatial_tracks.values_mut().for_each(|track| track.track.set_volume(volume, tween));
+                },
 
                 command => self.sounds.iter_mut().for_each(|sound| sound.apply(command.clone()))
             }
@@ -99,5 +117,44 @@ impl<R: Resource> AudioTrack<R> {
     /// Sets the loop region of all sounds
     pub fn set_loop_region(&mut self, region: impl IntoOptionalRegion) {
         self.push(AudioCommand::SetLoopRegion(region.into_optional_region()));
+    }
+}
+
+impl SpatialAudioTrack {
+    pub fn new(track: SpatialTrackHandle) -> Self {
+        Self {
+            track,
+            sounds: Vec::new(),
+        }
+    }
+
+    /// Apply all queued commands to the spatial track
+    pub(crate) fn apply(
+        &mut self, 
+        resources: &mut Resources, 
+        commands: &mut VecDeque<AudioCommand>, 
+    ) {
+        while let Some(command) = commands.pop_front() {
+            match command {
+                AudioCommand::Play(handle, commands) => {
+                    let assets = resources.get::<Assets<AudioSource>>().expect("Assets<AudioSource> not found"); 
+                    let sound_data = assets.get(&handle).expect("Failed to get sound data from assets");
+
+                    let sound = match self.track.play(sound_data.source.clone()) {
+                        Ok(sound) => sound,
+                        Err(err) => panic!("Failed to play sound: {}", err),
+                    };
+
+                    let sound = Sound::new(sound, commands);
+                    self.sounds.push(sound); 
+                },
+
+                AudioCommand::Pause(tween) => self.track.pause(tween),
+                AudioCommand::Resume(tween) => self.track.resume(tween),
+                AudioCommand::SetVolume(volume, tween) => self.track.set_volume(volume, tween),
+
+                command => self.sounds.iter_mut().for_each(|sound| sound.apply(command.clone()))
+            }
+        }
     }
 }
