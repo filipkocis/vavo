@@ -22,12 +22,11 @@ pub enum TypeInfo {
 pub struct TypePathInfo {
     pub name: &'static str,
     pub path: &'static str,
-    pub module: &'static str,
 }
 
 impl TypePathInfo {
-    pub fn new(name: &'static str, path: &'static str, module: &'static str) -> Self {
-        Self { name, path, module }
+    pub fn new(name: &'static str, path: &'static str) -> Self {
+        Self { name, path }
     }
 }
 
@@ -68,15 +67,35 @@ impl EnumInfo {
 #[derive(Debug, Clone)]
 pub struct ArrayInfo {
     pub path: TypePathInfo,
-    pub element_type: Box<TypeInfo>,
+    pub element_type: Option<Box<TypeInfo>>,
     pub is_list: bool,
     pub length: usize,
+}
+
+impl ArrayInfo {
+    pub fn new(path: TypePathInfo, element_type: Option<TypeInfo>, is_list: bool, length: usize) -> Self {
+        Self {
+            path,
+            element_type: element_type.map(Box::new),
+            is_list,
+            length,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
 pub struct TupleInfo {
     pub path: TypePathInfo,
     pub element_types: Box<[TypeInfo]>,
+}
+
+impl TupleInfo {
+    pub fn new<const N: usize>(path: TypePathInfo, element_types: [TypeInfo; N]) -> Self {
+        Self {
+            path,
+            element_types: element_types.into(),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
