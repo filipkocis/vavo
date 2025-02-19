@@ -42,11 +42,12 @@ macro_rules! impl_primitive {
                     return Err(value);
                 }
 
-                if let Some(value) = value.downcast_ref::<$type>() {
-                    *self = *value;
-                    Ok(())
-                } else {
-                    Err(value)
+                match value.downcast::<$type>() {
+                    Ok(value) => {
+                        *self = *value;
+                        Ok(())
+                    },
+                    Err(value) => Err(value),
                 }
             }
         }
