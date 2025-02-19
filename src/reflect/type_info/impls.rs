@@ -20,6 +20,19 @@ macro_rules! impl_primitive {
     )+}
 }
 
+impl GetTypeInfo for &'static str {
+    fn type_info(&self) -> TypeInfo {
+        TypeInfo::Primitive(PrimitiveInfo::new(TypePathInfo::new(
+            stringify!(&'static str),
+            type_name::<Self>()
+        )))
+    }
+
+    fn type_name(&self) -> &'static str {
+        stringify!(&'static str)
+    }
+}
+
 impl_primitive!(
     u8, u16, u32, u64, u128, usize, 
     i8, i16, i32, i64, i128, isize, 
