@@ -1,4 +1,5 @@
 use proc_macro::TokenStream;
+use proc_macro2::{Ident, Span};
 use quote::quote;
 use syn::{parse_macro_input, Data, DeriveInput, Fields};
 
@@ -25,8 +26,7 @@ pub fn derive_reflect_implementation(item: TokenStream) -> TokenStream {
 
             let field_names: Vec<_> = fields.iter().map(|f| f.to_string()).collect();
             let field_types: Vec<_> = fields.iter().map(|f| quote! { self.#f.type_info() }).collect();
-            let field_indices = 0..fields.len();
-            let field_indices_2 = 0..fields.len();
+            let field_indices: Vec<_> = (0..fields.len()).collect();
 
             let reflect = quote! {
                 fn field_by_index(&self, index: usize) -> Option<&dyn #path::reflect::Reflect> {
@@ -38,15 +38,7 @@ pub fn derive_reflect_implementation(item: TokenStream) -> TokenStream {
                 
                 fn set_field_by_index(&mut self, index: usize, value: Box<dyn std::any::Any>) -> Result<(), Box<dyn std::any::Any>> {
                     match index {
-                        #(#field_indices_2 => {
-                            match value.downcast::<_>() {
-                                Ok(value) => {
-                                    self.#fields = *value;
-                                    Ok(())
-                                },
-                                Err(value) => Err(value),
-                            }
-                        },)*
+                        #(#field_indices => value.downcast::<_>().map(|value| self.#fields = *value),)*
                         _ => Err(value),
                     }
                 }
@@ -74,13 +66,79 @@ pub fn derive_reflect_implementation(item: TokenStream) -> TokenStream {
         Data::Enum(data_enum) => {
             let variant_names: Vec<_> = data_enum.variants.iter().map(|v| v.ident.to_string()).collect();
 
+            let variant_matches = data_enum.variants.iter().map(|v| {
+                let variant_name = &v.ident;
+                match &v.fields {
+                    Fields::Named(named) => {
+                        let indices = 0..named.named.len();
+                        let field_names: Vec<_> = named.named.iter().map(|f| &f.ident).collect();
+                        quote! {
+                            Self::#variant_name { #(ref #field_names),* } => match index {
+                                #( #indices => Some(#field_names), )*
+                                _ => None,
+                            }
+                        }
+                    }
+                    Fields::Unnamed(unnamed) => {
+                        let indices = 0..unnamed.unnamed.len();
+                        let field_idents: Vec<_> = (0..unnamed.unnamed.len())
+                            .map(|i| Ident::new(&format!("field_{}", i), Span::call_site()))
+                            .collect();
+                        quote! {
+                            Self::#variant_name( #( ref #field_idents ),* ) => match index {
+                                #( #indices => Some(#field_idents), )*
+                                _ => None,
+                            }
+                        }
+                    }
+                    Fields::Unit => quote! { Self::#variant_name => None },
+                }
+            });
+            
+            let set_variant_matches = data_enum.variants.iter().map(|v| {
+                let variant_name = &v.ident;
+                match &v.fields {
+                    Fields::Named(named) => {
+                        let indices = 0..named.named.len();
+                        let field_names: Vec<_> = named.named.iter().map(|f| &f.ident).collect();
+                        let field_types = named.named.iter().map(|f| &f.ty);
+                        quote! {
+                            Self::#variant_name { #(ref mut #field_names),* } => match index {
+                                #( #indices => value.downcast::<#field_types>().map(|value| *#field_names = *value), )*
+                                _ => Err(value),
+                            }
+                        }
+                    }
+                    Fields::Unnamed(unnamed) => {
+                        let indices = 0..unnamed.unnamed.len();
+                        let field_idents: Vec<_> = (0..unnamed.unnamed.len())
+                            .map(|i| Ident::new(&format!("field_{}", i), Span::call_site()))
+                            .collect();
+                        let field_types = unnamed.unnamed.iter().map(|f| &f.ty);
+                        quote! {
+                            Self::#variant_name( #( ref mut #field_idents ),* ) => match index {
+                                #( #indices => value.downcast::<#field_types>().map(|value| *#field_idents = *value), )*
+                                _ => Err(value),
+                            }
+                        }
+                    }
+                    Fields::Unit => quote! { Self::#variant_name => Err(value) },
+                }
+            });
+
             let reflect = quote! {
-                fn field_by_index(&self, _index: usize) -> Option<&dyn #path::reflect::Reflect> {
-                    None // Reflection for enum variants requires a different approach
+                fn field_by_index(&self, index: usize) -> Option<&dyn #path::reflect::Reflect> {
+                    match self {
+                        #(#variant_matches,)*
+                        _ => None,
+                    }
                 }
                 
-                fn set_field_by_index(&mut self, _index: usize, _value: Box<dyn std::any::Any>) -> Result<(), Box<dyn std::any::Any>> {
-                    Err(_value) // Not applicable for enums
+                fn set_field_by_index(&mut self, index: usize, value: Box<dyn std::any::Any>) -> Result<(), Box<dyn std::any::Any>> {
+                    match self {
+                        #(#set_variant_matches,)*
+                        _ => Err(value),
+                    }
                 }
             };
 
