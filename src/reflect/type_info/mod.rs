@@ -18,6 +18,50 @@ pub enum TypeInfo {
     Set(SetInfo),
 }
 
+impl TypeInfo {
+    pub fn info(&self) -> &TypePathInfo {
+        match self {
+            Self::Primitive(info) => &info.path,
+            Self::Struct(info) => &info.path,
+            Self::Enum(info) => &info.path,
+            Self::Array(info) => &info.path,
+            Self::Tuple(info) => &info.path,
+            Self::Map(info) => &info.path,
+            Self::Set(info) => &info.path,
+        }
+    }
+
+    pub fn name(&self) -> &'static str {
+        self.info().name
+    }
+
+    pub fn path(&self) -> &'static str {
+        self.info().path
+    }
+
+    pub fn field_names(&self) -> Option<&[&'static str]> {
+        match self {
+            Self::Struct(info) => Some(&info.field_names),
+            _ => None,
+        }
+    }
+
+    pub fn field_types(&self) -> Option<&[TypeInfo]> {
+        match self {
+            Self::Struct(info) => Some(&info.field_types),
+            Self::Tuple(info) => Some(&info.element_types),
+            _ => None,
+        }
+    }
+
+    pub fn field_name_by_index(&self, index: usize) -> Option<&'static str> {
+        match self {
+            Self::Struct(info) => info.field_names.get(index).copied(),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct TypePathInfo {
     pub name: &'static str,
@@ -46,6 +90,18 @@ pub struct StructInfo {
     pub path: TypePathInfo,
     pub field_names: Box<[&'static str]>,
     pub field_types: Box<[TypeInfo]>,
+    pub is_tuple: bool,
+}
+
+impl StructInfo {
+    pub fn new<const N: usize>(path: TypePathInfo, field_names: [&'static str; N], field_types: [TypeInfo; N], is_tuple: bool) -> Self {
+        Self {
+            path,
+            field_names: field_names.into(),
+            field_types: field_types.into(),
+            is_tuple,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -101,12 +157,31 @@ impl TupleInfo {
 #[derive(Debug, Clone)]
 pub struct MapInfo {
     pub path: TypePathInfo,
-    pub key_type: Box<TypeInfo>,
-    pub value_type: Box<TypeInfo>,
+    pub key_type: Option<Box<TypeInfo>>,
+    pub value_type: Option<Box<TypeInfo>>,
+}
+
+impl MapInfo {
+    pub fn new(path: TypePathInfo, key_type: Option<TypeInfo>, value_type: Option<TypeInfo>) -> Self {
+        Self {
+            path,
+            key_type: key_type.map(Box::new),
+            value_type: value_type.map(Box::new),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
 pub struct SetInfo {
     pub path: TypePathInfo,
-    pub element_type: Box<TypeInfo>,
+    pub element_type: Option<Box<TypeInfo>>,
+}
+
+impl SetInfo {
+    pub fn new(path: TypePathInfo, element_type: Option<TypeInfo>) -> Self {
+        Self {
+            path,
+            element_type: element_type.map(Box::new),
+        }
+    }
 }
