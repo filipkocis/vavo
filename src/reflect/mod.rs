@@ -42,13 +42,7 @@ macro_rules! impl_primitive {
                     return Err(value);
                 }
 
-                match value.downcast::<$type>() {
-                    Ok(value) => {
-                        *self = *value;
-                        Ok(())
-                    },
-                    Err(value) => Err(value),
-                }
+                value.downcast::<$type>().map(|value| *self = *value)
             }
         }
     )+}
@@ -57,5 +51,39 @@ macro_rules! impl_primitive {
 impl_primitive!(
     u8, u16, u32, u64, u128, usize, 
     i8, i16, i32, i64, i128, isize, 
-    f32, f64, bool, char // str, String
+    f32, f64, bool, char
 );
+
+impl Reflect for str {
+    fn field_by_index(&self, _: usize) -> Option<&dyn Reflect> {
+        None
+    }
+
+    fn set_field_by_index(&mut self, _: usize, value: Box<dyn Any>) -> Result<(), Box<dyn Any>> {
+        Err(value)
+    }
+}
+
+impl Reflect for &'static str {
+    fn field_by_index(&self, _: usize) -> Option<&dyn Reflect> {
+        None
+    }
+
+    fn set_field_by_index(&mut self, _: usize, value: Box<dyn Any>) -> Result<(), Box<dyn Any>> {
+        Err(value)
+    }
+}
+
+impl Reflect for String {
+    fn field_by_index(&self, _: usize) -> Option<&dyn Reflect> {
+        None
+    }
+
+    fn set_field_by_index(&mut self, index: usize, value: Box<dyn Any>) -> Result<(), Box<dyn Any>> {
+        if index != 0 {
+            return Err(value);
+        }
+
+        value.downcast::<String>().map(|value| *self = *value)
+    }
+}
