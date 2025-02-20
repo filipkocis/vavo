@@ -1,57 +1,98 @@
-use std::fmt::{Debug, Formatter};
+use std::fmt::{Debug};
 
 use super::{type_info::{PrimitiveInfo, StructInfo, TypeInfo}, Reflect};
 
 impl Debug for dyn Reflect {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.debug_fmt(!f.alternate())) 
+    }
+}
+
+impl dyn Reflect {
+    fn internal_debug_fmt(&self, inline: bool, indent: usize) -> String {
         let type_info = self.type_info();
         
         match type_info {
-            TypeInfo::Primitive(info) => write_primitive(f, info, self),
-            TypeInfo::Struct(info) => write_struct(f, info, self),
+            TypeInfo::Primitive(info) => write_primitive(self, info),
+            TypeInfo::Struct(info) => write_struct(self, info, inline, indent),
 
             _ => todo!()
         }
     }
+
+    pub fn debug_fmt(&self, inline: bool) -> String {
+        self.internal_debug_fmt(inline, 0)
+    }
 }
 
-fn write_struct(f: &mut Formatter<'_>, info: StructInfo, value: &dyn Reflect) -> std::fmt::Result {
-    let name = &info.path.name;
+/// Return indentation string. 4 spaces per indent level.
+fn indent_str(inline: bool, indent: usize, use_space: bool) -> String {
+    match (inline, indent, use_space) {
+        (true, 0, _) => return String::new(),
+        (true, _, true) => return " ".to_string(),
+        (true, _, _) => return String::new(),
+        _ => {}
+    }
+
+    " ".repeat(indent * 4)
+}
+
+fn write_struct(value: &dyn Reflect, info: StructInfo, inline: bool, indent: usize) -> String {
     let range = 0..info.field_names.len();
+    let range_end = info.field_names.len() - 1;
+    // let mut s = String::from(indent_str(inline, indent, false));
+    let mut s = String::new();
+    s.push_str(&info.path.path);
 
     if info.is_tuple {
-        let mut f = f.debug_tuple(name);
-        
-        range.for_each(|i| {
-            let field = value.field_by_index(i).expect("field_by_index not found, invalid field_names");
-            let field = format!("{:?}", field);
-            f.field(&field);
-        });
+        s.push('('); 
+        if !inline { s.push('\n'); }
 
-        f.finish()
+        for i in range {
+            let field = value.field_by_index(i).expect("field_by_index failed, incorrect field_names");
+            s.push_str(&indent_str(inline, indent + 1, i != 0));
+            s.push_str(&field.internal_debug_fmt(inline, indent + 1));
+            if i != range_end {
+                s.push(',');
+            }
+            if !inline { s.push('\n'); }
+        }
+
+        s.push_str(&indent_str(inline, indent, false));
+        s.push(')');
     } else {
-        let mut f = f.debug_struct(&info.path.name);
+        s.push_str(" {");
+        if !inline { s.push('\n'); }
 
-        range.for_each(|i| {
-            let field = value.field_by_index(i).expect("field_by_index not found, invalid field_names");
-            let field = format!("{:?}", field);
-            f.field(&info.field_names[i], &field);
-        });
+        for i in range {
+            let field = value.field_by_index(i).expect("field_by_index failed, incorrect field_names");
+            s.push_str(&indent_str(inline, indent + 1, true));
+            s.push_str(&info.field_names[i]);
+            s.push_str(": ");
+            s.push_str(&field.internal_debug_fmt(inline, indent + 1));
+            if i != range_end {
+                s.push(',');
+            }
+            if !inline { s.push('\n'); }
+        }
 
-        f.finish()
+        s.push_str(&indent_str(inline, indent, true));
+        s.push('}');
     }
+
+    s
 }
 
 macro_rules! gen_write_primitive {
     ($($type:ident),+) => {
-        fn write_primitive(f: &mut Formatter<'_>, info: PrimitiveInfo, value: &dyn Reflect) -> std::fmt::Result {
+        fn write_primitive(value: &dyn Reflect, info: PrimitiveInfo) -> String {
             let path = info.path;
 
             match path.name {
                 // types which can't be used as an macro arg
                 "&'static str" => {
                     match value.downcast_ref::<&str>() {
-                        Some(value) => write!(f, "{:?}", value),
+                        Some(value) => format!("{:?}", value),
                         None => panic!("info path {:?} doesn't match value type {:?}", path.name, "str")
                     }
                 },
@@ -60,13 +101,13 @@ macro_rules! gen_write_primitive {
                 $(
                     stringify!($type) => {
                         match value.downcast_ref::<$type>() {
-                            Some(value) => write!(f, "{:?}", value),
+                            Some(value) => format!("{:?}", value),
                             None => panic!("info path {:?} doesn't match value type {:?}", path.name, stringify!($type))
                         }
                     },
                 )+
                 name => {
-                    write!(f, "{{{:?}}}", name)
+                    format!("{{{:?}}}", name)
                 }
             }
         }
