@@ -1,4 +1,4 @@
-use std::{any::Any, collections::VecDeque};
+use std::{any::Any, collections::{HashMap, HashSet, VecDeque}};
 
 use type_info::GetTypeInfo;
 
@@ -172,7 +172,7 @@ macro_rules! impl_tuple {
                 match index {
                     $($index => value.downcast::<_>().map(|v| self.$index = *v),)+
                     _ => Err(value)
-                }                
+                }
             }
         }
     )+}
@@ -187,3 +187,55 @@ impl_tuple!(
     (T1, T2, T3, T4, T5, T6, T7) (0, 1, 2, 3, 4, 5, 6),
     (T1, T2, T3, T4, T5, T6, T7, T8) (0, 1, 2, 3, 4, 5, 6, 7)
 );
+
+impl<T: Reflect, U: Reflect> Reflect for HashMap<T, U> {
+    fn field_by_index(&self, _: usize) -> Option<&dyn Reflect> {
+        None
+    }
+
+    fn set_field_by_index(&mut self, _: usize, value: Box<dyn Any>) -> Result<(), Box<dyn Any>> {
+        Err(value)
+    }
+}
+
+impl<T: Reflect> Reflect for HashSet<T> {
+    fn field_by_index(&self, _: usize) -> Option<&dyn Reflect> {
+        None
+    }
+
+    fn set_field_by_index(&mut self, _: usize, value: Box<dyn Any>) -> Result<(), Box<dyn Any>> {
+        Err(value)
+    }
+}
+
+/// Implement Reflection for struct types
+// TODO: make this a proc macro (all of these macros should be)
+macro_rules! impl_struct {
+    ($($type:ident $is_tuple:tt ($($field:tt),+) $(: ($($generic:ident),+))? ),+) => {$(
+        impl$(<$($generic: Reflect),+>)? Reflect for $type$(<$($generic),+>)? {
+            fn field_by_index(&self, index: usize) -> Option<&dyn Reflect> {
+                match index {
+                    _ => None
+                }
+            }
+
+            fn set_field_by_index(&mut self, index: usize, value: Box<dyn Any>) -> Result<(), Box<dyn Any>> {
+                match index {
+                    _ => Err(value)
+                }
+            }
+        }
+    )+}
+}
+
+mod glam_impls {
+    use super::*;
+    use glam::*;
+
+    impl_struct!(
+        UVec2 false (x, y), UVec3 false (x, y, z), UVec4 false (x, y, z, w),
+        Vec2 false (x, y), Vec3 false (x, y, z), Vec4 false (x, y, z, w),
+        Mat2 false (x_axis, y_axis), Mat3 false (x_axis, y_axis, z_axis), Mat4 false (x_axis, y_axis, z_axis, w_axis),
+        Quat false (x, y, z, w) 
+    );
+}

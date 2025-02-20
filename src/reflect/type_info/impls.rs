@@ -2,6 +2,8 @@ use std::{any::type_name, collections::{HashMap, HashSet, VecDeque}};
 
 use super::{ArrayInfo, EnumInfo, GetTypeInfo, MapInfo, PrimitiveInfo, SetInfo, StructInfo, TupleInfo, TypeInfo, TypePathInfo};
 
+// TODO: merge macros with those in reflect/mod.rs
+
 /// Implement GetTypeInfo for primitive types separated with commas.
 macro_rules! impl_primitive {
     ($($type:ty),+) => {$(
