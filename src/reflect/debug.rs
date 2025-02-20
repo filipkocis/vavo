@@ -1,6 +1,6 @@
 use std::fmt::{Debug};
 
-use super::{type_info::{ArrayInfo, EnumInfo, PrimitiveInfo, StructInfo, TupleInfo, TypeInfo}, Reflect};
+use super::{type_info::{ArrayInfo, EnumInfo, MapInfo, PrimitiveInfo, SetInfo, StructInfo, TupleInfo, TypeInfo}, Reflect};
 
 impl Debug for dyn Reflect {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -18,14 +18,27 @@ impl dyn Reflect {
             TypeInfo::Enum(info) => write_enum(self, info, inline, indent),
             TypeInfo::Array(info) => write_array(self, info, inline, indent),
             TypeInfo::Tuple(info) => write_tuple(self, info, inline, indent),
-
-            _ => todo!()
+            TypeInfo::Map(info) => write_map(self, info, inline, indent),
+            TypeInfo::Set(info) => write_set(self, info, inline, indent),
         }
     }
 
     pub fn debug_fmt(&self, inline: bool) -> String {
         self.internal_debug_fmt(inline, 0)
     }
+}
+fn write_set(_value: &dyn Reflect, info: SetInfo, _inline: bool, _indent: usize) -> String {
+    // TODO: implement reflect features to support this
+    let mut s = String::from(info.path.path);
+    s.push_str(" { .. }");
+    s
+}
+
+fn write_map(_value: &dyn Reflect, info: MapInfo, _inline: bool, _indent: usize) -> String {
+    // TODO: implement reflect features to support this
+    let mut s = String::from(info.path.path);
+    s.push_str(" { .. }");
+    s
 }
 
 fn write_array(value: &dyn Reflect, info: ArrayInfo, inline: bool, indent: usize) -> String {
