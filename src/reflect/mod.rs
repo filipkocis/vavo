@@ -3,6 +3,7 @@ use std::{any::Any, collections::{HashMap, HashSet, VecDeque}};
 use type_info::GetTypeInfo;
 
 pub mod type_info;
+pub mod inspector;
 
 /// Trait enabling dynamic reflection of types. Any type implementing this trait can be
 /// inspected and mutated at runtime.
@@ -211,7 +212,7 @@ impl<T: Reflect> Reflect for HashSet<T> {
 /// Implement Reflection for struct types
 // TODO: make this a proc macro (all of these macros should be)
 macro_rules! impl_struct {
-    ($($type:ident $is_tuple:tt ($($field:tt),+) $(: ($($generic:ident),+))? ),+) => {$(
+    ($($type:ident $is_tuple:tt ($($field:tt),*) $(: ($($generic:ident),+))? ),+) => {$(
         impl$(<$($generic: Reflect),+>)? Reflect for $type$(<$($generic),+>)? {
             fn field_by_index(&self, index: usize) -> Option<&dyn Reflect> {
                 match index {
@@ -236,6 +237,6 @@ mod glam_impls {
         UVec2 false (x, y), UVec3 false (x, y, z), UVec4 false (x, y, z, w),
         Vec2 false (x, y), Vec3 false (x, y, z), Vec4 false (x, y, z, w),
         Mat2 false (x_axis, y_axis), Mat3 false (x_axis, y_axis, z_axis), Mat4 false (x_axis, y_axis, z_axis, w_axis),
-        Quat false (x, y, z, w) 
+        Quat false (x, y, z, w)
     );
 }

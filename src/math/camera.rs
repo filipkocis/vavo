@@ -1,6 +1,6 @@
 use glam::Mat4;
 
-use crate::{assets::Handle, render_assets::{BindGroup, Buffer, IntoRenderAsset, RenderAssets}, renderer::{palette, Color, Image}, system::SystemsContext, ecs::entities::EntityId, macros::Component};
+use crate::{assets::Handle, render_assets::{BindGroup, Buffer, IntoRenderAsset, RenderAssets}, renderer::{palette, Color, Image}, system::SystemsContext, ecs::entities::EntityId, macros::{Component, Reflect}};
 
 use super::{GlobalTransform, Rect};
 
@@ -14,18 +14,18 @@ pub struct Camera {
 }
 
 /// Defines a 3D camera, required for 3D rendering
-#[derive(Component)]
+#[derive(Component, Reflect)]
 pub struct Camera3D {}
 
 /// Projection type component, required for camera
-#[derive(Component)]
+#[derive(Component, Reflect)]
 pub enum Projection {
     Perspective(PerspectiveProjection),
     Orthographic(OrthographicProjection),
 }
 
 /// Used in Projection enum for camera
-#[derive(Component)]
+#[derive(Component, Reflect)]
 pub struct PerspectiveProjection {
     pub fov: f32,
     pub near: f32,
@@ -34,7 +34,7 @@ pub struct PerspectiveProjection {
 }
 
 /// Used in Projection enum for camera
-#[derive(Component)]
+#[derive(Component, Reflect)]
 pub struct OrthographicProjection {
     pub area: Rect,
     pub scale: f32,

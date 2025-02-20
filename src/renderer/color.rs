@@ -2,6 +2,7 @@ use std::ops::{Add, Div, Mul, Sub};
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(crate::macros::Reflect)]
 pub struct Color {
     pub r: f32,
     pub g: f32,

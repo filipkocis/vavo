@@ -9,6 +9,7 @@ pub use face::*;
 pub use camera::*;
 pub use light::*;
 
+#[derive(crate::macros::Reflect)]
 pub struct Rect {
     pub min: Vec2,
     pub max: Vec2,

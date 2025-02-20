@@ -202,7 +202,7 @@ impl<T: GetTypeInfo> GetTypeInfo for HashSet<T> {
 /// Foo false (a) : (T),
 /// Foo true (0, 1),
 macro_rules! impl_struct {
-    ($($type:ident $is_tuple:tt ($($field:tt),+) $(: ($($generic:ident),+))? ),+) => {$(
+    ($($type:ident $is_tuple:tt ($($field:tt),*) $(: ($($generic:ident),+))? ),+) => {$(
         impl$(<$($generic: GetTypeInfo),+>)? GetTypeInfo for $type$(<$($generic),+>)? {
             fn type_info(&self) -> TypeInfo {
                 TypeInfo::Struct(StructInfo::new(
@@ -210,8 +210,8 @@ macro_rules! impl_struct {
                         stringify!($type),
                         type_name::<Self>()
                     ), 
-                    [$(stringify!($field)),+],
-                    [$(self.$field.type_info()),+],
+                    [$(stringify!($field)),*],
+                    [$(self.$field.type_info()),*],
                     $is_tuple,
                 ))
             }

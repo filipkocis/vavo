@@ -6,6 +6,7 @@ use std::{
 };
 
 use crate::query::{filter::Filters, QueryComponentType};
+use crate::macros::{Component, Reflect};
 
 use archetype::{Archetype, ArchetypeId};
 use relation::{Children, Parent};
@@ -14,7 +15,7 @@ use super::prelude::Component;
 
 /// Unique identifier for an [entity](Entities) in a [`World`](crate::ecs::world::World)
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-#[derive(crate::macros::Component)]
+#[derive(Component, Reflect)]
 pub struct EntityId(u32);
 
 impl EntityId {
