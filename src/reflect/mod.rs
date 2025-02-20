@@ -1,4 +1,4 @@
-use std::any::Any;
+use std::{any::Any, collections::VecDeque};
 
 use type_info::GetTypeInfo;
 
@@ -122,3 +122,25 @@ impl<T: Reflect, E: Reflect> Reflect for Result<T, E> {
     }
 }
 
+/// Implement Reflection for list types
+macro_rules! impl_list {
+    ($($type:ident<$($generic:ident),+>),+) => {$(
+        impl<$($generic: Reflect),+> Reflect for $type<$($generic),+> {
+            fn field_by_index(&self, index: usize) -> Option<&dyn Reflect> {
+                self.get(index)
+                    .map(|value| value as &dyn Reflect)
+            }
+
+            fn set_field_by_index(&mut self, index: usize, value: Box<dyn Any>) -> Result<(), Box<dyn Any>> {
+                if self.len() <= index {
+                    return Err(value);
+                }
+
+                value.downcast::<$($generic)?>()
+                    .map(|v| self[index] = *v)
+            }
+        }
+    )+}
+}
+
+impl_list!(Vec<T>, VecDeque<T>);
