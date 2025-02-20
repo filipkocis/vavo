@@ -1,6 +1,6 @@
 use std::fmt::{Debug};
 
-use super::{type_info::{EnumInfo, PrimitiveInfo, StructInfo, TupleInfo, TypeInfo}, Reflect};
+use super::{type_info::{ArrayInfo, EnumInfo, PrimitiveInfo, StructInfo, TupleInfo, TypeInfo}, Reflect};
 
 impl Debug for dyn Reflect {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -16,7 +16,7 @@ impl dyn Reflect {
             TypeInfo::Primitive(info) => write_primitive(self, info),
             TypeInfo::Struct(info) => write_struct(self, info, inline, indent),
             TypeInfo::Enum(info) => write_enum(self, info, inline, indent),
-            TypeInfo::Array(info) => todo!(),
+            TypeInfo::Array(info) => write_array(self, info, inline, indent),
             TypeInfo::Tuple(info) => write_tuple(self, info, inline, indent),
 
             _ => todo!()
@@ -26,6 +26,43 @@ impl dyn Reflect {
     pub fn debug_fmt(&self, inline: bool) -> String {
         self.internal_debug_fmt(inline, 0)
     }
+}
+
+fn write_array(value: &dyn Reflect, info: ArrayInfo, inline: bool, indent: usize) -> String {
+    let mut s = String::new();
+
+    if info.is_list {
+        s.push_str(info.path.name);
+    }
+
+    s.push('[');
+    if !inline { s.push('\n'); }
+
+    let mut i = 0;
+    loop {
+        let Some(field) = value.field_by_index(i) else {
+            if !inline { s.push('\n'); }
+            break;
+        };
+        if i != 0 {
+            s.push(',');
+            if !inline { s.push('\n'); }
+        }
+        
+        s.push_str(&indent_str(inline, indent + 1, i != 0));
+        s.push_str(&field.internal_debug_fmt(inline, indent + 1));     
+        i += 1;
+    }
+
+    if i == 0 {
+        while s.pop() != Some('[') {}
+        s.push_str("[]");
+    } else {
+        s.push_str(&indent_str(inline, indent, false));
+        s.push(']');
+    }
+
+    s
 }
 
 fn write_tuple(value: &dyn Reflect, info: TupleInfo, inline: bool, indent: usize) -> String {
@@ -53,8 +90,7 @@ fn write_tuple(value: &dyn Reflect, info: TupleInfo, inline: bool, indent: usize
 }
 
 fn write_enum(value: &dyn Reflect, info: EnumInfo, inline: bool, indent: usize) -> String {
-    let mut s = String::new();
-    s.push_str(&info.path.path);
+    let mut s = String::from(info.path.path);
     s.push_str("::");
 
     s.push('(');
@@ -102,8 +138,7 @@ fn indent_str(inline: bool, indent: usize, use_space: bool) -> String {
 fn write_struct(value: &dyn Reflect, info: StructInfo, inline: bool, indent: usize) -> String {
     let range = 0..info.field_names.len();
     let range_end = info.field_names.len() - 1;
-    let mut s = String::new();
-    s.push_str(&info.path.path);
+    let mut s = String::from(info.path.path);
 
     if info.is_tuple {
         s.push('('); 
