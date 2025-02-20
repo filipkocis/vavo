@@ -1,9 +1,10 @@
-use std::{any::Any, collections::{HashMap, HashSet, VecDeque}};
+use std::{any::{Any, TypeId}, collections::{HashMap, HashSet, VecDeque}};
 
 use type_info::GetTypeInfo;
 
 pub mod type_info;
 pub mod inspector;
+mod debug;
 
 /// Trait enabling dynamic reflection of types. Any type implementing this trait can be
 /// inspected and mutated at runtime.
@@ -25,6 +26,34 @@ pub trait Reflect: GetTypeInfo + Any + Send + Sync + 'static {
         self.set_field_by_index(index, value)
     }
     fn set_field_by_index(&mut self, index: usize, value: Box<dyn Any>) -> Result<(), Box<dyn Any>>;
+}
+
+impl dyn Reflect {
+    #[inline]
+    pub fn is<T: Any>(&self) -> bool {
+        let t = TypeId::of::<T>();
+        let concrete = self.type_id();
+
+        t == concrete
+    }
+
+    #[inline]
+    pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
+        if self.is::<T>() {
+            unsafe { Some(&*(self as *const dyn Reflect as *const T)) }
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    pub fn downcast_mut<T: Any>(&mut self) -> Option<&mut T> {
+        if self.is::<T>() {
+            unsafe { Some(&mut *(self as *mut dyn Reflect as *mut T)) }
+        } else {
+            None
+        }
+    }
 }
 
 /// Implement reflection for primitive types.
