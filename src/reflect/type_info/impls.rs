@@ -228,6 +228,7 @@ mod glam_impls {
     impl_struct!(
         UVec2 false (x, y), UVec3 false (x, y, z), UVec4 false (x, y, z, w),
         Vec2 false (x, y), Vec3 false (x, y, z), Vec4 false (x, y, z, w),
-        Mat2 false (x_axis, y_axis), Mat3 false (x_axis, y_axis, z_axis), Mat4 false (x_axis, y_axis, z_axis, w_axis)
+        Mat2 false (x_axis, y_axis), Mat3 false (x_axis, y_axis, z_axis), Mat4 false (x_axis, y_axis, z_axis, w_axis),
+        Quat false (x, y, z, w) 
     );
 }

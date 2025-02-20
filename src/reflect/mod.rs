@@ -87,3 +87,38 @@ impl Reflect for String {
         value.downcast::<String>().map(|value| *self = *value)
     }
 }
+
+impl<T: Reflect> Reflect for Option<T> {
+    fn field_by_index(&self, index: usize) -> Option<&dyn Reflect> {
+        match self {
+            Some(value) if index == 0 => Some(value),
+            _ => None,
+        }
+    }
+
+    fn set_field_by_index(&mut self, index: usize, value: Box<dyn Any>) -> Result<(), Box<dyn Any>> {
+        match self {
+            Some(v) if index == 0 => value.downcast::<T>().map(|value| *v = *value),
+            _ => Err(value),
+        }
+    }
+}
+
+impl<T: Reflect, E: Reflect> Reflect for Result<T, E> {
+    fn field_by_index(&self, index: usize) -> Option<&dyn Reflect> {
+        match self {
+            Ok(value) if index == 0 => Some(value),
+            Err(value) if index == 0 => Some(value),
+            _ => None,
+        }
+    }
+
+    fn set_field_by_index(&mut self, index: usize, value: Box<dyn Any>) -> Result<(), Box<dyn Any>> {
+        match self {
+            Ok(v) if index == 0 => value.downcast::<T>().map(|value| *v = *value),
+            Err(e) if index == 0 => value.downcast::<E>().map(|value| *e = *value),
+            _ => Err(value),
+        }
+    }
+}
+
