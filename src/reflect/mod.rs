@@ -127,8 +127,7 @@ macro_rules! impl_list {
     ($($type:ident<$($generic:ident),+>),+) => {$(
         impl<$($generic: Reflect),+> Reflect for $type<$($generic),+> {
             fn field_by_index(&self, index: usize) -> Option<&dyn Reflect> {
-                self.get(index)
-                    .map(|value| value as &dyn Reflect)
+                self.get(index).map(|value| value as &dyn Reflect)
             }
 
             fn set_field_by_index(&mut self, index: usize, value: Box<dyn Any>) -> Result<(), Box<dyn Any>> {
@@ -136,11 +135,55 @@ macro_rules! impl_list {
                     return Err(value);
                 }
 
-                value.downcast::<$($generic)?>()
-                    .map(|v| self[index] = *v)
+                value.downcast::<$($generic)?>().map(|v| self[index] = *v)
             }
         }
     )+}
 }
 
 impl_list!(Vec<T>, VecDeque<T>);
+
+impl<T: Reflect, const N: usize> Reflect for [T; N] {
+    fn field_by_index(&self, index: usize) -> Option<&dyn Reflect> {
+        self.get(index).map(|value| value as &dyn Reflect)
+    }
+
+    fn set_field_by_index(&mut self, index: usize, value: Box<dyn Any>) -> Result<(), Box<dyn Any>> {
+        if self.len() <= index {
+            return Err(value);
+        }
+
+        value.downcast::<T>().map(|v| self[index] = *v) 
+    }
+}
+
+/// Implement GetTypeInfo for tuple types separated with commas.
+macro_rules! impl_tuple {
+    ($(($($type:ident),+) ($($index:tt),+)),+) => {$(
+        impl<$($type: Reflect),+> Reflect for ($($type),+) {
+            fn field_by_index(&self, index: usize) -> Option<&dyn Reflect> {
+                match index {
+                    $($index => Some(&self.$index as &dyn Reflect),)+
+                    _ => None
+                }
+            }
+
+            fn set_field_by_index(&mut self, index: usize, value: Box<dyn Any>) -> Result<(), Box<dyn Any>> {
+                match index {
+                    $($index => value.downcast::<_>().map(|v| self.$index = *v),)+
+                    _ => Err(value)
+                }                
+            }
+        }
+    )+}
+}
+
+impl_tuple!(
+    (T1, T2) (0, 1),
+    (T1, T2, T3) (0, 1, 2),
+    (T1, T2, T3, T4) (0, 1, 2, 3),
+    (T1, T2, T3, T4, T5) (0, 1, 2, 3, 4),
+    (T1, T2, T3, T4, T5, T6) (0, 1, 2, 3, 4, 5),
+    (T1, T2, T3, T4, T5, T6, T7) (0, 1, 2, 3, 4, 5, 6),
+    (T1, T2, T3, T4, T5, T6, T7, T8) (0, 1, 2, 3, 4, 5, 6, 7)
+);
