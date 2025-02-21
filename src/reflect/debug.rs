@@ -27,16 +27,16 @@ impl dyn Reflect {
         self.internal_debug_fmt(inline, 0)
     }
 }
-fn write_set(_value: &dyn Reflect, info: SetInfo, _inline: bool, _indent: usize) -> String {
+fn write_set(_value: &dyn Reflect, info: SetInfo, inline: bool, _indent: usize) -> String {
     // TODO: implement reflect features to support this
-    let mut s = String::from(info.path.path);
+    let mut s = String::from(if inline { info.path.name } else { info.path.path });
     s.push_str(" { .. }");
     s
 }
 
-fn write_map(_value: &dyn Reflect, info: MapInfo, _inline: bool, _indent: usize) -> String {
+fn write_map(_value: &dyn Reflect, info: MapInfo, inline: bool, _indent: usize) -> String {
     // TODO: implement reflect features to support this
-    let mut s = String::from(info.path.path);
+    let mut s = String::from(if inline { info.path.name } else { info.path.path });
     s.push_str(" { .. }");
     s
 }
@@ -103,7 +103,7 @@ fn write_tuple(value: &dyn Reflect, info: TupleInfo, inline: bool, indent: usize
 }
 
 fn write_enum(value: &dyn Reflect, info: EnumInfo, inline: bool, indent: usize) -> String {
-    let mut s = String::from(info.path.path);
+    let mut s = String::from(if inline { info.path.name } else { info.path.path });
     s.push_str("::");
 
     s.push('(');
@@ -151,7 +151,7 @@ fn indent_str(inline: bool, indent: usize, use_space: bool) -> String {
 fn write_struct(value: &dyn Reflect, info: StructInfo, inline: bool, indent: usize) -> String {
     let range = 0..info.field_names.len();
     let range_end = info.field_names.len() - 1;
-    let mut s = String::from(info.path.path);
+    let mut s = String::from(if inline { info.path.name } else { info.path.path });
 
     if info.is_tuple {
         s.push('('); 
