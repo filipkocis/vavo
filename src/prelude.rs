@@ -7,7 +7,8 @@ pub use super::{
     math::*,
     plugins::{DefaultPlugin},
     event::events::{KeyboardInput, MouseInput, MouseWheel, MouseMotion, CursorMoved},
-    input::Input,
+    input::{Input, KeyCode, MouseButton},
+    reflect::Reflect,
 
     ecs::prelude::*,
     audio::prelude::*,
