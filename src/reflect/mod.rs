@@ -241,16 +241,18 @@ impl<T: Reflect> Reflect for HashSet<T> {
 /// Implement Reflection for struct types
 // TODO: make this a proc macro (all of these macros should be)
 macro_rules! impl_struct {
-    ($($type:ident $is_tuple:tt ($($field:tt),*) $(: ($($generic:ident),+))? ),+) => {$(
+    ($($type:ident $is_tuple:tt ($($field_index:tt $field:tt),*) $(: ($($generic:ident),+))? ),+) => {$(
         impl$(<$($generic: Reflect),+>)? Reflect for $type$(<$($generic),+>)? {
             fn field_by_index(&self, index: usize) -> Option<&dyn Reflect> {
                 match index {
+                    $($field_index => Some(&self.$field),)*
                     _ => None
                 }
             }
 
             fn set_field_by_index(&mut self, index: usize, value: Box<dyn Any>) -> Result<(), Box<dyn Any>> {
                 match index {
+                    $($field_index => value.downcast::<_>().map(|v| self.$field = *v),)*
                     _ => Err(value)
                 }
             }
@@ -263,9 +265,9 @@ mod glam_impls {
     use glam::*;
 
     impl_struct!(
-        UVec2 false (x, y), UVec3 false (x, y, z), UVec4 false (x, y, z, w),
-        Vec2 false (x, y), Vec3 false (x, y, z), Vec4 false (x, y, z, w),
-        Mat2 false (x_axis, y_axis), Mat3 false (x_axis, y_axis, z_axis), Mat4 false (x_axis, y_axis, z_axis, w_axis),
-        Quat false (x, y, z, w)
+        UVec2 false (0 x, 1 y), UVec3 false (0 x, 1 y, 2 z), UVec4 false (0 x, 1 y, 2 z, 3 w),
+        Vec2 false (0 x, 1 y), Vec3 false (0 x, 1 y, 2 z), Vec4 false (0 x, 1 y, 2 z, 3 w),
+        Mat2 false (0 x_axis, 1 y_axis), Mat3 false (0 x_axis, 1 y_axis, 2 z_axis), Mat4 false (0 x_axis, 1 y_axis, 2 z_axis, 3 w_axis),
+        Quat false (0 x, 1 y, 2 z, 3 w)
     );
 }
