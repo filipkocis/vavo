@@ -66,24 +66,28 @@ impl<'a> EntityCommands<'a> {
         self.entity_id
     }
 
+    /// Despawn the entity and break its parent-child relationship.
     pub fn despawn(self) {
         self.commands
             .commands
             .push(Command::DespawnEntity(self.entity_id));
     }
 
+    /// Despawns the entity and all its children recursively.
     pub fn despawn_recursive(self) {
         self.commands
             .commands
             .push(Command::DespawnEntityRecursive(self.entity_id));
     }
 
+    /// Inserts new component to the entity.
     pub fn insert<C: Component>(mut self, component: C) -> Self {
         self.handle_insert_types(&component);
         self.insert_internal(component);
         self
     }
 
+    /// Removes a component from the entity.
     pub fn remove<C: Component>(self) -> Self {
         self.commands
             .commands
@@ -91,12 +95,14 @@ impl<'a> EntityCommands<'a> {
         self
     }
 
+    /// Takes a closure in which you can create new child entities.
     pub fn with_children<F: FnOnce(&mut ParentCommands)>(mut self, f: F) -> Self {
         let mut parent_commands = ParentCommands::new(self.entity_id, &mut self.commands);
         f(&mut parent_commands);
         self
     }
 
+    /// Removes all children in the list from the entity.
     pub fn remove_children(self, children: Vec<EntityId>) -> Self {
         for child_id in children {
             self.commands
@@ -106,6 +112,7 @@ impl<'a> EntityCommands<'a> {
         self
     }
 
+    /// Inserts already existing children to the entity.
     pub fn insert_children(self, children: Vec<EntityId>) -> Self {
         for child_id in children {
             self.commands
@@ -115,6 +122,7 @@ impl<'a> EntityCommands<'a> {
         self
     }
 
+    /// Inserts a new component
     fn insert_internal<C: Component>(&mut self, component: C) {
         self.commands.commands.push(Command::InsertComponent(
             self.entity_id,
@@ -122,6 +130,7 @@ impl<'a> EntityCommands<'a> {
         ));
     }
 
+    /// Checks and handles special cases of the component being inserted
     fn handle_insert_types<C: Component>(&mut self, component: &C) {
         let type_id = TypeId::of::<C>();
 
