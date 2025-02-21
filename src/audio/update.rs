@@ -12,7 +12,6 @@ pub(crate) fn update_spatial_listeners(
     let mut manager = ctx.resources.get_mut::<AudioManager>().unwrap();
 
     for (transform, listener) in query.iter_mut() {
-        // println!("updating spatial listener");
         let position = transform.translation();
         let orientation = transform.rotation();
 
@@ -40,7 +39,6 @@ pub(crate) fn update_audio_tracks(ctx: &mut SystemsContext, _: Query<()>) {
 pub(crate) fn update_spatial_audio_tracks(ctx: &mut SystemsContext, mut query: Query<()>) {
     let listener_query = query.cast::<&SpatialListener, ()>().iter_mut();
     let Some(listener_id) = listener_query.get(0).map(|listener| listener.id()).flatten() else {
-        println!("no listener found for spatial");
         // No listener found or listener not initialized
         return
     };
@@ -53,10 +51,8 @@ pub(crate) fn update_spatial_audio_tracks(ctx: &mut SystemsContext, mut query: Q
     for (id, transform) in moved_emitter_query.iter_mut() {
         if let Some(spatial_track) = audio.spatial_tracks.get_mut(&id) {
             spatial_track.track.set_position(transform.translation(), Tween::default());
-            println!("updated moved spatial emitter");
             continue
         } 
-        println!("moved spatial emitter not in audio track");
     }
 
     // Apply emitter commands, and create spatial tracks if they don't exist yet
@@ -67,7 +63,6 @@ pub(crate) fn update_spatial_audio_tracks(ctx: &mut SystemsContext, mut query: Q
         // all sounds have finished and it got removed from the AudioTrack, so recreate it only if
         // it has commands.
         if emitter.commands.is_empty() {
-            println!("changed emitter commands empty");
             continue
         }
 
@@ -75,7 +70,6 @@ pub(crate) fn update_spatial_audio_tracks(ctx: &mut SystemsContext, mut query: Q
         let mut_emitter = mut_commands_query.get(id).expect("SpatialEmitter should exist");
         if let Some(spatial_track) = audio.spatial_tracks.get_mut(&id) {
             spatial_track.apply(ctx.resources, &mut mut_emitter.commands);
-            println!("applied changed emitter commands");
             continue
         }
 
@@ -88,7 +82,6 @@ pub(crate) fn update_spatial_audio_tracks(ctx: &mut SystemsContext, mut query: Q
         spatial_track.apply(ctx.resources, &mut mut_emitter.commands);
 
         audio.spatial_tracks.insert(id, spatial_track);
-        println!("created spatial track for emitter");
     }
 }
 
@@ -105,13 +98,11 @@ pub(crate) fn cleanup_audio_tracks(ctx: &mut SystemsContext, mut check_emitter_q
     audio.spatial_tracks.retain(|id, track| {
         // Remove spatial track if emitter component was removed, or entity despawned 
         if check_emitter_query.get(*id).is_none() {
-            println!("removed emitter query not found");
             return false
         }
 
         track.sounds.retain(|sound| !sound.is_stopped());
         if track.sounds.is_empty() {
-            println!("removed spatial track with no sounds");
         }
         !track.sounds.is_empty()
     });
