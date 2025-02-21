@@ -2,9 +2,28 @@ use std::{any::{Any, TypeId}, collections::{HashMap, HashSet, VecDeque}};
 
 use type_info::GetTypeInfo;
 
+use crate::app::Plugin;
+
 pub mod type_info;
 pub mod inspector;
 mod debug;
+pub mod registry;
+
+/// This plugin doesn't add reflection functionality, it just registers some engine component types
+/// in the [`registry`](registry::ReflectTypeRegistry).
+pub struct ReflectionPlugin;
+
+impl Plugin for ReflectionPlugin {
+    fn build(&self, app: &mut crate::prelude::App) {
+        use crate::prelude::*;
+
+        app
+            .register_type::<EntityId>()
+            .register_type::<Transform>()
+            .register_type::<GlobalTransform>()
+            .register_type::<Projection>();
+    }
+}
 
 /// Trait enabling dynamic reflection of types. Any type implementing this trait can be
 /// inspected and mutated at runtime.
