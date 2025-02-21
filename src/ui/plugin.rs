@@ -17,8 +17,6 @@ pub fn initialize_ui_nodes(
         ctx.commands.entity(id)
             .insert(Transform::default())
             .insert(ComputedNode::default());
-
-        println!("Initialized ui node: {:?}", id);
     }
 }
 
@@ -30,8 +28,6 @@ pub fn initialize_button_ui_nodes(
     for id in query.iter_mut() {
         ctx.commands.entity(id)
             .insert(Interaction::default());
-
-        println!("Initialized button ui node: {:?}", id);
     }
 }
 
