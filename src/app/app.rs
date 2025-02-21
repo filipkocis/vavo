@@ -6,6 +6,7 @@ use winit::event::ElementState;
 
 use crate::core::graph::RenderGraph;
 use crate::prelude::{FixedTime, Resource};
+use crate::reflect::{Reflect, registry::ReflectTypeRegistry};
 use crate::system::{Commands, IntoSystem, SystemHandler, SystemStage, SystemsContext};
 use crate::window::{AppHandler, AppState, RenderContext, Renderer};
 
@@ -24,6 +25,7 @@ pub struct App {
     events: Events,
 
     known_states: Vec<TypeId>,
+    pub type_registry: ReflectTypeRegistry,
 }
 
 impl App {
@@ -35,6 +37,7 @@ impl App {
             world: World::new(),
             events: Events::new(),
             known_states: Vec::new(),
+            type_registry: ReflectTypeRegistry::new(),
         }
     }
 
@@ -61,6 +64,13 @@ impl App {
     /// Add new state with a specified value to the app
     pub fn add_state<S: States>(&mut self, state: S) -> &mut Self {
         self.add_state_internal(State(state));
+        self
+    }
+
+    /// Register new reflectable type to the app, enabling transformation of &dyn Any components
+    /// into &dyn Reflect via the [`type registry`](ReflectTypeRegistry).
+    pub fn register_type<R: Reflect>(&mut self) -> &mut Self {
+        self.type_registry.register::<R>();
         self
     }
 
