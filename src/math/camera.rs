@@ -148,7 +148,7 @@ impl IntoRenderAsset<Buffer> for Camera {
     ) -> Buffer {
         let id = entity_id.expect("EntityId should be provided for Camera Buffer");
 
-        let world = unsafe { &mut *ctx.world };
+        let world = &unsafe { &mut *ctx.app }.world;
         let projection = world.entities.get_component(id).expect("Camera should have a Projection component");
         let global_transform = world.entities.get_component(id).expect("Camera should have a GlobalTransform component");
 

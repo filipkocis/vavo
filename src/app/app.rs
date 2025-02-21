@@ -121,14 +121,14 @@ impl App {
     }
 
     fn run_systems(&mut self, stage: SystemStage, renderer: Renderer) {
+        let self_ptr = self as *mut App;
         let systems = self.system_handler.get_systems(&stage);
         if systems.is_empty() {
             return;
         }
 
         let commands = Commands::build(&self.world);
-        let world_ptr = &mut self.world as *mut World;
-        let mut ctx = SystemsContext::new(commands, &mut self.world.resources, &mut self.events, renderer, world_ptr, &mut self.render_graph);
+        let mut ctx = SystemsContext::new(commands, &mut self.world.resources, &mut self.events, renderer, self_ptr, &mut self.render_graph);
 
         let iterations = if stage.has_fixed_time() {
             let mut fixed_time = ctx.resources.get_mut::<FixedTime>()
@@ -149,8 +149,8 @@ impl App {
 
     fn execute_render_graph(&mut self, renderer: Renderer) {
         let commands = Commands::build(&self.world);
-        let world_ptr = &mut self.world as *mut World;
-        let mut ctx = SystemsContext::new(commands, &mut self.world.resources, &mut self.events, renderer, world_ptr, &mut self.render_graph);
+        let self_ptr = self as *mut App;
+        let mut ctx = SystemsContext::new(commands, &mut self.world.resources, &mut self.events, renderer, self_ptr, &mut self.render_graph);
 
         self.render_graph.execute(&mut ctx, &mut self.world.entities);
 

@@ -64,6 +64,11 @@ impl Entities {
         }
     }
 
+    /// Exposes archetyeps
+    pub fn archetypes(&self) -> impl Iterator<Item = &Archetype> { 
+        self.archetypes.values().into_iter()
+    }
+
     /// Initialize tick pointer, necessary for entity creation. Done in
     /// [`TimePlugin`](crate::plugins::TimePlugin)
     pub fn initialize_tick(&mut self, current_tick: *const u64) {
