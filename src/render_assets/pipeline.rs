@@ -158,7 +158,7 @@ impl PipelineBuilder {
 
         let color_targets = vec![self.color_format.map(|format| 
             wgpu::ColorTargetState {
-                format: format,
+                format,
                 // TODO: make this field configurable
                 blend: Some(wgpu::BlendState::ALPHA_BLENDING),
                 write_mask: wgpu::ColorWrites::ALL,
@@ -183,7 +183,7 @@ impl PipelineBuilder {
                 compilation_options: Default::default(),
             },
             fragment: fragment_maybe.as_ref().map(|(module, entry)| wgpu::FragmentState {
-                module: module,
+                module,
                 entry_point: Some(entry),
                 targets: &color_targets,
                 compilation_options: Default::default(),

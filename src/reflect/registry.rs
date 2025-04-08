@@ -39,3 +39,9 @@ impl ReflectTypeRegistry {
         self.get(type_id).map(|transformer| transformer(value))
     }
 }
+
+impl Default for ReflectTypeRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
+}

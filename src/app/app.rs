@@ -217,7 +217,7 @@ impl App {
         };
 
         let event = KeyboardInput {
-            code: code,
+            code,
             state: event.state,
         };
 

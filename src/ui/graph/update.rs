@@ -175,15 +175,13 @@ pub fn update_ui_mesh_and_transforms(ctx: &mut SystemsContext, mut query: Query<
                 }
             }
 
-            if w > 0.0 && h > 0.0 {
-                if has_image {
-                    ui_mesh_images.add_rect(x, y, computed.z_index as f32, w, h, color::WHITE, transform_index, id);
-                }
+            if w > 0.0 && h > 0.0 && has_image {
+                ui_mesh_images.add_rect(x, y, computed.z_index as f32, w, h, color::WHITE, transform_index, id);
             }
         }
         
         // entitie's transform
-        let mut glob_transform = global_transform.matrix.to_cols_array_2d();
+        let glob_transform = global_transform.matrix.to_cols_array_2d();
         // TODO: we should use this instead of vec3.z in pos, but for nonui parent nodes this would
         // not work, so implement it later
         // glob_transform[3][2] = computed.z_index as f32; // z-index as pos.z

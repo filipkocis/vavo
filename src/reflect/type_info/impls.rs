@@ -122,7 +122,7 @@ impl<T: GetTypeInfo, const N: usize> GetTypeInfo for [T; N] {
                 stringify!([T; N]),
                 type_name::<Self>()
             ),
-            self.get(0).map(|v| v.type_info()),
+            self.first().map(|v| v.type_info()),
             false,
             N
         ))
@@ -185,7 +185,7 @@ impl<T: GetTypeInfo> GetTypeInfo for HashSet<T> {
                 "HashSet",
                 type_name::<Self>()
             ),
-            self.into_iter().next().map(|v| v.type_info()),
+            self.iter().next().map(|v| v.type_info()),
         ))
     }
 

@@ -35,8 +35,8 @@ impl Material {
 
 
         let booleans = self.flip_normal_map_y as u32 |
-            (matches!(self.cull_mode, Some(Face::Back)) as u32) << 1 |
-            (self.unlit as u32) << 2;
+            ((matches!(self.cull_mode, Some(Face::Back)) as u32) << 1) |
+            ((self.unlit as u32) << 2);
         data.extend_from_slice(bytemuck::cast_slice(&[
             booleans, 0, 0, 0
         ]));

@@ -44,7 +44,7 @@ impl UiImage {
         data.extend_from_slice(bytemuck::bytes_of(&self.tint));
         
         let booleans = self.flip_x as u32 |
-            (self.flip_y as u32) << 1;
+            ((self.flip_y as u32) << 1);
         data.extend_from_slice(bytemuck::cast_slice(&[
             booleans, 0, 0, 0
         ]));

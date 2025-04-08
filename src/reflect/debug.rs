@@ -1,4 +1,4 @@
-use std::fmt::{Debug};
+use std::fmt::Debug;
 
 use super::{type_info::{ArrayInfo, EnumInfo, MapInfo, PrimitiveInfo, SetInfo, StructInfo, TupleInfo, TypeInfo}, Reflect};
 
@@ -176,7 +176,7 @@ fn write_struct(value: &dyn Reflect, info: StructInfo, inline: bool, indent: usi
         for i in range {
             let field = value.field_by_index(i).expect("field_by_index failed, incorrect field_names");
             s.push_str(&indent_str(inline, indent + 1, true));
-            s.push_str(&info.field_names[i]);
+            s.push_str(info.field_names[i]);
             s.push_str(": ");
             s.push_str(&field.internal_debug_fmt(inline, indent + 1));
             if i != range_end {
