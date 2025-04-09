@@ -622,15 +622,15 @@ impl TempNode<'_> {
         for child in &mut self.children { 
             // TODO: take box sizing into account ? 
             // fit x-overflowing element which can be sized to parent
-            if matches!(child.node.width, Val::Auto) {
-                if child.computed.width.total > self.computed.width.content &&
-                    child.computed.base_width <= self.computed.width.content {
-                    // shrink width to parent width
-                    // byproduct is wrapping text to fit screen-width
-                    let diff = child.computed.width.total - self.computed.width.content;
-                    child.computed.width.add(-diff);
-                    child.constrain_to_width(); 
-                }
+            if matches!(child.node.width, Val::Auto)
+                && child.computed.width.total > self.computed.width.content
+                && child.computed.base_width <= self.computed.width.content
+            {
+                // shrink width to parent width
+                // byproduct is wrapping text to fit screen-width
+                let diff = child.computed.width.total - self.computed.width.content;
+                child.computed.width.add(-diff);
+                child.constrain_to_width(); 
             }
 
             child.resolve_text_wrap(ctx, font_system);

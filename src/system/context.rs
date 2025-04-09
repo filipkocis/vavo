@@ -1,4 +1,4 @@
-use crate::{event::{event_handler::{EventReader, EventWriter}, Events}, core::graph::RenderGraph, ecs::resources::Resources, window::Renderer, ecs::world::World};
+use crate::{app::App, core::graph::RenderGraph, ecs::resources::Resources, event::{event_handler::{EventReader, EventWriter}, Events}, window::Renderer};
 
 use super::Commands;
 
@@ -9,9 +9,9 @@ pub struct SystemsContext<'a, 'b> {
     pub event_writer: EventWriter<'a>,
     pub event_reader: EventReader<'a>,
     pub renderer: Renderer<'b>,
-    /// Raw pointer to the world, should not be used unless you know what you're doing.
-    /// SAFETY: This is always a valid pointer to a World instance.
-    pub world: *mut World,
+    /// Raw pointer to the App, should not be used unless you know what you're doing.
+    /// SAFETY: This is always a valid pointer to an App instance.
+    pub app: *mut App,
     /// Unsafe raw pointer if inside a node system, should not be used or modified unless you are sure what
     /// you are doing.
     ///
@@ -21,7 +21,7 @@ pub struct SystemsContext<'a, 'b> {
 }
 
 impl<'a, 'b> SystemsContext<'a, 'b> {
-    pub fn new(commands: Commands, resources: &'a mut Resources, events: &'a mut Events, renderer: Renderer<'b>, world: *mut World, graph: *mut RenderGraph) -> Self {
+    pub fn new(commands: Commands, resources: &'a mut Resources, events: &'a mut Events, renderer: Renderer<'b>, app: *mut App, graph: *mut RenderGraph) -> Self {
         let (event_reader, event_writer) = events.handlers();
 
         Self {
@@ -30,7 +30,7 @@ impl<'a, 'b> SystemsContext<'a, 'b> {
             event_writer, 
             event_reader, 
             renderer,
-            world,
+            app,
             graph,
         }
     }

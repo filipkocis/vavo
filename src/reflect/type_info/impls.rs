@@ -1,6 +1,8 @@
-use std::{any::type_name, collections::VecDeque};
+use std::{any::type_name, collections::{HashMap, HashSet, VecDeque}};
 
-use super::{TupleInfo, ArrayInfo, EnumInfo, GetTypeInfo, PrimitiveInfo, TypeInfo, TypePathInfo};
+use super::{ArrayInfo, EnumInfo, GetTypeInfo, MapInfo, PrimitiveInfo, SetInfo, StructInfo, TupleInfo, TypeInfo, TypePathInfo};
+
+// TODO: merge macros with those in reflect/mod.rs
 
 /// Implement GetTypeInfo for primitive types separated with commas.
 macro_rules! impl_primitive {
@@ -18,6 +20,19 @@ macro_rules! impl_primitive {
             }
         }
     )+}
+}
+
+impl GetTypeInfo for &'static str {
+    fn type_info(&self) -> TypeInfo {
+        TypeInfo::Primitive(PrimitiveInfo::new(TypePathInfo::new(
+            stringify!(&'static str),
+            type_name::<Self>()
+        )))
+    }
+
+    fn type_name(&self) -> &'static str {
+        stringify!(&'static str)
+    }
 }
 
 impl_primitive!(
@@ -107,7 +122,7 @@ impl<T: GetTypeInfo, const N: usize> GetTypeInfo for [T; N] {
                 stringify!([T; N]),
                 type_name::<Self>()
             ),
-            self.get(0).map(|v| v.type_info()),
+            self.first().map(|v| v.type_info()),
             false,
             N
         ))
@@ -145,3 +160,77 @@ impl_tuple!(
     (T1, T2, T3, T4, T5, T6, T7) (0, 1, 2, 3, 4, 5, 6),
     (T1, T2, T3, T4, T5, T6, T7, T8) (0, 1, 2, 3, 4, 5, 6, 7)
 );
+
+impl<T: GetTypeInfo, U: GetTypeInfo> GetTypeInfo for HashMap<T, U> {
+    fn type_info(&self) -> TypeInfo {
+        TypeInfo::Map(MapInfo::new(
+            TypePathInfo::new(
+                "HashMap",
+                type_name::<Self>()
+            ),
+            self.keys().next().map(|v| v.type_info()),
+            self.values().next().map(|v| v.type_info()),
+        ))
+    }
+
+    fn type_name(&self) -> &'static str {
+        "HashMap"
+    }
+}
+
+impl<T: GetTypeInfo> GetTypeInfo for HashSet<T> {
+    fn type_info(&self) -> TypeInfo {
+        TypeInfo::Set(SetInfo::new(
+            TypePathInfo::new(
+                "HashSet",
+                type_name::<Self>()
+            ),
+            self.iter().next().map(|v| v.type_info()),
+        ))
+    }
+
+    fn type_name(&self) -> &'static str {
+        "HashSet"
+    }
+}
+
+/// Implement GetTypeInfo for struct types separated with commas.
+///
+/// Foo is_tuple (fields) : (generics),
+///
+/// Foo false (a),
+/// Foo false (a) : (T),
+/// Foo true (0, 1),
+macro_rules! impl_struct {
+    ($($type:ident $is_tuple:tt ($($field:tt),*) $(: ($($generic:ident),+))? ),+) => {$(
+        impl$(<$($generic: GetTypeInfo),+>)? GetTypeInfo for $type$(<$($generic),+>)? {
+            fn type_info(&self) -> TypeInfo {
+                TypeInfo::Struct(StructInfo::new(
+                    TypePathInfo::new(
+                        stringify!($type),
+                        type_name::<Self>()
+                    ), 
+                    [$(stringify!($field)),*],
+                    [$(self.$field.type_info()),*],
+                    $is_tuple,
+                ))
+            }
+
+            fn type_name(&self) -> &'static str {
+                stringify!($type)
+            }
+        }
+    )+}
+}
+
+mod glam_impls {
+    use super::*;
+    use glam::*;
+
+    impl_struct!(
+        UVec2 false (x, y), UVec3 false (x, y, z), UVec4 false (x, y, z, w),
+        Vec2 false (x, y), Vec3 false (x, y, z), Vec4 false (x, y, z, w),
+        Mat2 false (x_axis, y_axis), Mat3 false (x_axis, y_axis, z_axis), Mat4 false (x_axis, y_axis, z_axis, w_axis),
+        Quat false (x, y, z, w) 
+    );
+}

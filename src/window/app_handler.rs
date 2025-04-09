@@ -1,6 +1,6 @@
 use glam::Vec2;
 use winit::{
-    application::ApplicationHandler, dpi::PhysicalSize, event::*, event_loop::{ActiveEventLoop, ControlFlow, EventLoop}, keyboard::{KeyCode, PhysicalKey}, window::{Window, WindowId}
+    application::ApplicationHandler, dpi::PhysicalSize, event::*, event_loop::{ActiveEventLoop, ControlFlow, EventLoop}, keyboard::{KeyCode, PhysicalKey}, window::WindowId
 };
 
 use crate::{app::App, event::events::{CursorMoved, MouseMotion, MouseWheel}};

@@ -6,6 +6,7 @@ use winit::event::ElementState;
 
 use crate::core::graph::RenderGraph;
 use crate::prelude::{FixedTime, Resource};
+use crate::reflect::{Reflect, registry::ReflectTypeRegistry};
 use crate::system::{Commands, IntoSystem, SystemHandler, SystemStage, SystemsContext};
 use crate::window::{AppHandler, AppState, RenderContext, Renderer};
 
@@ -24,6 +25,7 @@ pub struct App {
     events: Events,
 
     known_states: Vec<TypeId>,
+    pub type_registry: ReflectTypeRegistry,
 }
 
 impl App {
@@ -35,6 +37,7 @@ impl App {
             world: World::new(),
             events: Events::new(),
             known_states: Vec::new(),
+            type_registry: ReflectTypeRegistry::new(),
         }
     }
 
@@ -61,6 +64,13 @@ impl App {
     /// Add new state with a specified value to the app
     pub fn add_state<S: States>(&mut self, state: S) -> &mut Self {
         self.add_state_internal(State(state));
+        self
+    }
+
+    /// Register new reflectable type to the app, enabling transformation of &dyn Any components
+    /// into &dyn Reflect via the [`type registry`](ReflectTypeRegistry).
+    pub fn register_type<R: Reflect>(&mut self) -> &mut Self {
+        self.type_registry.register::<R>();
         self
     }
 
@@ -111,14 +121,14 @@ impl App {
     }
 
     fn run_systems(&mut self, stage: SystemStage, renderer: Renderer) {
+        let self_ptr = self as *mut App;
         let systems = self.system_handler.get_systems(&stage);
         if systems.is_empty() {
             return;
         }
 
         let commands = Commands::build(&self.world);
-        let world_ptr = &mut self.world as *mut World;
-        let mut ctx = SystemsContext::new(commands, &mut self.world.resources, &mut self.events, renderer, world_ptr, &mut self.render_graph);
+        let mut ctx = SystemsContext::new(commands, &mut self.world.resources, &mut self.events, renderer, self_ptr, &mut self.render_graph);
 
         let iterations = if stage.has_fixed_time() {
             let mut fixed_time = ctx.resources.get_mut::<FixedTime>()
@@ -139,8 +149,8 @@ impl App {
 
     fn execute_render_graph(&mut self, renderer: Renderer) {
         let commands = Commands::build(&self.world);
-        let world_ptr = &mut self.world as *mut World;
-        let mut ctx = SystemsContext::new(commands, &mut self.world.resources, &mut self.events, renderer, world_ptr, &mut self.render_graph);
+        let self_ptr = self as *mut App;
+        let mut ctx = SystemsContext::new(commands, &mut self.world.resources, &mut self.events, renderer, self_ptr, &mut self.render_graph);
 
         self.render_graph.execute(&mut ctx, &mut self.world.entities);
 
@@ -207,7 +217,7 @@ impl App {
         };
 
         let event = KeyboardInput {
-            code: code,
+            code,
             state: event.state,
         };
 

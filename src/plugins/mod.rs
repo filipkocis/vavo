@@ -1,4 +1,4 @@
-use crate::{app::{App, Plugin}, audio::AudioPlugin, core::standard::{movement::movement_system, prepare::graph_prerender_preparation_system, startup::{add_render_resources, register_standard_graph}, update::{update_camera_buffers, update_global_transforms}}, input::InputPlugin, prelude::{FixedTime, Time}, system::SystemStage, ui::plugin::UiPlugin};
+use crate::{app::{App, Plugin}, audio::AudioPlugin, core::standard::{movement::movement_system, prepare::graph_prerender_preparation_system, startup::{add_render_resources, register_standard_graph}, update::{update_camera_buffers, update_global_transforms}}, input::InputPlugin, prelude::{FixedTime, Time}, reflect::ReflectionPlugin, system::SystemStage, ui::plugin::UiPlugin};
 
 /// Default plugins which are necessary for the app to run, includes:
 /// - `RenderPlugin` 
@@ -15,7 +15,8 @@ impl Plugin for DefaultPlugin {
             .add_plugin(TimePlugin)
             .add_plugin(InputPlugin)
             .add_plugin(UiPlugin)
-            .add_plugin(AudioPlugin);
+            .add_plugin(AudioPlugin)
+            .add_plugin(ReflectionPlugin);
     }
 }
 

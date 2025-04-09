@@ -8,7 +8,7 @@ use super::{EntityId, QueryComponentType};
 pub(super) struct ArchetypeId(u64);
 
 #[derive(Debug)]
-pub(crate) struct Archetype {
+pub struct Archetype {
     /// Vec of entity ids in this archetype, where the index corresponds to the entity's component
     /// in `self.components[component_index]`
     entity_ids: Vec<EntityId>,
@@ -147,11 +147,6 @@ impl Archetype {
     /// Amount of entities in this archetype
     pub fn len(&self) -> usize {
         self.entity_ids.len()
-    }
-
-    /// Exposes types hashmap
-    pub fn types(&self) -> &HashMap<TypeId, usize> {
-        &self.types
     }
 
     /// Exposes `self.types` as a sorted vector

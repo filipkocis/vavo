@@ -4,6 +4,8 @@ use proc_macro::{TokenStream};
 use proc_macro2::{Span};
 use proc_macro_crate::{crate_name, FoundCrate};
 
+mod reflect;
+
 fn resolve_path_name() -> proc_macro2::TokenStream {
     match crate_name("vavo") {
         Ok(FoundCrate::Itself) => quote!(crate),
@@ -95,4 +97,9 @@ pub fn derive_component(item: proc_macro::TokenStream) -> TokenStream {
     };
 
     TokenStream::from(expanded)
+}
+
+#[proc_macro_derive(Reflect)]
+pub fn derive_reflect(item: proc_macro::TokenStream) -> TokenStream {
+    reflect::derive_reflect_implementation(item)
 }

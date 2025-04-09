@@ -19,7 +19,7 @@ impl BitOr for LightFlags {
     type Output = u32;
 
     fn bitor(self, rhs: Self) -> Self::Output {
-        1 << self as u32 | 1 << rhs as u32
+        (1 << self as u32) | (1 << rhs as u32)
     }
 }
 
