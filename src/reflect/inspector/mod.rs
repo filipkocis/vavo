@@ -84,7 +84,7 @@ fn create_inspector(
                 background_color: color::TRANSPARENT,
                 ..Default::default()
             })
-            .insert(Text::new(&format!("total: {:?}", count)));
+            .insert(Text::new(format!("total: {:?}", count)));
     });
 
     for (id, transform, global) in query_result {
@@ -95,7 +95,7 @@ fn create_inspector(
                     background_color: color::TRANSPARENT,
                     ..Default::default()
                 })
-                .insert(Text::new(&format!("{:?}:", id.raw())));
+                .insert(Text::new(format!("{:?}:", id.raw())));
         });
     }
 

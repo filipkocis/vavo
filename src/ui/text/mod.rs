@@ -48,7 +48,7 @@ impl TextBuffer {
 }
 
 impl Text {
-    pub fn new(content: &str) -> Self {
+    pub fn new(content: impl ToString) -> Self {
         Self {
             content: content.to_string(),
             font_size: 16.0,
