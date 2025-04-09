@@ -56,13 +56,15 @@ impl RenderGraph {
             let mut path = Vec::new();
             unsafe { &mut *graph }.visit(&normalized, &mut path, node, &mut visited, &mut sorted);
         }
-        
+
         self.sorted = sorted;
     }
 
     /// Populates the `before` dependencies with the respective `after` dependencies from nodes
     pub(crate) fn normalize_dependencies(&mut self) -> HashMap<String, Vec<String>> {
-        let mut nodes = self.nodes.iter()
+        let mut nodes = self
+            .nodes
+            .iter()
             .map(|(k, v)| (k.clone(), v.after.clone()))
             .collect::<HashMap<_, _>>();
 
@@ -78,7 +80,14 @@ impl RenderGraph {
     }
 
     /// Traverse the graph
-    fn visit(&mut self, normalized: &HashMap<String, Vec<String>>, path: &mut Vec<String>, node: *mut GraphNode, visited: &mut HashSet<String>, sorted: &mut Vec<*mut GraphNode>) {
+    fn visit(
+        &mut self,
+        normalized: &HashMap<String, Vec<String>>,
+        path: &mut Vec<String>,
+        node: *mut GraphNode,
+        visited: &mut HashSet<String>,
+        sorted: &mut Vec<*mut GraphNode>,
+    ) {
         let node = unsafe { &mut *node };
         let name = &node.name;
 
@@ -94,7 +103,9 @@ impl RenderGraph {
         path.push(name.clone());
         visited.insert(name.clone());
 
-        let dependencies = normalized.get(name).expect("Normalized nodes should contain graph node");
+        let dependencies = normalized
+            .get(name)
+            .expect("Normalized nodes should contain graph node");
         for dep in dependencies {
             if let Some(dep_node) = self.get_mut(dep) {
                 let dep_node = dep_node as *mut _;
