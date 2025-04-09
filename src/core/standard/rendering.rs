@@ -28,7 +28,6 @@ pub fn standard_main_node(ctx: &mut SystemsContext) -> GraphNode {
         .set_system(GraphSystem::new("main_render_system", main_render_system))
         .set_color_target(NodeColorTarget::Surface)
         .set_depth_target(NodeDepthTarget::Owned(depth_image))
-        .add_dependency("shadow")
         .build()
 }
 

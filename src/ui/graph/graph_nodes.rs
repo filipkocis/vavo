@@ -28,9 +28,7 @@ fn ui_node(ctx: &mut SystemsContext) -> GraphNode {
         .set_custom_system(CustomGraphSystem::new("ui_render_system", ui_render_system))
         .set_color_target(NodeColorTarget::Surface)
         .set_depth_target(NodeDepthTarget::Node("ui_image".to_string()))
-        .add_dependency("main")
-        .add_dependency("shadow")
-        .add_dependency("ui_image")
+        .run_after("ui_image")
         .build()
 }
 
@@ -53,7 +51,6 @@ fn ui_image_node(ctx: &mut SystemsContext) -> GraphNode {
             load: wgpu::LoadOp::Clear(1.0),
             store: wgpu::StoreOp::Store,
         }))
-        .add_dependency("main")
-        .add_dependency("shadow")
+        .run_after("main")
         .build()
 }

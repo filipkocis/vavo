@@ -15,7 +15,10 @@ pub struct GraphNode {
     pub depth_target: NodeDepthTarget,
     pub color_ops: wgpu::Operations<wgpu::Color>,
     pub depth_ops: Option<wgpu::Operations<f32>>,
-    pub dependencies: Vec<String>,
+    /// List of dependencies
+    pub after: Vec<String>,
+    /// List of nodes which must render after this node
+    pub before: Vec<String>,
     pub data: NodeData,
 }
 
@@ -42,23 +45,10 @@ impl GraphNode {
                 load: wgpu::LoadOp::Clear(1.0),
                 store: wgpu::StoreOp::Store,
             }),
-            dependencies: Vec::new(),
+            after: Vec::new(),
+            before: Vec::new(),
             data: NodeData::new(),
         }
-    }
-
-    pub fn add_dependency(&mut self, dependency: &str) {
-        if !self.dependencies.contains(&dependency.to_string()) {
-            self.dependencies.push(dependency.to_string());
-        }
-    }
-
-    pub fn remove_dependency(&mut self, dependency: &str) {
-        self.dependencies.retain(|d| d != dependency);
-    }
-
-    pub fn clear_dependencies(&mut self) {
-        self.dependencies.clear();
     }
 
     /// Populates the node data with the necessary data, or replaces it with new data
@@ -91,7 +81,7 @@ impl GraphNode {
     }
 }
 
-/// Helper struct to create a `GraphNode`
+/// Helper struct to create a [`GraphNode`]
 pub struct GraphNodeBuilder {
     name: String,
     pipeline_builder: Option<PipelineBuilder>,
@@ -101,7 +91,8 @@ pub struct GraphNodeBuilder {
     depth_target: Option<NodeDepthTarget>,
     color_ops: wgpu::Operations<wgpu::Color>,
     depth_ops: Option<wgpu::Operations<f32>>,
-    dependencies: Vec<String>,
+    after: Vec<String>,
+    before: Vec<String>,
 }
 
 impl GraphNodeBuilder {
@@ -121,7 +112,8 @@ impl GraphNodeBuilder {
                 load: wgpu::LoadOp::Clear(1.0),
                 store: wgpu::StoreOp::Store,
             }),
-            dependencies: Vec::new(),
+            after: Vec::new(),
+            before: Vec::new(),
         }
     }
 
@@ -163,9 +155,18 @@ impl GraphNodeBuilder {
         self
     }
 
-    pub fn add_dependency(mut self, dependency: &str) -> Self {
-        if !self.dependencies.contains(&dependency.to_string()) {
-            self.dependencies.push(dependency.to_string());
+    /// Add a dependency to the node, this node will be executed after the `name` node
+    pub fn run_after(mut self, name: &str) -> Self {
+        if !self.after.contains(&name.to_string()) {
+            self.after.push(name.to_string());
+        }
+        self
+    }
+
+    /// This node will be executed before the `name` node
+    pub fn run_before(mut self, name: &str) -> Self {
+        if !self.before.contains(&name.to_string()) {
+            self.before.push(name.to_string());
         }
         self
     }
@@ -196,7 +197,8 @@ impl GraphNodeBuilder {
             depth_target: self.depth_target.expect(&err("DepthTarget")),
             color_ops: self.color_ops,
             depth_ops: self.depth_ops,
-            dependencies: self.dependencies,
+            after: self.after,
+            before: self.before,
             data: NodeData::new(),
         }
     }
