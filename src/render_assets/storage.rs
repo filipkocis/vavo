@@ -7,8 +7,12 @@ use crate::macros::Resource;
 
 use super::{BindGroup, Buffer};
 
-/// Special kind of RenderAsset which is stored as a global Resource
-/// Contains a buffer with instanced transform data, and the bind group
+/// Special kind of `RenderAsset` which is stored as a global Resource
+/// Contains a buffer with instanced transform (or any kind of) data, and the bind group for it
+///
+/// # Note
+/// [`Storage`] is a universal/generic storage, so in order to use it you should implement a
+/// specific wrapper which itself should implement [`Resource`]. e.g. [`TransformStorage`]
 pub struct Storage {
     name: String,
     /// Size of the buffer in bytes
@@ -113,8 +117,8 @@ impl Storage {
     }
 }
 
-// TODO: move these to their respective modules
 #[derive(Resource)]
+/// Storage for transform data for the main scene objects (GlobalTransform)
 pub struct TransformStorage(Storage);
 
 impl TransformStorage {
