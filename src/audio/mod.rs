@@ -1,3 +1,46 @@
+//! # Audio plugin
+//! This plugin provides audio playback functionality using [`kira`](kira).
+//! It allows you to play audio files, control playback, and manage audio tracks.
+//!
+//! ## Usage
+//!
+//! - Load audio files using the [`AssetLoader`]. It loads an [`AudioSource`].
+//! ```no_run
+//! let mut loader = ctx.resources.get_mut::<AssetLoader>().unwrap();
+//! let source: AudioSource = loader.load("assets/sounds/loop.mp3", ctx.resources);
+//! ```
+//!
+//! - To play the audio, get the [main track](AudioTrack) from the [`AudioManager`] and call `play` on it.
+//! ```no_run
+//! let mut audio = ctx.resources.get_mut::<AudioTrack>().unwrap();
+//! audio.play().set_loop_region(0.0..); // Loop the whole sound
+//! ```
+//!
+//! ## Spatial Audio
+//!
+//! - To play a sound spatially, add a [`SpatialEmitter`] component to an entity. You must have a
+//! [`SpatialListener`] in the scene. The listener is usually on the camera.
+//! ```no_run
+//! let mut listener = SpatialListener::default(); // initializes in an update system
+//! // ... add the listener to the camera entity
+//!
+//! let mut emitter = SpatialEmitter::default();
+//! emitter.play(source);
+//! // .. add the emitter to an entity
+//! ```
+//!
+//! ## Audio Tracks
+//!
+//! - To create a new audio track, use the [`AudioManager`]. It's a wrapper around kira's
+//! [manager](kira::AudioManager). These tracks are useful for organizing audio playback, they also
+//! support tweening and other effects which are applied to the whole track.
+//! ```no_run
+//! let mut manager = ctx.resources.get_mut::<AudioManager>().unwrap();
+//! let track = manager.add_sub_track(TrackBuilder::new()).unwrap();
+//! let audio_track = AudioTrack::<YourTrackMarkerType>::new(track);
+//! ```
+
+
 mod manager;
 mod track;
 mod commands;
