@@ -13,6 +13,8 @@ pub mod prelude {
     pub use super::spatial::{SpatialListener, SpatialEmitter};
 }
 
+use std::{fmt::Debug, path::Path};
+
 use crate::{assets::LoadableAsset, prelude::*};
 
 // TODO: refactor audio once Added<C> and Removed<C> filters are implemented
@@ -71,10 +73,10 @@ impl Plugin for AudioPlugin {
 }
 
 impl LoadableAsset for AudioSource {
-    fn load(_: &mut AssetLoader, _: &mut Resources, path: &str) -> Self {
-        match StaticSoundData::from_file(path) {
+    fn load<P: AsRef<Path> + Debug>(_: &mut AssetLoader, _: &mut Resources, path: P) -> Self {
+        match StaticSoundData::from_file(path.as_ref()) {
             Ok(sound_data) => AudioSource::new(sound_data),
-            Err(err) => panic!("Failed to load sound from '{}': {}", path, err),
+            Err(err) => panic!("Failed to load sound from '{:?}': {}", path, err),
         }   
     }
 }
