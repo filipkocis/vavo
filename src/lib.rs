@@ -15,7 +15,7 @@ pub mod audio;
 pub mod reflect;
 
 pub use renderer::{shapes, palette};
-pub use app::{input};
+pub use app::input;
 
 pub mod prelude;
 

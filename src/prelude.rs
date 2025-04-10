@@ -5,7 +5,7 @@ pub use super::{
     assets::{Assets, Handle, AssetLoader, Asset, ShaderLoader},
     renderer::{Material, Texture, Image, Color, Face, Mesh, Meshable, shapes},
     math::*,
-    plugins::{DefaultPlugin},
+    plugins::DefaultPlugin,
     event::events::{KeyboardInput, MouseInput, MouseWheel, MouseMotion, CursorMoved},
     input::{Input, KeyCode, MouseButton},
     reflect::Reflect,

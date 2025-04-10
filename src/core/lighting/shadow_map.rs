@@ -59,10 +59,12 @@ impl ShadowMapArray {
         self.texture = resized.texture;
     }
 
+    /// Get the size of the `depth_or_array_layers`
     pub fn layers(&self) -> u32 { 
         self.size.depth_or_array_layers
     }
 
+    /// Create a texture view for this shadow map array
     pub fn create_view(&self, layer: u32, count: Option<u32>, dimension: Option<wgpu::TextureViewDimension>) -> wgpu::TextureView {
         self.texture.create_view(&wgpu::TextureViewDescriptor {
             label: Some(&format!("ShadowMapArray View [{}..{}]", layer, 

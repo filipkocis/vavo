@@ -116,18 +116,10 @@ impl Storage {
 // TODO: move these to their respective modules
 #[derive(Resource)]
 pub struct TransformStorage(Storage);
-#[derive(Resource)]
-pub struct LightStorage(Storage);
 
 impl TransformStorage {
     pub fn new(n: usize, size: usize, ctx: &mut SystemsContext, visibility: wgpu::ShaderStages) -> Self {
         Self(Storage::new("transform", n, size, ctx, visibility))
-    }
-}
-
-impl LightStorage {
-    pub fn new(n: usize, size: usize, ctx: &mut SystemsContext, visibility: wgpu::ShaderStages) -> Self {
-        Self(Storage::new("light", n, size, ctx, visibility))
     }
 }
 
@@ -139,21 +131,7 @@ impl Deref for TransformStorage {
     }
 }
 
-impl Deref for LightStorage {
-    type Target = Storage;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
 impl DerefMut for TransformStorage {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
-impl DerefMut for LightStorage {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }

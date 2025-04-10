@@ -1,6 +1,6 @@
-use crate::{prelude::Light, render_assets::{BindGroup, LightStorage, IntoRenderAsset}, system::SystemsContext};
+use crate::{prelude::Light, render_assets::{BindGroup, IntoRenderAsset}, system::SystemsContext};
 
-use super::ShadowMapArray;
+use super::{LightStorage, ShadowMapArray};
 
 /// Manages the light storage and shadow maps for every applicable light type
 #[derive(crate::macros::Resource)]
@@ -90,6 +90,7 @@ impl LightAndShadowManager {
         self.storage.update(&lights, lights.len(), ctx);
     }
 
+    /// Create a texture view for the shadow map of a given light.
     pub fn create_view(&self, light: &Light) -> wgpu::TextureView {
         let layer = light.shadow_map_index();
         let count = Some(1);
@@ -111,10 +112,10 @@ impl LightAndShadowManager {
     ///
     /// # Note
     /// Unsafe primarily to discourage use of this method, use `create_view` with lights created
-    /// from `PreparedLightData` resource.
+    /// from [`PreparedLightData`](crate::core::standard::light_data::PreparedLightData) resource.
     ///
     /// # Safety
-    /// Does ont check if shadow map index is valid
+    /// Does not check if shadow map index is valid
     pub unsafe fn unsafe_create_view(&self, shadow_map_index: u32, light_type: u32) -> wgpu::TextureView {
         let layer = shadow_map_index;
         let count = Some(1);
