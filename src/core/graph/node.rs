@@ -140,6 +140,8 @@ impl GraphNodeBuilder {
         self
     }
 
+    /// Set the color operations for the render pass, default is `LoadOp::Clear(BLACK)` and
+    /// `StoreOp::Store`
     pub fn set_color_ops(mut self, ops: wgpu::Operations<wgpu::Color>) -> Self {
         self.color_ops = ops;
         self
