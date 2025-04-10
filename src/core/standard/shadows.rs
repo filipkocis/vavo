@@ -17,7 +17,6 @@ pub fn standard_shadow_node(ctx: &mut SystemsContext) -> GraphNode {
     GraphNodeBuilder::new("shadow")
         .set_pipeline(shadow_pipeline_builder)
         .set_custom_system(CustomGraphSystem::new("shadow_render_system", shadow_render_system))
-        // TODO: fix loop dependency
         .run_before("main")
         .build()
 }
