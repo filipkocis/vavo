@@ -37,10 +37,14 @@ pub struct PipelineBuilder {
     pub vertex_buffer_layouts: Vec<wgpu::VertexBufferLayout<'static>>,
     pub vertex_shader: Option<(String, String)>,
     pub fragment_shader: Option<(String, String)>,
-    pub color_format: Option<wgpu::TextureFormat>,
-    pub depth_format: Option<wgpu::TextureFormat>,
-    pub topology: Option<wgpu::PrimitiveTopology>,
     pub push_constant_ranges: Vec<wgpu::PushConstantRange>,
+
+    /// Color targets used in the pipeline's fragment state. `fragment_shader` must be set
+    pub color_targets: Vec<Option<wgpu::ColorTargetState>>,
+    /// Primitive state for the pipeline.
+    pub primitive_state: wgpu::PrimitiveState,
+    /// Depth stencil state for the pipeline.
+    pub depth_stencil: Option<wgpu::DepthStencilState>,
 }
 
 impl PipelineBuilder {
@@ -51,10 +55,44 @@ impl PipelineBuilder {
             vertex_buffer_layouts: Vec::new(),
             vertex_shader: None,
             fragment_shader: None,
-            color_format: None,
-            depth_format: None,
-            topology: None,
             push_constant_ranges: Vec::new(),
+
+            color_targets: Vec::new(),
+            primitive_state: Self::default_primitive_state(),
+            depth_stencil: None,
+        }
+    }
+
+    /// Default color target state used in the fragment field of the pipeline
+    pub fn default_color_target() -> wgpu::ColorTargetState {
+        wgpu::ColorTargetState {
+            format: wgpu::TextureFormat::Bgra8UnormSrgb,
+            blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+            write_mask: wgpu::ColorWrites::ALL,
+        }
+    }
+
+    /// Default primitive state used in the pipeline
+    pub fn default_primitive_state() -> wgpu::PrimitiveState {
+        wgpu::PrimitiveState {
+            topology: wgpu::PrimitiveTopology::TriangleList,
+            strip_index_format: None,
+            front_face: wgpu::FrontFace::Ccw,
+            cull_mode: Some(wgpu::Face::Back),
+            polygon_mode: wgpu::PolygonMode::Fill,
+            unclipped_depth: false,
+            conservative: false,
+        }
+    }
+
+    /// Default depth stencil state used if [`Self::set_depth_format`] is called
+    pub fn default_depth_stencil() -> wgpu::DepthStencilState {
+        wgpu::DepthStencilState {
+            format: wgpu::TextureFormat::Depth32Float,
+            depth_write_enabled: true,
+            depth_compare: wgpu::CompareFunction::Less,
+            stencil: wgpu::StencilState::default(),
+            bias: wgpu::DepthBiasState::default(),
         }
     }
 
@@ -102,30 +140,59 @@ impl PipelineBuilder {
         self
     }
 
-    /// Set the texture format color target in fragment state
+    /// Adds default ColorTargetState with `format` texture format, used in pipeline's fragment
+    /// state. It's a wrapper around [`Self::add_color_target`]
     ///
     /// # Note
     /// For this to be used, you must set a fragment shader
-    pub fn set_color_format(mut self, format: wgpu::TextureFormat) -> Self {
-        self.color_format = Some(format);
+    pub fn add_color_format(mut self, format: wgpu::TextureFormat) -> Self {
+        let mut target = Self::default_color_target();
+        target.format = format;
+        self.color_targets.push(Some(target));
         self
     }
 
-    /// Set texture format for depth stencil
+    /// Adds new color target state to be used in pipeline's fragment state. For default values see
+    /// [`Self::default_color_target`]
+    pub fn add_color_target(mut self, color_target: Option<wgpu::ColorTargetState>) -> Self {
+        self.color_targets.push(color_target);
+        self
+    }
+
+
+    /// Set texture format for pipeline's depth stencil
     ///
     /// # Note
     /// If not set, the depth stencil state will be None
     pub fn set_depth_format(mut self, depth_format: wgpu::TextureFormat) -> Self {
-        self.depth_format = Some(depth_format);
+        if let Some(ref mut stencil) = self.depth_stencil {
+            stencil.format = depth_format;
+        } else {
+            let mut stencil = Self::default_depth_stencil();
+            stencil.format = depth_format;
+            self.depth_stencil = Some(stencil);
+        }
         self
     }
     
-    /// Set primitive topology for the pipeline
-    ///
-    /// # Note
-    /// Default is TriangleList
-    pub fn set_topology(mut self, topology: wgpu::PrimitiveTopology) -> Self {
-        self.topology = Some(topology);
+    // /// Set primitive topology for the pipeline
+    // ///
+    // /// # Note
+    // /// Default is TriangleList
+    // pub fn set_topology(mut self, topology: wgpu::PrimitiveTopology) -> Self {
+    //     self.primitive_state.topology = topology;
+    //     self
+    // }
+
+    /// Overrides primitive state for the pipeline, for default values see [`Self::default_primitive_state`] 
+    pub fn set_primitive_state(mut self, primitive_state: wgpu::PrimitiveState) -> Self {
+        self.primitive_state = primitive_state;
+        self
+    }
+
+    /// Overrides depth stencil state for the pipeline, for default values see [`Self::default_depth_stencil`] 
+    pub fn set_depth_stencil(mut self, depth_stencil: Option<wgpu::DepthStencilState>) -> Self {
+        self.depth_stencil = depth_stencil;
         self
     }
 
@@ -153,18 +220,12 @@ impl PipelineBuilder {
     pub fn finish(&self, ctx: &SystemsContext) -> Pipeline {
         let device = ctx.renderer.device();
         let shader_loader = ctx.resources.get::<ShaderLoader>().expect("ShaderLoader resource not found");
+
+        // shader modules
         let (vertex_module, vertex_entry) = self.load_shader(&self.vertex_shader, &shader_loader);
         let fragment_maybe = self.load_shader_maybe(&self.fragment_shader, &shader_loader);
 
-        let color_targets = vec![self.color_format.map(|format| 
-            wgpu::ColorTargetState {
-                format,
-                // TODO: make this field configurable
-                blend: Some(wgpu::BlendState::ALPHA_BLENDING),
-                write_mask: wgpu::ColorWrites::ALL,
-            }
-        )];
-
+        // pipeline layout
         let layout = self.bind_group_layouts.as_ref().map(|layouts| {
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some(&format!("{}_layout", self.label)),
@@ -173,6 +234,7 @@ impl PipelineBuilder {
             })
         });
 
+        // descriptor
         let pipeline_desc = wgpu::RenderPipelineDescriptor {
             label: Some(&self.label),
             layout: layout.as_ref(),
@@ -185,34 +247,18 @@ impl PipelineBuilder {
             fragment: fragment_maybe.as_ref().map(|(module, entry)| wgpu::FragmentState {
                 module,
                 entry_point: Some(entry),
-                targets: &color_targets,
+                targets: &self.color_targets,
                 compilation_options: Default::default(),
             }),
-            primitive: wgpu::PrimitiveState {
-                topology: self.topology.unwrap_or(wgpu::PrimitiveTopology::TriangleList),
-                strip_index_format: None,
-                front_face: wgpu::FrontFace::Ccw,
-                cull_mode: Some(wgpu::Face::Back),
-                polygon_mode: wgpu::PolygonMode::Fill,
-                unclipped_depth: false,
-                conservative: false,
-            },
-            depth_stencil: self.depth_format.map(|format| wgpu::DepthStencilState {
-                format,
-                depth_write_enabled: true,
-                depth_compare: wgpu::CompareFunction::Less,
-                stencil: wgpu::StencilState::default(),
-                bias: wgpu::DepthBiasState::default(),
-            }),
+            primitive: self.primitive_state,
+            depth_stencil: self.depth_stencil.clone(),
             multisample: wgpu::MultisampleState::default(),
             multiview: None,
             cache: None,
         };
 
-        let pipeline = device.create_render_pipeline(&pipeline_desc);
-
         Pipeline {
-            inner: pipeline
+            inner: device.create_render_pipeline(&pipeline_desc)
         }
     }
 }

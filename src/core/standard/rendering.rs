@@ -292,7 +292,7 @@ fn create_main_pipeline_builder(ctx: &mut SystemsContext) -> PipelineBuilder {
         .set_vertex_buffer_layouts(vec![Mesh::vertex_descriptor()])
         .set_vertex_shader("main", "vs_main")
         .set_fragment_shader("main", "fs_main")
-        .set_color_format(color_format)
+        .add_color_format(color_format)
         .set_depth_format(wgpu::TextureFormat::Depth32Float)
         .set_push_constant_ranges(vec![wgpu::PushConstantRange {
             stages: wgpu::ShaderStages::FRAGMENT,
