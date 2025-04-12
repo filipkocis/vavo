@@ -128,10 +128,44 @@ pub struct Frustum {
     pub planes: [Plane; 6],
 }
 
-#[derive(Reflect, Clone, Debug)]
+impl Frustum {
+    pub fn new(planes: [Plane; 6]) -> Self {
+        Self { planes }
+    }
+}
+
+#[derive(Reflect, Clone, Copy, Debug)]
 pub struct Plane {
     pub normal: Vec3,
     pub d: f32,
+}
+
+impl Plane {
+    pub fn new(normal: Vec3, d: f32) -> Self {
+        Self { normal, d }
+    }
+
+    /// Creates a plane from three points in 3D space
+    pub fn from_points(p1: Vec3, p2: Vec3, p3: Vec3) -> Self {
+        let normal = (p2 - p1).cross(p3 - p1).normalize();
+        let d = -normal.dot(p1);
+        Self::new(normal, d)
+    }
+
+    /// Checks if a point is in front of the plane
+    pub fn is_point_in_front(&self, point: Vec3) -> bool {
+        self.normal.dot(point) + self.d > 0.0
+    }
+
+    /// Checks if a point is behind the plane
+    pub fn is_point_behind(&self, point: Vec3) -> bool {
+        self.normal.dot(point) + self.d < 0.0
+    }
+
+    /// Checks if a point is on the plane
+    pub fn is_point_on(&self, point: Vec3) -> bool {
+        self.normal.dot(point) + self.d == 0.0
+    }
 }
 
 impl BoundingVolume {
