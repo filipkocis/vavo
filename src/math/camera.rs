@@ -1,8 +1,8 @@
-use glam::Mat4;
+use glam::{Mat4, Vec3};
 
 use crate::{assets::Handle, render_assets::{BindGroup, Buffer, IntoRenderAsset, RenderAssets}, renderer::{palette, Color, Image}, system::SystemsContext, ecs::entities::EntityId, macros::{Component, Reflect}};
 
-use super::{GlobalTransform, Rect};
+use super::{bounding_volume::Plane, GlobalTransform, Rect};
 
 /// Main camera component
 /// Requires Projection, Transform, and Camera2D/3D components
@@ -91,6 +91,8 @@ impl Projection {
 }
 
 impl Projection {
+    /// Get the view projection matrix for the camera, `matrix` is the camera's global transform
+    /// used to calculate the view matrix
     pub fn get_view_projection_matrix(&self, matrix: &Mat4) -> [[f32; 4]; 4] {
         let view = matrix.inverse();
 
@@ -122,6 +124,72 @@ impl Projection {
                 o.area = Rect::new_min_max(-width / 2.0, -height / 2.0, width / 2.0, height / 2.0);
             }
         }
+    }
+
+    /// Get the frustum planes for the camera in world space.
+    /// The planes are in the order: left, right, bottom, top, near, far
+    ///
+    /// Use the [transform matrix](GlobalTransform) of a [`Camera3D`] to get the frustum planes.
+    pub fn get_frustum_planes(&self, global_transform: &Mat4) -> [Plane; 6] {
+        let view_proj_matrix = self.get_view_projection_matrix(global_transform);
+        let mut planes = [Plane { normal: Vec3::ZERO, d: 0.0 }; 6];
+
+        // Left plane (X-axis)
+        planes[0].normal = Vec3::new(
+            view_proj_matrix[3][0] + view_proj_matrix[0][0],  // x
+            view_proj_matrix[3][1] + view_proj_matrix[0][1],  // y
+            view_proj_matrix[3][2] + view_proj_matrix[0][2],  // z
+        );
+        planes[0].d = view_proj_matrix[3][3] + view_proj_matrix[0][3];
+
+        // Right plane (X-axis)
+        planes[1].normal = Vec3::new(
+            view_proj_matrix[3][0] - view_proj_matrix[0][0],  // x
+            view_proj_matrix[3][1] - view_proj_matrix[0][1],  // y
+            view_proj_matrix[3][2] - view_proj_matrix[0][2],  // z
+        );
+        planes[1].d = view_proj_matrix[3][3] - view_proj_matrix[0][3];
+
+        // Bottom plane (Y-axis)
+        planes[2].normal = Vec3::new(
+            view_proj_matrix[3][0] + view_proj_matrix[1][0],  // x
+            view_proj_matrix[3][1] + view_proj_matrix[1][1],  // y
+            view_proj_matrix[3][2] + view_proj_matrix[1][2],  // z
+        );
+        planes[2].d = view_proj_matrix[3][3] + view_proj_matrix[1][3];
+
+        // Top plane (Y-axis)
+        planes[3].normal = Vec3::new(
+            view_proj_matrix[3][0] - view_proj_matrix[1][0],  // x
+            view_proj_matrix[3][1] - view_proj_matrix[1][1],  // y
+            view_proj_matrix[3][2] - view_proj_matrix[1][2],  // z
+        );
+        planes[3].d = view_proj_matrix[3][3] - view_proj_matrix[1][3];
+
+        // Near plane (Z-axis)
+        planes[4].normal = Vec3::new(
+            view_proj_matrix[3][0] + view_proj_matrix[2][0],  // x
+            view_proj_matrix[3][1] + view_proj_matrix[2][1],  // y
+            view_proj_matrix[3][2] + view_proj_matrix[2][2],  // z
+        );
+        planes[4].d = view_proj_matrix[3][3] + view_proj_matrix[2][3];
+
+        // Far plane (Z-axis)
+        planes[5].normal = Vec3::new(
+            view_proj_matrix[3][0] - view_proj_matrix[2][0],  // x
+            view_proj_matrix[3][1] - view_proj_matrix[2][1],  // y
+            view_proj_matrix[3][2] - view_proj_matrix[2][2],  // z
+        );
+        planes[5].d = view_proj_matrix[3][3] - view_proj_matrix[2][3];
+
+        // Normalize all planes
+        for plane in &mut planes {
+            let length = plane.normal.length();
+            plane.normal /= length;
+            plane.d /= length;
+        }
+
+        planes
     }
 }
 
