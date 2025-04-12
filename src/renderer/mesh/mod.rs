@@ -1,3 +1,5 @@
+mod meshable;
+
 use std::mem;
 
 pub use wgpu::PrimitiveTopology;

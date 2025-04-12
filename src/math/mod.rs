@@ -2,6 +2,7 @@ mod transform;
 mod camera;
 mod light;
 mod face;
+pub mod shapes;
 
 use glam::Vec2;
 pub use transform::*;

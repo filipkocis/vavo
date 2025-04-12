@@ -3,8 +3,6 @@ mod color;
 mod image;
 pub mod palette;
 mod mesh;
-pub mod shapes;
-pub mod sphere;
 
 pub use material::Material;
 pub use image::{Texture, Image, SingleColorTexture};

@@ -3,7 +3,7 @@ pub use super::{
     query::{Query, RunQuery, filter::{Changed, With, Without, Or}},
     system::{System, GraphSystem, SystemsContext, Commands, SystemStage, IntoSystem, IntoSystemCondition},
     assets::{Assets, Handle, AssetLoader, Asset, ShaderLoader},
-    renderer::{Material, Texture, Image, Color, Face, Mesh, Meshable, shapes},
+    renderer::{Material, Texture, Image, Color, Face, Mesh, Meshable},
     math::*,
     plugins::DefaultPlugin,
     event::events::{KeyboardInput, MouseInput, MouseWheel, MouseMotion, CursorMoved},

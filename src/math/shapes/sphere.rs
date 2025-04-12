@@ -1,6 +1,30 @@
 use std::collections::HashMap;
 
-use super::shapes::Sphere;
+use super::Sphere;
+
+impl Sphere {
+    /// Generate a new icosphere with 3 subdivisions
+    pub fn new(radius: f32) -> Self {
+        Self {
+            radius,
+            kind: SphereKind::Icosphere(3),
+        }
+    }
+
+    pub fn ico(radius: f32, subdivisions: u32) -> Self {
+        Self {
+            radius,
+            kind: SphereKind::Icosphere(subdivisions),
+        }
+    }
+
+    pub fn uv(radius: f32, rings: u32, sectors: u32) -> Self {
+        Self {
+            radius,
+            kind: SphereKind::UVSphere(rings, sectors), 
+        }
+    }
+}
 
 pub enum SphereKind {
     /// Defines a icosphere with N subdivisions
@@ -23,11 +47,63 @@ impl EdgeKey {
 }
 
 impl Sphere {
-    pub(super) fn generate_uv_sphere(_radius: f32, _rings: u32, _sectors: u32) -> (Vec<[f32; 3]>, Vec<[f32; 2]>, Vec<[f32; 3]>, Vec<u32>) {
-        unimplemented!("UV sphere generation");
+    /// Generate a new UV sphere with N rings and M sectors.
+    /// Returns a tuple of (positions, uvs, normals, indices).
+    /// TODO: test this code
+    pub fn generate_uv_sphere(radius: f32, rings: u32, sectors: u32) -> (Vec<[f32; 3]>, Vec<[f32; 2]>, Vec<[f32; 3]>, Vec<u32>) {
+        let mut positions = Vec::new();
+        let mut normals = Vec::new();
+        let mut uvs = Vec::new();
+        let mut indices = Vec::new();
+
+        let ring_step = std::f32::consts::PI / rings as f32;
+        let sector_step = 2.0 * std::f32::consts::PI / sectors as f32;
+
+        for r in 0..=rings {
+            let theta = r as f32 * ring_step;
+            let sin_theta = theta.sin();
+            let cos_theta = theta.cos();
+
+            for s in 0..=sectors {
+                let phi = s as f32 * sector_step;
+                let sin_phi = phi.sin();
+                let cos_phi = phi.cos();
+
+                let x = cos_phi * sin_theta;
+                let y = cos_theta;
+                let z = sin_phi * sin_theta;
+
+                positions.push([x * radius, y * radius, z * radius]);
+                normals.push([x, y, z]);
+
+                let u = s as f32 / sectors as f32;
+                let v = r as f32 / rings as f32;
+                uvs.push([u, v]);
+            }
+        }
+
+        let sectors_plus = sectors + 1;
+        for r in 0..rings {
+            for s in 0..sectors {
+                let cur = r * sectors_plus + s;
+                let next = cur + sectors_plus;
+
+                indices.push(cur);
+                indices.push(next);
+                indices.push(cur + 1);
+
+                indices.push(cur + 1);
+                indices.push(next);
+                indices.push(next + 1);
+            }
+        }
+
+        (positions, uvs, normals, indices)
     }
 
-    pub(super) fn generate_icosphere(radius: f32, subdivisions: u32) -> (Vec<[f32; 3]>, Vec<[f32; 2]>, Vec<[f32; 3]>, Vec<u32>) {
+    /// Generate a new icosphere with N subdivisions.
+    /// Returns a tuple of (positions, uvs, normals, indices).
+    pub fn generate_icosphere(radius: f32, subdivisions: u32) -> (Vec<[f32; 3]>, Vec<[f32; 2]>, Vec<[f32; 3]>, Vec<u32>) {
         let t = (1.0 + 5.0f32.sqrt()) / 2.0;
 
         let mut positions = vec![
