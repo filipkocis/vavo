@@ -3,6 +3,7 @@ mod camera;
 mod light;
 mod face;
 pub mod shapes;
+pub mod bounding_volume;
 
 use glam::Vec2;
 pub use transform::*;

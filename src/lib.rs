@@ -5,7 +5,7 @@ pub mod assets;
 pub mod window;
 pub mod renderer;
 pub mod render_assets;
-mod math;
+pub mod math;
 pub mod core;
 pub mod plugins;
 pub mod ui;
