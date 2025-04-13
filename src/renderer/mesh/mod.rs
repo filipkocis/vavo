@@ -2,6 +2,7 @@ mod meshable;
 
 use std::mem;
 
+use glam::Vec3;
 pub use wgpu::PrimitiveTopology;
 use wgpu::{VertexAttribute, VertexFormat};
 
@@ -41,6 +42,38 @@ impl Mesh {
             uvs,
             indices,
         }
+    }
+
+    /// Returns the center (average) of the mesh
+    pub fn center(&self) -> Vec3 {
+        self.positions.iter()
+            .map(|p| Vec3::from(*p))
+            .fold(Vec3::ZERO, |acc, v| acc + v)
+            / (self.positions.len() as f32)
+    }
+
+    /// Returns the maximum distance from the center to any vertex
+    pub fn max_distance(&self) -> f32 {
+        let center = self.center();
+        self.positions.iter()
+            .map(|p| Vec3::from(*p))
+            .map(|v| (v - center).length_squared()) // optimization for length
+            .fold(0.0f32, |acc, d| acc.max(d))
+            .sqrt()
+    }
+
+    /// Returns the min and max corners of the mesh (AABB)
+    pub fn min_max_bounds(&self) -> (Vec3, Vec3) {
+        let mut min = Vec3::from(self.positions[0]);
+        let mut max = min;
+
+        for pos in &self.positions[1..] {
+            let v = Vec3::from(*pos);
+            min = min.min(v);
+            max = max.max(v);
+        }
+
+        (min, max)
     }
 
     pub fn from(meshable: impl Meshable) -> Self {
