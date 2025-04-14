@@ -2,8 +2,7 @@
 //! Currently, it only implements frustum culling.
 //!
 //! By default, each entity with a mesh component will have [`LocalBoundingVolume::Sphere`] added to,
-//! currently it doesn't get recalculated on mesh change, or re-added. It does however get
-//! recalculated if you change the volume type with `to_**` methods.
+//! currently it doesn't get recalculated on mesh change, or re-added.
 //!
 //! Every component with `local bounding volume` will have [`Visibility`] and
 //! [`WorldBoundingVolume`] component added to it, in case it's removed it will be added again.  
@@ -28,6 +27,7 @@ pub struct FrustumCullingPlugin;
 impl Plugin for FrustumCullingPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<FrustumCullingSettings>()
+            .register_system(add_local_bounding_volume_system, SystemStage::PreUpdate)
             .register_system(visibility_update_system, SystemStage::Render);
     }
 }
@@ -59,6 +59,30 @@ impl Visibility {
 
     pub fn is_visible(&self) -> bool {
         self.visible
+    }
+}
+
+/// This system adds a `LocalBoundingVolume::Sphere` to all entities with a `Mesh` component.
+pub fn add_local_bounding_volume_system(
+    ctx: &mut SystemsContext,
+    mut query: Query<(EntityId, &Handle<Mesh>), Without<LocalBoundingVolume>>,
+) {
+    // early exit based on settings
+    let settings = ctx.resources.get::<FrustumCullingSettings>().unwrap();
+    if !settings.enabled {
+        return;
+    }
+
+    for (id, mesh_handle) in query.iter_mut() {
+        // get the mesh
+        let assets = ctx.resources.get::<Assets<Mesh>>().unwrap();
+        let mesh = assets.get(mesh_handle).unwrap();
+
+        // add the local bounding volume
+        let sphere = Sphere::from_mesh(mesh);
+        ctx.commands
+            .entity(id)
+            .insert(LocalBoundingVolume::Sphere(sphere));
     }
 }
 
