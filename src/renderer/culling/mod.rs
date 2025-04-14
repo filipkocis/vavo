@@ -65,6 +65,39 @@ impl Visibility {
     }
 }
 
+/// This system updates the `Visibility` component of all entities in the scene if the camera has
+/// its `Frustum` changed. It does not check for component existence, nor does it update the 
+/// `WorldBoundingVolume`. For that see [`visibility_update_system`].
+pub fn frustum_visibility_update_system(
+    ctx: &mut SystemsContext,
+    mut query: Query<(&WorldBoundingVolume, &mut Visibility)>,
+) {
+    // early exit based on settings
+    let settings = ctx.resources.get::<FrustumCullingSettings>().unwrap();
+    if !settings.enabled {
+        return;
+    }
+
+    // extract the active camera
+    let active_camera = query
+        .cast::<(&Camera, &Frustum), ()>()
+        .iter_mut()
+        .into_iter()
+        .find(|(camera, _)| camera.active);
+
+    let Some((_, frustum)) = active_camera else {
+        return;
+    };
+    
+    for (world_bv, visibility) in query.iter_mut() {
+        // check for intersections
+        let visible = frustum.intersects(world_bv);
+
+        // update visibility
+        visibility.visible = visible;
+    }
+}
+
 /// This system updates the `Frustum` component of all active cameras in the scene based on
 /// `GlobalTransform` change. The component is added if it doesn't exist. 
 pub fn update_camera_frustum_system(
