@@ -1,6 +1,8 @@
 //! This module manages the culling of objects in the scene during rendering.
 //! Currently, it only implements frustum culling.
 //!
+//! For settings, see [`FrustumCullingSettings`].
+//!
 //! By default, each entity with a mesh component will have [`LocalBoundingVolume::Sphere`] added to,
 //! currently it doesn't get recalculated on mesh change, or re-added.
 //!
