@@ -3,6 +3,7 @@ mod color;
 mod image;
 pub mod palette;
 mod mesh;
+pub mod culling;
 
 pub use material::Material;
 pub use image::{Texture, Image, SingleColorTexture};

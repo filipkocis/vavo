@@ -1,11 +1,13 @@
-use crate::{app::{App, Plugin}, audio::AudioPlugin, core::standard::{movement::movement_system, prepare::graph_prerender_preparation_system, startup::{add_render_resources, register_standard_graph}, update::{update_camera_buffers, update_global_transforms}}, input::InputPlugin, prelude::{FixedTime, Time}, reflect::ReflectionPlugin, system::SystemStage, ui::plugin::UiPlugin};
+use crate::{app::{App, Plugin}, audio::AudioPlugin, core::standard::{movement::movement_system, prepare::graph_prerender_preparation_system, startup::{add_render_resources, register_standard_graph}, update::{update_camera_buffers, update_global_transforms}}, input::InputPlugin, prelude::{FixedTime, Time}, reflect::ReflectionPlugin, renderer::culling::FrustumCullingPlugin, system::SystemStage, ui::plugin::UiPlugin};
 
 /// Default plugins which are necessary for the app to run, includes:
-/// - `RenderPlugin` 
-/// - `TimePlugin`
-/// - `InputPlugin`
-/// - `UiPlugin`
-/// - `AudioPlugin`
+/// - [`RenderPlugin`] 
+/// - [`TimePlugin`]
+/// - [`InputPlugin`]
+/// - [`UiPlugin`]
+/// - [`AudioPlugin`]
+/// - [`ReflectionPlugin`]
+/// - [`FrustumCullingPlugin`]
 pub struct DefaultPlugin;
 
 impl Plugin for DefaultPlugin {
@@ -16,9 +18,12 @@ impl Plugin for DefaultPlugin {
             .add_plugin(InputPlugin)
             .add_plugin(UiPlugin)
             .add_plugin(AudioPlugin)
-            .add_plugin(ReflectionPlugin);
+            .add_plugin(ReflectionPlugin)
+            .add_plugin(FrustumCullingPlugin);
     }
 }
+
+// TODO: move these plugins to their own files
 
 /// Provides rendering functionality to the app, with standard render graph and other necessary
 /// systems.
