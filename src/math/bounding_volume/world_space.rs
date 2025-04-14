@@ -1,7 +1,7 @@
 use glam::{Mat4, Vec3};
 use vavo_macros::{Component, Reflect};
 
-use super::{Sphere, AABB, OBB};
+use super::{LocalBoundingVolume, Sphere, AABB, OBB};
 
 #[derive(Reflect, Component, Clone, Debug)]
 /// A bounding volume that represents a world space bounding volume. Changes when the object's
@@ -52,6 +52,86 @@ impl WorldBoundingVolume {
 
             (Self::None, _) |
             (_, Self::None) => false,
+        }
+    }
+}
+
+/// A trait for converting a local space bounding volume to world space
+pub trait ToWorldSpace {
+    /// The output type of the conversion
+    type Output;
+    /// Converts the bounding volume to world space using the given global transform
+    fn to_world_space(&self, transform: &Mat4) -> Self::Output;
+}
+
+impl ToWorldSpace for LocalBoundingVolume {
+    type Output = WorldBoundingVolume;
+
+    fn to_world_space(&self, transform: &Mat4) -> Self::Output {
+        match self {
+            Self::Sphere(sphere) => WorldBoundingVolume::Sphere(sphere.to_world_space(transform)),
+            Self::AABB(aabb) => WorldBoundingVolume::AABB(aabb.to_world_space(transform)),
+            Self::OBB(obb) => WorldBoundingVolume::OBB(obb.to_world_space(transform)),
+            Self::None => WorldBoundingVolume::None,
+        }
+    }
+}
+
+impl ToWorldSpace for Sphere {
+    type Output = Sphere;
+
+    fn to_world_space(&self, transform: &Mat4) -> Self::Output {
+        let center = transform.transform_point3(self.center);
+        let scale = transform.to_scale_rotation_translation().0;
+        // Assuming non-uniform scaling, but we take the max scale to be conservative
+        let radius = self.radius * scale.abs().max_element(); 
+
+        Self { center, radius }
+    }
+}
+
+impl ToWorldSpace for AABB {
+    type Output = AABB;
+
+    fn to_world_space(&self, transform: &Mat4) -> Self::Output {
+        let corners = [
+            Vec3::new(self.min.x, self.min.y, self.min.z),
+            Vec3::new(self.min.x, self.min.y, self.max.z),
+            Vec3::new(self.min.x, self.max.y, self.min.z),
+            Vec3::new(self.min.x, self.max.y, self.max.z),
+            Vec3::new(self.max.x, self.min.y, self.min.z),
+            Vec3::new(self.max.x, self.min.y, self.max.z),
+            Vec3::new(self.max.x, self.max.y, self.min.z),
+            Vec3::new(self.max.x, self.max.y, self.max.z),
+        ];
+
+        let transformed = corners.map(|corner| transform.transform_point3(corner));
+
+        let mut min = transformed[0];
+        let mut max = transformed[0];
+
+        for &point in &transformed[1..] {
+            min = min.min(point);
+            max = max.max(point);
+        }
+
+        Self { min, max }
+    }
+}
+
+impl ToWorldSpace for OBB {
+    type Output = OBB;
+
+    fn to_world_space(&self, transform: &Mat4) -> Self::Output {
+        let center = transform.transform_point3(self.center);
+        let (scale, rotation_quat, _) = transform.to_scale_rotation_translation();
+        let half_extents = self.half_extents * scale.abs();
+        let rotation = Mat4::from_quat(rotation_quat) * self.rotation;
+
+        Self {
+            center,
+            half_extents,
+            rotation,
         }
     }
 }
