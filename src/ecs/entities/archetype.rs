@@ -115,7 +115,7 @@ impl Archetype {
             let type_id = (*component).type_id();
             let component_index = self.types[&type_id];
             self.components[component_index][entity_index] = component;
-            self.ticks[component_index][entity_index] = self.current_tick();
+            self.mark_mutated_single(entity_index, component_index);
             return true
         }
         false
@@ -125,11 +125,13 @@ impl Archetype {
         unsafe { *self.current_tick }
     }
 
+    /// Mark all components in a row of a specific type as changed
     pub(crate) fn mark_mutated(&mut self, type_index: usize) {
         let current_tick = self.current_tick();
         self.ticks[type_index].iter_mut().for_each(|tick| *tick = current_tick);
     }
 
+    /// Mark a specific component of an entity as changed
     pub(crate) fn mark_mutated_single(&mut self, entity_index: usize, type_index: usize) {
         self.ticks[type_index][entity_index] = self.current_tick();
     }

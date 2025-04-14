@@ -14,6 +14,8 @@ pub enum LocalBoundingVolume {
     None,
 }
 
+// TODO: refactor `to_**` methods to take a mesh, since doing a mut query on Change will be an
+// infinite loop
 impl LocalBoundingVolume {
     /// Creates a new bounding volume of type None
     pub fn new() -> Self {
