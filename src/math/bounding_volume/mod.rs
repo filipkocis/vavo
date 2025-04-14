@@ -45,6 +45,16 @@ impl Sphere {
             radius,
         }
     }
+
+    /// Returns the bounding sphere in world space
+    pub fn to_world_space(&self, transform: &Mat4) -> Self {
+        let center = transform.transform_point3(self.center);
+        let scale = transform.to_scale_rotation_translation().0;
+        // Assuming non-uniform scaling, but we take the max scale to be conservative
+        let radius = self.radius * scale.abs().max_element(); 
+
+        Self { center, radius }
+    }
 }
 
 #[derive(Reflect, Clone, Debug)]
@@ -72,6 +82,32 @@ impl AABB {
 
         Self { min, max }
     }
+
+    /// Returns the bounding AABB in world space
+    pub fn to_world_space(&self, transform: &Mat4) -> Self {
+        let corners = [
+            Vec3::new(self.min.x, self.min.y, self.min.z),
+            Vec3::new(self.min.x, self.min.y, self.max.z),
+            Vec3::new(self.min.x, self.max.y, self.min.z),
+            Vec3::new(self.min.x, self.max.y, self.max.z),
+            Vec3::new(self.max.x, self.min.y, self.min.z),
+            Vec3::new(self.max.x, self.min.y, self.max.z),
+            Vec3::new(self.max.x, self.max.y, self.min.z),
+            Vec3::new(self.max.x, self.max.y, self.max.z),
+        ];
+
+        let transformed = corners.map(|corner| transform.transform_point3(corner));
+
+        let mut min = transformed[0];
+        let mut max = transformed[0];
+
+        for &point in &transformed[1..] {
+            min = min.min(point);
+            max = max.max(point);
+        }
+
+        Self { min, max }
+    }
 }
 
 #[derive(Reflect, Clone, Debug)]
@@ -96,6 +132,20 @@ impl OBB {
         let center = (min + max) * 0.5;
         let half_extents = (max - min) * 0.5;
         let rotation = Mat4::IDENTITY;
+
+        Self {
+            center,
+            half_extents,
+            rotation,
+        }
+    }
+
+    /// Returns the bounding OBB in world space
+    pub fn to_world_space(&self, transform: &Mat4) -> Self {
+        let center = transform.transform_point3(self.center);
+        let (scale, rotation_quat, _) = transform.to_scale_rotation_translation();
+        let half_extents = self.half_extents * scale.abs();
+        let rotation = Mat4::from_quat(rotation_quat) * self.rotation;
 
         Self {
             center,
