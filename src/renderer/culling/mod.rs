@@ -8,8 +8,9 @@
 //! [`WorldBoundingVolume`] component added to it, in case it's removed it will be added again.  
 //! These are recalculated on `GlobalTransform` or `LocalBoundingVolume` change.
 //!
-//! First camera in the scene will have a [`Frustum`] component added to it, if the `Frustum` or the
-//! `GlobalTransform` of the camera changes, all objects will have their `Visibility` recalculated.
+//! All active cameras in the scene will have a [`Frustum`] component added to it, it will be
+//! recalculated on `GlobalTransform` change. If the camera's `Frustum` changes, all entities will
+//! have their `Visibility` recalculated.
 //!
 //! For more information, see [`FrustumCullingPlugin`].
 
@@ -28,7 +29,9 @@ impl Plugin for FrustumCullingPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<FrustumCullingSettings>()
             .register_system(add_local_bounding_volume_system, SystemStage::PreUpdate)
-            .register_system(visibility_update_system, SystemStage::Render);
+            .register_system(update_camera_frustum_system, SystemStage::PostUpdate)
+            .register_system(visibility_update_system, SystemStage::PostUpdate)
+            .register_system(frustum_visibility_update_system, SystemStage::PostUpdate);
     }
 }
 
@@ -59,6 +62,36 @@ impl Visibility {
 
     pub fn is_visible(&self) -> bool {
         self.visible
+    }
+}
+
+/// This system updates the `Frustum` component of all active cameras in the scene based on
+/// `GlobalTransform` change. The component is added if it doesn't exist. 
+pub fn update_camera_frustum_system(
+    ctx: &mut SystemsContext,
+    mut query: Query<(EntityId, &Camera, &Projection, &GlobalTransform, Option<&mut Frustum>), Changed<GlobalTransform>>,
+) {
+    // early exit based on settings
+    let settings = ctx.resources.get::<FrustumCullingSettings>().unwrap();
+    if !settings.enabled {
+        return;
+    }
+
+    for (id, camera, projection, global_transform, frustum) in query.iter_mut() {
+        if !camera.active {
+            continue;
+        }
+
+        // calculate the frustum
+        let planes = projection.get_frustum_planes(&global_transform.matrix);
+        let new_frustum = Frustum::new(planes);
+
+        // update frustum
+        if let Some(frustum) = frustum {
+            *frustum = new_frustum;
+        } else {
+            ctx.commands.entity(id).insert(new_frustum);
+        }
     }
 }
 
@@ -118,26 +151,6 @@ pub fn visibility_update_system(
     let Some((_, frustum)) = active_camera else {
         return;
     };
-
-    // // check if the camera has changed
-    // let changed_camera = query
-    //     .cast::<EntityId, Or<(Changed<GlobalTransform>, Changed<Frustum>)>>()
-    //     .get(camera_id);
-    //
-    // let final_query;
-    // if changed_camera.is_some() {
-    //     // if the camera has changed, we need to update all objects
-    //     final_query = query
-    //         .cast::<(
-    //             &LocalBoundingVolume,
-    //             Option<&mut WorldBoundingVolume>,
-    //             &GlobalTransform,
-    //             &mut Visibility,
-    //         ), ()>()
-    //         .iter_mut()
-    // } else {
-    //     final_query = query.iter_mut();
-    // }
 
     for (id, local_bv, world_bv, global_transform, visibility) in query.iter_mut() {
         let visible;
