@@ -132,55 +132,55 @@ impl Projection {
     /// Use the [transform matrix](GlobalTransform) of a [`Camera3D`] to get the frustum planes.
     pub fn get_frustum_planes(&self, global_transform: &Mat4) -> [Plane; 6] {
         let view_proj_matrix = self.get_view_projection_matrix(global_transform);
-        let mut planes = [Plane { normal: Vec3::ZERO, d: 0.0 }; 6];
+        let mut planes = [Plane::default(); 6];
 
         // Left plane (X-axis)
         planes[0].normal = Vec3::new(
-            view_proj_matrix[3][0] + view_proj_matrix[0][0],  // x
-            view_proj_matrix[3][1] + view_proj_matrix[0][1],  // y
-            view_proj_matrix[3][2] + view_proj_matrix[0][2],  // z
+            view_proj_matrix[0][3] + view_proj_matrix[0][0],  // x
+            view_proj_matrix[1][3] + view_proj_matrix[1][0],  // y
+            view_proj_matrix[2][3] + view_proj_matrix[2][0],  // z
         );
-        planes[0].d = view_proj_matrix[3][3] + view_proj_matrix[0][3];
+        planes[0].d = view_proj_matrix[3][3] + view_proj_matrix[3][0];
 
         // Right plane (X-axis)
         planes[1].normal = Vec3::new(
-            view_proj_matrix[3][0] - view_proj_matrix[0][0],  // x
-            view_proj_matrix[3][1] - view_proj_matrix[0][1],  // y
-            view_proj_matrix[3][2] - view_proj_matrix[0][2],  // z
+            view_proj_matrix[0][3] - view_proj_matrix[0][0],  // x
+            view_proj_matrix[1][3] - view_proj_matrix[1][0],  // y
+            view_proj_matrix[2][3] - view_proj_matrix[2][0],  // z
         );
-        planes[1].d = view_proj_matrix[3][3] - view_proj_matrix[0][3];
+        planes[1].d = view_proj_matrix[3][3] - view_proj_matrix[3][0];
 
         // Bottom plane (Y-axis)
         planes[2].normal = Vec3::new(
-            view_proj_matrix[3][0] + view_proj_matrix[1][0],  // x
-            view_proj_matrix[3][1] + view_proj_matrix[1][1],  // y
-            view_proj_matrix[3][2] + view_proj_matrix[1][2],  // z
+            view_proj_matrix[0][3] + view_proj_matrix[0][1],  // x
+            view_proj_matrix[1][3] + view_proj_matrix[1][1],  // y
+            view_proj_matrix[2][3] + view_proj_matrix[2][1],  // z
         );
-        planes[2].d = view_proj_matrix[3][3] + view_proj_matrix[1][3];
+        planes[2].d = view_proj_matrix[3][3] + view_proj_matrix[3][1];
 
         // Top plane (Y-axis)
         planes[3].normal = Vec3::new(
-            view_proj_matrix[3][0] - view_proj_matrix[1][0],  // x
-            view_proj_matrix[3][1] - view_proj_matrix[1][1],  // y
-            view_proj_matrix[3][2] - view_proj_matrix[1][2],  // z
+            view_proj_matrix[0][3] - view_proj_matrix[0][1],  // x
+            view_proj_matrix[1][3] - view_proj_matrix[1][1],  // y
+            view_proj_matrix[2][3] - view_proj_matrix[2][1],  // z
         );
-        planes[3].d = view_proj_matrix[3][3] - view_proj_matrix[1][3];
+        planes[3].d = view_proj_matrix[3][3] - view_proj_matrix[3][1];
 
         // Near plane (Z-axis)
         planes[4].normal = Vec3::new(
-            view_proj_matrix[3][0] + view_proj_matrix[2][0],  // x
-            view_proj_matrix[3][1] + view_proj_matrix[2][1],  // y
-            view_proj_matrix[3][2] + view_proj_matrix[2][2],  // z
+            view_proj_matrix[0][3] + view_proj_matrix[0][2],  // x
+            view_proj_matrix[1][3] + view_proj_matrix[1][2],  // y
+            view_proj_matrix[2][3] + view_proj_matrix[2][2],  // z
         );
-        planes[4].d = view_proj_matrix[3][3] + view_proj_matrix[2][3];
+        planes[4].d = view_proj_matrix[3][3] + view_proj_matrix[3][2];
 
         // Far plane (Z-axis)
         planes[5].normal = Vec3::new(
-            view_proj_matrix[3][0] - view_proj_matrix[2][0],  // x
-            view_proj_matrix[3][1] - view_proj_matrix[2][1],  // y
-            view_proj_matrix[3][2] - view_proj_matrix[2][2],  // z
+            view_proj_matrix[0][3] - view_proj_matrix[0][2],  // x
+            view_proj_matrix[1][3] - view_proj_matrix[1][2],  // y
+            view_proj_matrix[2][3] - view_proj_matrix[2][2],  // z
         );
-        planes[5].d = view_proj_matrix[3][3] - view_proj_matrix[2][3];
+        planes[5].d = view_proj_matrix[3][3] - view_proj_matrix[3][2];
 
         // Normalize all planes
         for plane in &mut planes {
