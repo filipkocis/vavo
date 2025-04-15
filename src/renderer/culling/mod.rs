@@ -9,7 +9,7 @@
 //! Only a direct change in response to `Query<&mut Handle<Mesh>>` will trigger it.
 //!
 //! Every entity with [`LocalBoundingVolume`], [`Visibility`] and [`WorldBoundingVolume`]
-//! components will have their WBV and Visibility recalculated on `GlobalTransform` or 
+//! components will have their WBV and Visibility recalculated on `GlobalTransform` or
 //! `LocalBoundingVolume` change.
 //!
 //! All active cameras in the scene will have a [`Frustum`] component added to it, it will be
@@ -148,7 +148,8 @@ pub fn update_camera_frustum_system(
 }
 
 /// This system (re)adds a `LocalBoundingVolume::Sphere` to all entities with a `Mesh` component.
-/// It also adds default `WorldBoundingVolume::None` and `Visibility::new(false)`
+/// It also adds default `WorldBoundingVolume::None` and `Visibility::new(false)`. All of these
+/// components are added only if they don't exist (even if they got removed).
 pub fn add_local_bounding_volume_system(
     ctx: &mut SystemsContext,
     mut query: Query<
@@ -176,9 +177,9 @@ pub fn add_local_bounding_volume_system(
         let sphere = Sphere::from_mesh(mesh);
         ctx.commands
             .entity(id)
-            .insert(LocalBoundingVolume::Sphere(sphere))
-            .insert(WorldBoundingVolume::None)
-            .insert(Visibility::new(false));
+            .insert_if_new(LocalBoundingVolume::Sphere(sphere))
+            .insert_if_new(WorldBoundingVolume::None)
+            .insert_if_new(Visibility::new(false));
     }
 }
 
