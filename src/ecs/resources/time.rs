@@ -31,40 +31,51 @@ impl Time {
         self.tick += 1;
     }
 
+    /// Returns the start time of the application
     pub fn start(&self) -> Instant {
         self.start
     }
 
+    /// Returns the start of the current frame (last frame render end)
     pub fn last_frame(&self) -> Instant {
         self.last_frame
     }
 
+    /// Returns the current tick / frame count
     pub fn tick(&self) -> u64 {
         self.tick
     }
 
+    /// Raw pointer to the tick value. Used in multiple `ecs` systems
     pub(crate) fn tick_raw(&self) -> *const u64 {
         &self.tick
     }
 
+    /// Returns the duration of the last frame in seconds
     pub fn delta(&self) -> f32 {
         self.delta
     }
 
+    /// Returns the elapsed time since the application started in seconds
     pub fn elapsed(&self) -> f32 {
         self.start.elapsed().as_secs_f32()
     }
 
+    /// Returns the frames per second (FPS) of the last frame
     pub fn fps(&self) -> f32 {
         1.0 / self.delta
     }
 
+    /// Sleep the thread to achieve a target frame rate. If `fps <= fps_target` it will do nothing.
+    /// This should realy only be used once, at the end of the frame, since it will block the
+    /// thread and not call [`Self::update`], so each call to this function will sleep the same.
+    /// It's not very accurate since it's based on the delta time of the last frame.
     pub fn sleep(&mut self, fps_target: f32) {
         let fps = self.fps();
         if fps > fps_target {
-            std::thread::sleep(std::time::Duration::from_secs_f32(1.0 / fps_target - self.delta));
+            let secs = 1.0 / fps_target - self.delta;
+            std::thread::sleep(std::time::Duration::from_secs_f32(secs));
         }
-        self.update();
     }
 }
 
