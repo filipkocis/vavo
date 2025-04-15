@@ -3,12 +3,14 @@
 //!
 //! For settings, see [`FrustumCullingSettings`].
 //!
-//! By default, each entity with a mesh component will have [`LocalBoundingVolume::Sphere`] added to,
-//! currently it doesn't get recalculated on mesh change, or re-added.
+//! By default, each entity with a mesh component will have [`LocalBoundingVolume::Sphere`], and
+//! default `WorldBoundingVolume` and `Visibility` components added to it. If any of these get
+//! removed, they will be readded. Currently, changes on mesh or LBV won't trigger a recalculation.
+//! Only a direct change in response to `Query<&mut Handle<Mesh>>` will trigger it.
 //!
-//! Every component with `local bounding volume` will have [`Visibility`] and
-//! [`WorldBoundingVolume`] component added to it, in case it's removed it will be added again.  
-//! These are recalculated on `GlobalTransform` or `LocalBoundingVolume` change.
+//! Every entity with [`LocalBoundingVolume`], [`Visibility`] and [`WorldBoundingVolume`]
+//! components will have their WBV and Visibility recalculated on `GlobalTransform` or 
+//! `LocalBoundingVolume` change.
 //!
 //! All active cameras in the scene will have a [`Frustum`] component added to it, it will be
 //! recalculated on `GlobalTransform` change. If the camera's `Frustum` changes, all entities will
@@ -30,10 +32,13 @@ pub struct FrustumCullingPlugin;
 impl Plugin for FrustumCullingPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<FrustumCullingSettings>()
-            .register_system(add_local_bounding_volume_system, SystemStage::PreUpdate)
-            .register_system(update_camera_frustum_system, SystemStage::PostUpdate)
-            .register_system(visibility_update_system, SystemStage::PostUpdate)
-            .register_system(frustum_visibility_update_system, SystemStage::PostUpdate);
+            // These two use `commands.insert`, so we need them in separate stages to apply
+            .register_system(add_local_bounding_volume_system, SystemStage::PostUpdate)
+            .register_system(update_camera_frustum_system, SystemStage::Last)
+            // TODO: since GlobalTransform is updated in the Last stage we have to move them up, fix
+            // this after Changed<T> acts differently, originally it was in the PostUpdate
+            .register_system(visibility_update_system, SystemStage::PreRender)
+            .register_system(frustum_visibility_update_system, SystemStage::PreRender);
     }
 }
 
@@ -68,8 +73,7 @@ impl Visibility {
 }
 
 /// This system updates the `Visibility` component of all entities in the scene if the camera has
-/// its `Frustum` changed. It does not check for component existence, nor does it update the 
-/// `WorldBoundingVolume`. For that see [`visibility_update_system`].
+/// its `Frustum` changed.
 pub fn frustum_visibility_update_system(
     ctx: &mut SystemsContext,
     mut query: Query<(&WorldBoundingVolume, &mut Visibility)>,
@@ -82,7 +86,7 @@ pub fn frustum_visibility_update_system(
 
     // extract the active camera
     let active_camera = query
-        .cast::<(&Camera, &Frustum), ()>()
+        .cast::<(&Camera, &Frustum), Changed<Frustum>>()
         .iter_mut()
         .into_iter()
         .find(|(camera, _)| camera.active);
@@ -90,7 +94,7 @@ pub fn frustum_visibility_update_system(
     let Some((_, frustum)) = active_camera else {
         return;
     };
-    
+
     for (world_bv, visibility) in query.iter_mut() {
         // check for intersections
         let visible = frustum.intersects(world_bv);
@@ -101,10 +105,23 @@ pub fn frustum_visibility_update_system(
 }
 
 /// This system updates the `Frustum` component of all active cameras in the scene based on
-/// `GlobalTransform` change. The component is added if it doesn't exist. 
+/// `GlobalTransform` or `Projection` change. The component is added if it doesn't exist.
 pub fn update_camera_frustum_system(
     ctx: &mut SystemsContext,
-    mut query: Query<(EntityId, &Camera, &Projection, &GlobalTransform, Option<&mut Frustum>), Changed<GlobalTransform>>,
+    mut query: Query<
+        (
+            EntityId,
+            &Camera,
+            &Projection,
+            &GlobalTransform,
+            Option<&mut Frustum>,
+        ),
+        Or<(
+            Changed<GlobalTransform>,
+            Changed<Projection>,
+            Without<Frustum>,
+        )>,
+    >,
 ) {
     // early exit based on settings
     let settings = ctx.resources.get::<FrustumCullingSettings>().unwrap();
@@ -130,10 +147,19 @@ pub fn update_camera_frustum_system(
     }
 }
 
-/// This system adds a `LocalBoundingVolume::Sphere` to all entities with a `Mesh` component.
+/// This system (re)adds a `LocalBoundingVolume::Sphere` to all entities with a `Mesh` component.
+/// It also adds default `WorldBoundingVolume::None` and `Visibility::new(false)`
 pub fn add_local_bounding_volume_system(
     ctx: &mut SystemsContext,
-    mut query: Query<(EntityId, &Handle<Mesh>), Without<LocalBoundingVolume>>,
+    mut query: Query<
+        (EntityId, &Handle<Mesh>),
+        Or<(
+            Without<LocalBoundingVolume>,
+            Without<WorldBoundingVolume>,
+            Without<Visibility>,
+            Changed<Handle<Mesh>>,
+        )>,
+    >,
 ) {
     // early exit based on settings
     let settings = ctx.resources.get::<FrustumCullingSettings>().unwrap();
@@ -141,31 +167,31 @@ pub fn add_local_bounding_volume_system(
         return;
     }
 
+    let mesh_assets = ctx.resources.get::<Assets<Mesh>>().unwrap();
     for (id, mesh_handle) in query.iter_mut() {
         // get the mesh
-        let assets = ctx.resources.get::<Assets<Mesh>>().unwrap();
-        let mesh = assets.get(mesh_handle).unwrap();
+        let mesh = mesh_assets.get(mesh_handle).unwrap();
 
         // add the local bounding volume
         let sphere = Sphere::from_mesh(mesh);
         ctx.commands
             .entity(id)
-            .insert(LocalBoundingVolume::Sphere(sphere));
+            .insert(LocalBoundingVolume::Sphere(sphere))
+            .insert(WorldBoundingVolume::None)
+            .insert(Visibility::new(false));
     }
 }
 
 /// This system gets entities with `local bounding volume` where either `GlobalTransform` or
 /// `LocalBoundingVolume` has changed, and updates the `WorldBoundingVolume` and `Visibility`.
-/// If they are not present, they will be added, hence the `Option<&mut T>` in the query.
 pub fn visibility_update_system(
     ctx: &mut SystemsContext,
     mut query: Query<
         (
-            EntityId,
             &LocalBoundingVolume,
-            Option<&mut WorldBoundingVolume>,
+            &mut WorldBoundingVolume,
             &GlobalTransform,
-            Option<&mut Visibility>,
+            &mut Visibility,
         ),
         Or<(Changed<GlobalTransform>, Changed<LocalBoundingVolume>)>,
     >,
@@ -187,31 +213,14 @@ pub fn visibility_update_system(
         return;
     };
 
-    for (id, local_bv, world_bv, global_transform, visibility) in query.iter_mut() {
-        let visible;
+    for (local_bv, world_bv, global_transform, visibility) in query.iter_mut() {
+        // update world bounding volume
+        *world_bv = local_bv.to_world_space(&global_transform.matrix);
 
-        if let Some(world_bv) = world_bv {
-            // update world bounding volume
-            *world_bv = local_bv.to_world_space(&global_transform.matrix);
-
-            // check for intersections
-            visible = frustum.intersects(world_bv);
-        } else {
-            // create world bounding volume
-            let world_bv = local_bv.to_world_space(&global_transform.matrix);
-
-            // check for intersections
-            visible = frustum.intersects(&world_bv);
-
-            // add component
-            ctx.commands.entity(id).insert(world_bv);
-        }
+        // check for intersections
+        let visible = frustum.intersects(world_bv);
 
         // update visibility
-        if let Some(visibility) = visibility {
-            visibility.visible = visible;
-        } else {
-            ctx.commands.entity(id).insert(Visibility::new(visible));
-        }
+        visibility.visible = visible;
     }
 }
