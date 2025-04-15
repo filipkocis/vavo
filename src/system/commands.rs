@@ -1,6 +1,9 @@
 use std::any::{Any, TypeId};
 
-use crate::{ecs::{entities::EntityId, resources::Resource, world::World, components::Component}, math::{GlobalTransform, Transform}};
+use crate::{
+    ecs::{components::Component, entities::EntityId, resources::Resource, world::World},
+    math::{GlobalTransform, Transform},
+};
 
 enum Command {
     InsertResource(TypeId, Box<dyn Any>),
@@ -9,6 +12,7 @@ enum Command {
     DespawnEntity(EntityId),
     DespawnEntityRecursive(EntityId),
     InsertComponent(EntityId, Box<dyn Any>),
+    InsertComponentIfNew(EntityId, Box<dyn Any>),
     RemoveComponent(EntityId, TypeId),
     AddChild(EntityId, EntityId),
     RemoveChild(EntityId, EntityId),
@@ -31,7 +35,7 @@ pub struct ParentCommands<'a> {
 
 impl<'a> ParentCommands<'a> {
     fn new(parent_id: EntityId, commands: &'a mut Commands) -> Self {
-        Self { 
+        Self {
             parent_id,
             commands,
         }
@@ -85,6 +89,38 @@ impl<'a> EntityCommands<'a> {
         self.handle_insert_types(&component);
         self.insert_internal(component);
         self
+    }
+
+    /// Inserts new component to the entity if the condition returns true.
+    pub fn insert_if<C: Component, F: FnOnce() -> bool>(self, component: C, condition: F) -> Self {
+        if condition() {
+            self.insert(component)
+        } else {
+            self
+        }
+    }
+
+    /// Inserts new component to the entity if it doesn't exist.
+    /// It's slightly different from `insert` because it doesn't check for special cases.
+    pub fn insert_if_new<C: Component>(self, component: C) -> Self {
+        self.commands.commands.push(Command::InsertComponentIfNew(
+            self.entity_id,
+            Box::new(component),
+        ));
+        self
+    }
+
+    /// Inserts new component to the entity if it doesn't exist, and if the condition returns true.
+    pub fn insert_if_new_if<C: Component, F: FnOnce() -> bool>(
+        self,
+        component: C,
+        condition: F,
+    ) -> Self {
+        if condition() {
+            self.insert_if_new(component)
+        } else {
+            self
+        }
     }
 
     /// Removes a component from the entity.
@@ -203,6 +239,9 @@ impl Commands {
                     world.entities.despawn_entity_recursive(entity_id);
                 }
                 Command::InsertComponent(entity_id, component) => {
+                    world.entities.insert_component(entity_id, component);
+                }
+                Command::InsertComponentIfNew(entity_id, component) => {
                     world.entities.insert_component(entity_id, component);
                 }
                 Command::RemoveComponent(entity_id, type_id) => {
