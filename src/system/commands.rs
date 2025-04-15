@@ -11,8 +11,7 @@ enum Command {
     SpawnEntity(EntityId),
     DespawnEntity(EntityId),
     DespawnEntityRecursive(EntityId),
-    InsertComponent(EntityId, Box<dyn Any>),
-    InsertComponentIfNew(EntityId, Box<dyn Any>),
+    InsertComponent(EntityId, Box<dyn Any>, bool),
     RemoveComponent(EntityId, TypeId),
     AddChild(EntityId, EntityId),
     RemoveChild(EntityId, EntityId),
@@ -86,8 +85,8 @@ impl<'a> EntityCommands<'a> {
 
     /// Inserts new component to the entity.
     pub fn insert<C: Component>(mut self, component: C) -> Self {
-        self.handle_insert_types(&component);
-        self.insert_internal(component);
+        self.handle_insert_types(&component, true);
+        self.insert_internal(component, true);
         self
     }
 
@@ -101,12 +100,9 @@ impl<'a> EntityCommands<'a> {
     }
 
     /// Inserts new component to the entity if it doesn't exist.
-    /// It's slightly different from `insert` because it doesn't check for special cases.
-    pub fn insert_if_new<C: Component>(self, component: C) -> Self {
-        self.commands.commands.push(Command::InsertComponentIfNew(
-            self.entity_id,
-            Box::new(component),
-        ));
+    pub fn insert_if_new<C: Component>(mut self, component: C) -> Self {
+        self.handle_insert_types(&component, false);
+        self.insert_internal(component, false);
         self
     }
 
@@ -159,15 +155,16 @@ impl<'a> EntityCommands<'a> {
     }
 
     /// Inserts a new component
-    fn insert_internal<C: Component>(&mut self, component: C) {
+    fn insert_internal<C: Component>(&mut self, component: C, replace: bool) {
         self.commands.commands.push(Command::InsertComponent(
             self.entity_id,
             Box::new(component),
+            replace,
         ));
     }
 
     /// Checks and handles special cases of the component being inserted
-    fn handle_insert_types<C: Component>(&mut self, component: &C) {
+    fn handle_insert_types<C: Component>(&mut self, component: &C, replace: bool) {
         let type_id = TypeId::of::<C>();
 
         if type_id == TypeId::of::<EntityId>() {
@@ -178,7 +175,7 @@ impl<'a> EntityCommands<'a> {
 
         if type_id == TypeId::of::<Transform>() {
             let transform = component as *const C as *const Transform;
-            self.insert_internal(GlobalTransform::from_transform(unsafe { &*transform }));
+            self.insert_internal(GlobalTransform::from_transform(unsafe { &*transform }), replace);
         }
     }
 }
@@ -238,11 +235,8 @@ impl Commands {
                 Command::DespawnEntityRecursive(entity_id) => {
                     world.entities.despawn_entity_recursive(entity_id);
                 }
-                Command::InsertComponent(entity_id, component) => {
-                    world.entities.insert_component(entity_id, component);
-                }
-                Command::InsertComponentIfNew(entity_id, component) => {
-                    world.entities.insert_component(entity_id, component);
+                Command::InsertComponent(entity_id, component, replace) => {
+                    world.entities.insert_component(entity_id, component, replace);
                 }
                 Command::RemoveComponent(entity_id, type_id) => {
                     world.entities.remove_component(entity_id, type_id);

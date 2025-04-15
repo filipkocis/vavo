@@ -161,18 +161,20 @@ impl Entities {
         self.despawn_entity(entity_id);
     }
 
-    /// Insert new component
+    /// Insert new component, or replace existing one
     ///
     /// # Panics
     /// Panics if components type_id is EntityId
-    pub(crate) fn insert_component(&mut self, entity_id: EntityId, component: Box<dyn Any>) {
+    pub(crate) fn insert_component(&mut self, entity_id: EntityId, component: Box<dyn Any>, replace: bool) {
         let type_id = (*component).type_id(); 
         assert_ne!(type_id, TypeId::of::<EntityId>(), "Cannot insert EntityId as a component");
 
         let mut emptied_archetype = None;
         if let Some((id, archetype)) = self.archetypes.iter_mut().find(|(_, a)| a.has_entity(&entity_id)) {
             if archetype.has_type(&type_id) {
-                assert!(archetype.update_component(entity_id, component), "Failed to update component");
+                if replace {
+                    assert!(archetype.update_component(entity_id, component), "Failed to update component");
+                }
                 return;
             }
 
@@ -281,13 +283,15 @@ impl Entities {
         assert!(self.archetypes.values().any(|a| a.has_entity(&parent_id)), "Parent entity does not exist");
         assert!(self.archetypes.values().any(|a| a.has_entity(&child_id)), "Child entity does not exist");
 
+        // TODO: Check if child already has a parent and remove it
+
         if let Some(children) = self.get_component_mut::<Children>(parent_id) {
             children.add(child_id);
         } else {
-            self.insert_component(parent_id, Box::new(Children::new(vec![child_id])));
+            self.insert_component(parent_id, Box::new(Children::new(vec![child_id])), true);
         }
 
-        self.insert_component(child_id, Box::new(Parent::new(parent_id)));
+        self.insert_component(child_id, Box::new(Parent::new(parent_id)), true);
     }
 
     /// Remove child from parent's Children component, and remove Parent component from child
