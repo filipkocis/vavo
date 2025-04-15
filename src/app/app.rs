@@ -163,6 +163,9 @@ impl App {
 
         self.run_systems(SystemStage::PreStartup, context.as_renderer());
         self.run_systems(SystemStage::Startup, context.as_renderer());
+
+        self.system_handler.clear_systems(SystemStage::PreStartup);
+        self.system_handler.clear_systems(SystemStage::Startup);
     }
 
     /// Update the app and run all update systems

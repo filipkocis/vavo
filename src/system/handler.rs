@@ -96,4 +96,22 @@ impl SystemHandler {
             SystemStage::FrameEnd => &mut self.frame_end,
         }
     }
+
+    /// Clear the systems in the given stage
+    pub(crate) fn clear_systems(&mut self, stage: SystemStage) {
+        match stage {
+            SystemStage::PreStartup => self.pre_startup.clear(),
+            SystemStage::Startup => self.startup.clear(),
+            SystemStage::First => self.first.clear(),
+            SystemStage::PreUpdate => self.pre_update.clear(),
+            SystemStage::FixedUpdate => self.fixed_update.clear(),
+            SystemStage::Update => self.update.clear(),
+            SystemStage::PostUpdate => self.post_update.clear(),
+            SystemStage::Last => self.last.clear(),
+            SystemStage::PreRender => self.pre_render.clear(),
+            SystemStage::Render => self.render.clear(),
+            SystemStage::PostRender => self.post_render.clear(),
+            SystemStage::FrameEnd => self.frame_end.clear(),
+        }
+    }
 }
