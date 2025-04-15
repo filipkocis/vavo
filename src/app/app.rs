@@ -122,7 +122,7 @@ impl App {
 
     fn run_systems(&mut self, stage: SystemStage, renderer: Renderer) {
         let self_ptr = self as *mut App;
-        let systems = self.system_handler.get_systems(&stage);
+        let systems = self.system_handler.get_systems(stage);
         if systems.is_empty() {
             return;
         }

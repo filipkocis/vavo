@@ -1,5 +1,7 @@
 use super::System;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// Different stages of the system execution cycle
 pub enum SystemStage {
     PreStartup,
     Startup,
@@ -17,7 +19,7 @@ pub enum SystemStage {
 
 impl SystemStage {
     /// True for any stage that has a fixed time schedule
-    pub fn has_fixed_time(&self) -> bool {
+    pub fn has_fixed_time(self) -> bool {
         match self {
             SystemStage::FixedUpdate => true,
             _ => false,
@@ -25,6 +27,7 @@ impl SystemStage {
     }
 }
 
+/// System handler is responsible for storing and managing systems for each [stage](SystemStage)
 pub(crate) struct SystemHandler {
     pre_startup: Vec<System>, 
     startup: Vec<System>, 
@@ -77,7 +80,7 @@ impl SystemHandler {
     }
 
     /// Get the systems for the given stage
-    pub(crate) fn get_systems(&mut self, stage: &SystemStage) -> &mut Vec<System> {
+    pub(crate) fn get_systems(&mut self, stage: SystemStage) -> &mut Vec<System> {
         match stage {
             SystemStage::PreStartup => &mut self.pre_startup,
             SystemStage::Startup => &mut self.startup,
