@@ -3,12 +3,14 @@
 
 use super::*;
 
+/// Sphere vs Sphere intersection test
 pub fn sphere_sphere(s1: &Sphere, s2: &Sphere) -> bool {
     let distance_squared = (s1.center - s2.center).length_squared();
     let radius_sum = s1.radius + s2.radius;
     distance_squared <= radius_sum * radius_sum
 }
 
+/// Sphere vs AABB intersection test
 pub fn sphere_aabb(s: &Sphere, aabb: &AABB) -> bool {
     let closest_point = Vec3::new(
         s.center.x.clamp(aabb.min.x, aabb.max.x),
@@ -25,7 +27,7 @@ pub fn aabb_aabb(a1: &AABB, a2: &AABB) -> bool {
     a1.min.z <= a2.max.z && a1.max.z >= a2.min.z
 }
 
-// Implement OBB vs OBB using the Separating Axis Theorem (SAT)
+/// OBB vs OBB intersection test
 pub fn obb_obb(o1: &OBB, o2: &OBB) -> bool {
     let axes1 = o1.get_obb_axes();
     let axes2 = o2.get_obb_axes();
@@ -57,6 +59,7 @@ pub fn obb_obb(o1: &OBB, o2: &OBB) -> bool {
     true
 }
 
+/// OBB vs Sphere intersection test
 pub fn obb_sphere(obb: &OBB, sphere: &Sphere) -> bool {
     // Transform sphere center into OBB local space
     let inv_rotation = obb.rotation.inverse();
@@ -76,6 +79,7 @@ pub fn obb_sphere(obb: &OBB, sphere: &Sphere) -> bool {
     distance_squared <= sphere.radius * sphere.radius
 }
 
+/// OBB vs AABB intersection test
 pub fn obb_aabb(obb: &OBB, aabb: &AABB) -> bool {
     let center = aabb.center();
     let half_extents = aabb.half_extents();
@@ -89,6 +93,7 @@ pub fn obb_aabb(obb: &OBB, aabb: &AABB) -> bool {
     obb_obb(obb, &aabb_as_obb)
 }
 
+/// Frustum vs Sphere intersection test
 pub fn frustum_sphere(frustum: &Frustum, sphere: &Sphere) -> bool {
     for plane in &frustum.planes {
         let distance = plane.normal.dot(sphere.center) + plane.d;
@@ -99,6 +104,7 @@ pub fn frustum_sphere(frustum: &Frustum, sphere: &Sphere) -> bool {
     true // Sphere is inside or intersecting the frustum
 }
 
+/// Frustum vs AABB intersection test
 pub fn frustum_aabb(frustum: &Frustum, aabb: &AABB) -> bool {
     for plane in &frustum.planes {
         let mut p = Vec3::ZERO;
@@ -128,6 +134,7 @@ pub fn frustum_aabb(frustum: &Frustum, aabb: &AABB) -> bool {
     true // AABB is inside or intersecting the frustum
 }
 
+/// Frustum vs OBB intersection test
 pub fn frustum_obb(frustum: &Frustum, obb: &OBB) -> bool {
     // Check if OBB intersects frustum (simplified SAT approach)
     for plane in &frustum.planes {
