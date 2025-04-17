@@ -6,6 +6,7 @@ use std::{
 
 type DropFn = unsafe fn(NonNull<u8>);
 
+/// A blob vector is a contiguous block of memory that stores type-erased elements of one type.
 pub struct BlobVec {
     layout: Layout,
     data: NonNull<u8>,
@@ -32,11 +33,17 @@ impl BlobVec {
     pub fn new(layout: Layout, drop: Option<DropFn>, capacity: usize) -> Self {
         let data = Self::dangling(layout);
 
+        let default_capacity = if layout.size() == 0 {
+            usize::MAX
+        } else {
+            0
+        };
+
         let mut blob = Self {
             layout,
             data,
             len: 0,
-            capacity: 0,
+            capacity: default_capacity,
             drop,
         };
 
@@ -165,6 +172,10 @@ impl BlobVec {
 
     /// Shrink the blob to fit the given capacity.
     unsafe fn shrink_to_fit_raw(&mut self, cap: usize) {
+        if self.layout.size() == 0 {
+            return;
+        }
+
         if cap >= self.capacity {
             return;
         }
@@ -302,7 +313,7 @@ mod tests {
     use std::alloc::Layout;
 
     #[test]
-    fn test_blob_vec() {
+    fn test_blob() {
         let layout = Layout::new::<u32>();
         let mut blob = BlobVec::new(layout, None, 2);
         assert_eq!(blob.len(), 0);
@@ -334,7 +345,7 @@ mod tests {
     }
 
     #[test]
-    fn test_blob_vec_shrink() {
+    fn test_blob_shrink() {
         let layout = Layout::new::<u32>();
         let mut blob = BlobVec::new(layout, None, 10);
         blob.push(1);
@@ -372,7 +383,35 @@ mod tests {
     }
 
     #[test]
-    fn test_blob_vec_drop() {
+    fn test_blob_zst() {
+        let layout = Layout::new::<()>();
+        let mut blob = BlobVec::new(layout, Some(|_| {
+            println!("dropping zst")
+        }), 2);
+        assert_eq!(blob.len(), 0);
+        assert_eq!(blob.capacity(), usize::MAX);
+
+        blob.push(());
+        blob.push(());
+        assert_eq!(blob.layout().size(), 0);
+        assert_eq!(blob.layout().align(), 1);
+        assert_eq!(blob.len(), 2);
+        blob.clear();
+        blob.push(());
+        blob.reserve(1);
+        assert_eq!(blob.len(), 1);
+        assert_eq!(blob.capacity(), usize::MAX);
+        blob.shrink_to_fit();
+        blob.remove::<()>(0);
+        assert_eq!(blob.len(), 0);
+        assert_eq!(blob.capacity(), usize::MAX);
+        assert_eq!(blob.layout().size(), 0);
+        assert_eq!(blob.layout().align(), 1);
+        blob.push(());
+    }
+
+    #[test]
+    fn test_blob_drop() {
         let layout = Layout::new::<u32>();
         let mut blob = BlobVec::new(layout, Some(|ptr| {
             unsafe {
