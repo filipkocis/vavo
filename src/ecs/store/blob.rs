@@ -76,11 +76,13 @@ impl BlobVec {
 
     /// Reallocate the blob to a new capacity.
     unsafe fn reallocate(&mut self, new_capacity: usize) {
-        let new_layout = layout_repeat(&self.layout, new_capacity).expect("Failed to repeat layout");
+        let new_layout =
+            layout_repeat(&self.layout, new_capacity).expect("Failed to repeat layout");
         let new_data = if self.capacity == 0 {
             alloc::alloc(new_layout)
         } else {
-            let old_layout = layout_repeat(&self.layout, self.capacity).expect("Failed to repeat layout");
+            let old_layout =
+                layout_repeat(&self.layout, self.capacity).expect("Failed to repeat layout");
             alloc::realloc(self.data.as_ptr(), old_layout, new_layout.size())
         };
 
@@ -95,7 +97,7 @@ impl BlobVec {
             .capacity
             .checked_add(additional)
             .expect("Overflow in capacity");
-        
+
         if new_capacity > self.capacity {
             unsafe {
                 self.reallocate(new_capacity);
@@ -288,7 +290,9 @@ impl BlobVec {
 impl Drop for BlobVec {
     fn drop(&mut self) {
         self.clear();
-        unsafe { self.deallocate(); }
+        unsafe {
+            self.deallocate();
+        }
     }
 }
 
@@ -365,5 +369,40 @@ mod tests {
         blob.reserve(1);
         assert_eq!(blob.len(), 1);
         assert_eq!(blob.capacity(), 2);
+    }
+
+    #[test]
+    fn test_blob_vec_drop() {
+        let layout = Layout::new::<u32>();
+        let mut blob = BlobVec::new(layout, Some(|ptr| {
+            unsafe {
+                let value = ptr.cast::<u32>().as_ref();
+                println!("Dropping value: {}", value);
+            }
+        }), 0);
+
+        blob.push(1);
+        blob.push(2);
+        blob.push(3);
+        blob.clear();
+
+        blob.push(100);
+        blob.push(42);
+        blob.push(200);
+        let s = blob.remove::<u32>(1);
+        println!("Removed value: {}", s);
+        blob.shrink_to(0);
+        blob.push(300);
+        blob.push(400);
+        unsafe { blob.shrink_to_fit_raw(2) };
+
+        assert_eq!(blob.len(), 2);
+        assert_eq!(blob.capacity(), 2);
+
+        // --nocapture should be
+        // 1, 2, 3 - clear
+        // then removed 42, so no drop
+        // 300, 400 (shrink to fit)
+        // 100, 200 - auto drop
     }
 }
