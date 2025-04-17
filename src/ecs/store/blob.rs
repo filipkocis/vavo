@@ -30,9 +30,7 @@ fn layout_repeat(layout: &Layout, n: usize) -> Option<Layout> {
 
 impl BlobVec {
     pub fn new(layout: Layout, drop: Option<DropFn>, capacity: usize) -> Self {
-        let align = NonZero::<usize>::new(layout.align()).expect("alignment must be > 0");
-        debug_assert!(align.is_power_of_two(), "alignment must be power of two");
-        let data = NonNull::<u8>::dangling().with_addr(align);
+        let data = Self::dangling(layout);
 
         let mut blob = Self {
             layout,
@@ -44,6 +42,13 @@ impl BlobVec {
 
         blob.reserve(capacity);
         blob
+    }
+
+    /// Create a dangling pointer with proper alignment
+    fn dangling(layout: Layout) -> NonNull<u8> {
+        let align = NonZero::<usize>::new(layout.align()).expect("alignment must be > 0");
+        debug_assert!(align.is_power_of_two(), "alignment must be power of two");
+        NonNull::<u8>::dangling().with_addr(align)
     }
 
     /// Amount of elements stored in the blob
@@ -69,27 +74,33 @@ impl BlobVec {
         }
     }
 
+    /// Reallocate the blob to a new capacity.
+    unsafe fn reallocate(&mut self, new_capacity: usize) {
+        let new_layout = layout_repeat(&self.layout, new_capacity).expect("Failed to repeat layout");
+        let new_data = if self.capacity == 0 {
+            alloc::alloc(new_layout)
+        } else {
+            let old_layout = layout_repeat(&self.layout, self.capacity).expect("Failed to repeat layout");
+            alloc::realloc(self.data.as_ptr(), old_layout, new_layout.size())
+        };
+
+        self.data = NonNull::new(new_data).unwrap_or_else(|| alloc::handle_alloc_error(new_layout));
+
+        self.capacity = new_capacity;
+    }
+
     /// Grow the blob by `additional` elements.
     fn grow_by(&mut self, additional: usize) {
         let new_capacity = self
             .capacity
             .checked_add(additional)
             .expect("Overflow in capacity");
-        let new_layout =
-            layout_repeat(&self.layout, new_capacity).expect("Failed to repeat layout");
-
-        let new_data = if self.capacity == 0 {
-            unsafe { alloc::alloc(new_layout) }
-        } else {
+        
+        if new_capacity > self.capacity {
             unsafe {
-                let old_layout =
-                    layout_repeat(&self.layout, self.capacity).expect("Failed to repeat layout");
-                alloc::realloc(self.data.as_ptr(), old_layout, new_layout.size())
+                self.reallocate(new_capacity);
             }
-        };
-
-        self.data = NonNull::new(new_data).unwrap_or_else(|| alloc::handle_alloc_error(new_layout));
-        self.capacity = new_capacity;
+        }
     }
 
     fn copy_nonoverlapping(&self, src: NonNull<u8>, dst: NonNull<u8>) {
@@ -150,6 +161,43 @@ impl BlobVec {
         core::slice::from_raw_parts_mut(start_ptr.as_ptr(), end - start)
     }
 
+    /// Shrink the blob to fit the given capacity.
+    unsafe fn shrink_to_fit_raw(&mut self, cap: usize) {
+        if cap >= self.capacity {
+            return;
+        }
+
+        if cap < self.len {
+            self.clear_range(cap, self.len);
+            self.len = cap;
+        }
+
+        if cap == 0 {
+            self.deallocate();
+            self.data = Self::dangling(self.layout);
+            self.capacity = 0;
+        } else {
+            self.reallocate(cap);
+        }
+    }
+
+    /// Shrink the blob to fit the given capacity.
+    /// Minimum capacity is the current length.
+    pub fn shrink_to(&mut self, cap: usize) {
+        let cap = self.len.max(cap);
+
+        if cap < self.capacity {
+            unsafe {
+                self.shrink_to_fit_raw(cap);
+            }
+        }
+    }
+
+    /// Shrink the blob to fit the current length.
+    pub fn shrink_to_fit(&mut self) {
+        self.shrink_to(0);
+    }
+
     /// Convert a value to a pointer.
     fn type_to_ptr<T>(value: T) -> NonNull<u8> {
         let ptr = Box::into_raw(Box::new(value)) as *mut u8;
@@ -205,14 +253,34 @@ impl BlobVec {
 
     /// Clear the blob
     pub fn clear(&mut self) {
+        if self.len == 0 {
+            return;
+        }
+
         let len = self.len;
         self.len = 0;
 
+        unsafe { self.clear_range(0, len) };
+    }
+
+    /// Clear a range of the blob, `start..end`
+    unsafe fn clear_range(&mut self, start: usize, end: usize) {
+        debug_assert!(start < end, "Start index must be less than end index");
+
         if let Some(drop_fn) = self.drop {
-            for i in 0..len {
-                let ptr = unsafe { self.get_raw_unchecked(i) };
-                unsafe { drop_fn(ptr) };
+            for i in start..end {
+                let ptr = self.get_raw_unchecked(i);
+                drop_fn(ptr);
             }
+        }
+    }
+
+    /// Deallocate the blob, does not call drop on the elements
+    unsafe fn deallocate(&mut self) {
+        let layout = layout_repeat(&self.layout, self.capacity).expect("Failed to repeat layout");
+
+        if layout.size() != 0 {
+            alloc::dealloc(self.data.as_ptr(), layout);
         }
     }
 }
@@ -220,13 +288,7 @@ impl BlobVec {
 impl Drop for BlobVec {
     fn drop(&mut self) {
         self.clear();
-        let layout = layout_repeat(&self.layout, self.capacity).expect("Failed to repeat layout");
-
-        if layout.size() != 0 {
-            unsafe {
-                alloc::dealloc(self.data.as_ptr(), layout);
-            }
-        }
+        unsafe { self.deallocate(); }
     }
 }
 
@@ -265,5 +327,43 @@ mod tests {
         blob.push(4);
         assert_eq!(blob.len(), 3);
         assert_eq!(blob.get_slice::<u32>(0, 3), &[1, 3, 4]);
+    }
+
+    #[test]
+    fn test_blob_vec_shrink() {
+        let layout = Layout::new::<u32>();
+        let mut blob = BlobVec::new(layout, None, 10);
+        blob.push(1);
+        blob.push(2);
+        blob.push(3);
+
+        assert_eq!(blob.len(), 3);
+        assert_eq!(blob.capacity(), 10);
+
+        blob.shrink_to(5);
+        assert_eq!(blob.len(), 3);
+        assert_eq!(blob.capacity(), 5);
+
+        blob.shrink_to_fit();
+        assert_eq!(blob.len(), 3);
+        assert_eq!(blob.capacity(), 3);
+
+        unsafe { blob.shrink_to_fit_raw(2) };
+        assert_eq!(blob.len(), 2);
+        assert_eq!(blob.capacity(), 2);
+
+        blob.clear();
+        assert_eq!(blob.len(), 0);
+        assert_eq!(blob.capacity(), 2);
+
+        blob.shrink_to_fit();
+        assert_eq!(blob.capacity(), 0);
+
+        blob.push(1);
+        assert_eq!(blob.len(), 1);
+        assert_eq!(blob.capacity(), 1);
+        blob.reserve(1);
+        assert_eq!(blob.len(), 1);
+        assert_eq!(blob.capacity(), 2);
     }
 }
