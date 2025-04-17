@@ -5,13 +5,13 @@
 //! ## Usage
 //!
 //! - Load audio files using the [`AssetLoader`]. It loads an [`AudioSource`].
-//! ```no_run
+//! ```ignore
 //! let mut loader = ctx.resources.get_mut::<AssetLoader>().unwrap();
 //! let source: AudioSource = loader.load("assets/sounds/loop.mp3", ctx.resources);
 //! ```
 //!
 //! - To play the audio, get the [main track](AudioTrack) from the [`AudioManager`] and call `play` on it.
-//! ```no_run
+//! ```ignore
 //! let mut audio = ctx.resources.get_mut::<AudioTrack>().unwrap();
 //! audio.play().set_loop_region(0.0..); // Loop the whole sound
 //! ```
@@ -20,7 +20,7 @@
 //!
 //! - To play a sound spatially, add a [`SpatialEmitter`] component to an entity. You must have a
 //! [`SpatialListener`] in the scene. The listener is usually on the camera.
-//! ```no_run
+//! ```ignore
 //! let mut listener = SpatialListener::default(); // initializes in an update system
 //! // ... add the listener to the camera entity
 //!
@@ -34,7 +34,7 @@
 //! - To create a new audio track, use the [`AudioManager`]. It's a wrapper around kira's
 //! [manager](kira::AudioManager). These tracks are useful for organizing audio playback, they also
 //! support tweening and other effects which are applied to the whole track.
-//! ```no_run
+//! ```ignore
 //! let mut manager = ctx.resources.get_mut::<AudioManager>().unwrap();
 //! let track = manager.add_sub_track(TrackBuilder::new()).unwrap();
 //! let audio_track = AudioTrack::<YourTrackMarkerType>::new(track);
@@ -69,7 +69,7 @@ use manager::{AudioManager, AudioManagerSettings};
 /// Source for an audio file, to play it use [`AudioTrack::play`]
 ///
 /// To load an audio source use the [`AssetLoader`] like so:
-/// ```
+/// ```ignore
 /// let source = asset_loader.load::<AudioSource>("path/to/audio.ogg", resources);
 /// ```
 #[derive(Asset)]

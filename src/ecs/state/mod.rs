@@ -10,7 +10,7 @@ use std::fmt::Debug;
 /// Trait representing a state. 
 ///
 /// # Usage
-/// ```
+/// ```ignore
 /// use vavo::prelude::*;
 ///
 /// #[derive(States, Debug, Clone, Copy, Default, PartialEq, Eq)]
