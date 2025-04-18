@@ -59,6 +59,7 @@ impl BlobVec {
         Self::new(layout, drop, capacity)
     }
 
+    #[inline]
     /// Create a dangling pointer with proper alignment
     fn dangling(layout: Layout) -> NonNull<u8> {
         let align = NonZero::<usize>::new(layout.align()).expect("alignment must be > 0");
@@ -66,16 +67,19 @@ impl BlobVec {
         NonNull::<u8>::dangling().with_addr(align)
     }
 
+    #[inline]
     /// Amount of elements stored in the blob
     pub fn len(&self) -> usize {
         self.len
     }
 
+    #[inline]
     /// Capacity of the blob
     pub fn capacity(&self) -> usize {
         self.capacity
     }
 
+    #[inline]
     /// Layout of the type which the blob's elements have
     pub fn layout(&self) -> Layout {
         self.layout
@@ -144,18 +148,21 @@ impl BlobVec {
         }
     }
 
+    #[inline]
     /// Wrapper for [`core::ptr::copy_nonoverlapping`]
     /// Caller must ensure valid non-overlapping pointers
     unsafe fn copy_nonoverlapping(&self, src: NonNull<u8>, dst: NonNull<u8>) {
         core::ptr::copy_nonoverlapping(src.as_ptr(), dst.as_ptr(), self.layout.size());
     }
 
+    #[inline]
     /// Wrapper for [`core::ptr::swap_nonoverlapping`]
     /// Caller must ensure valid non-overlapping pointers
     unsafe fn swap_nonoverlapping(&self, x: NonNull<u8>, y: NonNull<u8>) {
         core::ptr::swap_nonoverlapping(x.as_ptr(), y.as_ptr(), self.layout.size());
     }
 
+    #[inline]
     /// Get a pointer to the element at index `i`.
     /// Caller must ensure a valid index
     unsafe fn get_raw(&self, i: usize) -> NonNull<u8> {
@@ -163,6 +170,7 @@ impl BlobVec {
         self.get_raw_unchecked(i)
     }
 
+    #[inline]
     /// Get a pointer to the element at index `i`.
     /// Caller must ensure the index is within bounds.
     unsafe fn get_raw_unchecked(&self, i: usize) -> NonNull<u8> {
@@ -203,13 +211,14 @@ impl BlobVec {
 
     /// Get a mutable slice of the blob.
     /// Caller must ensure the range is valid and within bounds.
-    unsafe fn get_slice_raw(&self, start: usize, end: usize) -> &mut [u8] {
+    unsafe fn get_slice_raw<T>(&self, start: usize, end: usize) -> &mut [T] {
         debug_assert!(start < end, "Start index must be less than end index");
         debug_assert!(start <= self.len, "Start index out of bounds");
         debug_assert!(end <= self.len, "End index out of bounds");
 
         let start_ptr = self.get_raw(start);
-        core::slice::from_raw_parts_mut(start_ptr.as_ptr(), end - start)
+        let ptr = start_ptr.as_ptr() as *mut _;
+        core::slice::from_raw_parts_mut(ptr, end - start)
     }
 
     /// Shrink the blob to fit the given capacity.
@@ -257,12 +266,6 @@ impl BlobVec {
         self.shrink_to(0);
     }
 
-    /// Convert a pointer to a value.
-    /// Caller must ensure the pointer is valid and aligned, and correct T
-    unsafe fn ptr_to_type<T>(ptr: NonNull<u8>) -> T {
-        ptr.cast::<T>().as_ptr().read()
-    }
-
     /// Push a new element to the blob.
     ///
     /// # Safety
@@ -283,7 +286,7 @@ impl BlobVec {
     /// Caller must ensure a correct type and index
     pub unsafe fn remove<T>(&mut self, i: usize) -> T {
         let ptr = self.swap_remove_raw(i); // Safety: caller
-        Self::ptr_to_type(ptr) // Safety: ptr is vald
+        ptr.cast::<T>().as_ptr().read() // Safety: ptr is valid
     }
 
     /// Get a reference to an element
@@ -309,8 +312,7 @@ impl BlobVec {
     /// # Safety
     /// Caller must ensure a correct type and index
     pub unsafe fn get_slice<T>(&self, start: usize, end: usize) -> &[T] {
-        let slice = self.get_slice_raw(start, end);
-        core::mem::transmute(slice)
+        self.get_slice_raw(start, end)
     }
 
     /// Get a mutable slice of the blob
@@ -318,8 +320,7 @@ impl BlobVec {
     /// # Safety
     /// Caller must ensure a correct type and index
     pub unsafe fn get_slice_mut<T>(&mut self, start: usize, end: usize) -> &mut [T] {
-        let slice = self.get_slice_raw(start, end);
-        core::mem::transmute(slice)
+        self.get_slice_raw(start, end)
     }
 
     /// Clear the blob
@@ -407,7 +408,9 @@ mod tests {
 
             blob.push(4u32);
             assert_eq!(blob.len(), 3);
-            assert_eq!(blob.get_slice::<u32>(0, 3), &[1, 3, 4]);
+            let slice = blob.get_slice::<u32>(0, 3);
+            assert_eq!(slice, &[1, 3, 4]);
+            assert_eq!(slice.len(), 3);
         }
     }
 
