@@ -257,13 +257,6 @@ impl BlobVec {
         self.shrink_to(0);
     }
 
-    /// Convert a value to a pointer.
-    fn type_to_ptr<T>(value: T) -> NonNull<u8> {
-        let ptr = Box::into_raw(Box::new(value)) as *mut u8;
-        // Safety: The pointer is valid because it was created from a Box
-        unsafe { NonNull::new_unchecked(ptr) }
-    }
-
     /// Convert a pointer to a value.
     /// Caller must ensure the pointer is valid and aligned, and correct T
     unsafe fn ptr_to_type<T>(ptr: NonNull<u8>) -> T {
@@ -278,7 +271,9 @@ impl BlobVec {
     /// # Panic
     /// Panics if the new capacity overflows `isize::MAX`
     pub unsafe fn push<T>(&mut self, value: T) {
-        let ptr = Self::type_to_ptr(value);
+        let ptr = &value as *const T as *mut u8;
+        core::mem::forget(value);
+        let ptr = NonNull::new_unchecked(ptr); // Safety: value is valid
         self.push_raw(ptr); // Safety: caller
     }
 
