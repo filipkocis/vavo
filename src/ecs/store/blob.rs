@@ -1,10 +1,13 @@
 use std::{
-    alloc::{self, Layout},
-    num::NonZero,
-    ptr::NonNull,
+    alloc::{self, Layout}, mem::needs_drop, num::NonZero, ptr::{drop_in_place, NonNull}
 };
 
 pub type DropFn = unsafe fn(NonNull<u8>);
+
+unsafe fn new_drop_fn<T>(ptr: NonNull<u8>) {
+    let ptr = ptr.cast::<T>().as_ptr();
+    drop_in_place(ptr);
+}
 
 /// A blob vector is a contiguous block of memory that stores type-erased elements of one type.
 pub struct BlobVec {
@@ -46,6 +49,14 @@ impl BlobVec {
 
         blob.reserve(capacity);
         blob
+    }
+
+    /// Create a new blob storage with the given type and capacity.
+    pub fn new_type<T>(capacity: usize) -> Self {
+        let layout = Layout::new::<T>();
+        let drop = needs_drop::<T>().then_some(new_drop_fn::<T> as _);
+
+        Self::new(layout, drop, capacity)
     }
 
     /// Create a dangling pointer with proper alignment
@@ -284,18 +295,18 @@ impl BlobVec {
     ///
     /// # Safety
     /// Caller must ensure a correct type and index
-    pub unsafe fn get<T>(&self, i: usize) -> &T {
+    pub unsafe fn get<T>(&self, i: usize) -> NonNull<T> {
         let ptr = self.get_raw(i);
-        ptr.cast::<T>().as_ref()
+        ptr.cast::<T>()
     }
 
     /// Get a mutable reference to an element
     ///
     /// # Safety
     /// Caller must ensure a correct type and index
-    pub unsafe fn get_mut<T>(&mut self, i: usize) -> &mut T {
+    pub unsafe fn get_mut<T>(&mut self, i: usize) -> NonNull<T> {
         let ptr = self.get_raw(i);
-        ptr.cast::<T>().as_mut()
+        ptr.cast::<T>()
     }
 
     /// Get a slice of the blob
@@ -386,8 +397,8 @@ mod tests {
             blob.push(2u32);
 
             assert_eq!(blob.len(), 2);
-            assert_eq!(blob.get::<u32>(0), &1);
-            assert_eq!(blob.get::<u32>(1), &2);
+            assert_eq!(blob.get::<u32>(0).as_ref(), &1);
+            assert_eq!(blob.get::<u32>(1).as_ref(), &2);
             assert_eq!(blob.get_slice::<u32>(0, 2), &[1, 2]);
             assert_eq!(blob.get_slice_mut::<u32>(0, 2), &mut [1, 2]);
             blob.push(3u32);
@@ -396,8 +407,8 @@ mod tests {
             let removed = blob.remove::<u32>(1);
             assert_eq!(removed, 2);
             assert_eq!(blob.len(), 2);
-            assert_eq!(blob.get::<u32>(0), &1);
-            assert_eq!(blob.get::<u32>(1), &3);
+            assert_eq!(blob.get::<u32>(0).as_ref(), &1);
+            assert_eq!(blob.get::<u32>(1).as_ref(), &3);
 
             blob.push(4u32);
             assert_eq!(blob.len(), 3);
