@@ -1,22 +1,34 @@
 use crate::query::Query;
 
-use super::resources::Resources;
 use super::entities::Entities;
+use super::resources::Resources;
+use super::tick::Tick;
 
 pub struct World {
     pub entities: Entities,
     pub resources: Resources,
+    /// Current world tick
+    pub tick: Tick,
 }
 
 impl World {
     pub fn new() -> Self {
-        let mut resources = Resources::new();
-        resources.insert_default_resources();
+        let resources = Resources::new();
 
-        Self {
+        let mut world = Self {
             entities: Entities::new(),
             resources,
-        }
+            tick: Tick::default(),
+        };
+
+        // Initialize entities
+        // world.entities.initialize_tick(&world.tick);
+
+        // Initialize resources
+        world.resources.initialize_tick(&world.tick);
+        world.resources.insert_default_resources();
+
+        world
     }
 
     /// Creates new world query
