@@ -40,7 +40,7 @@ impl TickStamp {
         Self {
             changed,
             added,
-            current
+            current,
         }
     }
 
@@ -83,7 +83,7 @@ impl TickStampMut {
         Self {
             changed,
             added,
-            current
+            current,
         }
     }
 

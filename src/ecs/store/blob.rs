@@ -1,5 +1,8 @@
 use std::{
-    alloc::{self, Layout}, mem::needs_drop, num::NonZero, ptr::{drop_in_place, NonNull}
+    alloc::{self, Layout},
+    mem::needs_drop,
+    num::NonZero,
+    ptr::{drop_in_place, NonNull},
 };
 
 pub type DropFn = unsafe fn(NonNull<u8>);
@@ -446,7 +449,9 @@ mod tests {
         blob.shrink_to_fit();
         assert_eq!(blob.capacity(), 0);
 
-        unsafe { blob.push(1); }
+        unsafe {
+            blob.push(1);
+        }
         assert_eq!(blob.len(), 1);
         assert_eq!(blob.capacity(), 1);
         blob.reserve(1);
