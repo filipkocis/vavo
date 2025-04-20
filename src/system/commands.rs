@@ -1,12 +1,18 @@
 use std::any::{Any, TypeId};
 
 use crate::{
-    ecs::{components::Component, entities::EntityId, resources::Resource, world::World},
+    ecs::{
+        components::Component,
+        entities::EntityId,
+        resources::{Resource, ResourceData},
+        tick::Tick,
+        world::World,
+    },
     math::{GlobalTransform, Transform},
 };
 
 enum Command {
-    InsertResource(TypeId, Box<dyn Any>),
+    InsertResource(TypeId, ResourceData),
     RemoveResource(TypeId),
     SpawnEntity(EntityId),
     DespawnEntity(EntityId),
@@ -175,7 +181,10 @@ impl<'a> EntityCommands<'a> {
 
         if type_id == TypeId::of::<Transform>() {
             let transform = component as *const C as *const Transform;
-            self.insert_internal(GlobalTransform::from_transform(unsafe { &*transform }), replace);
+            self.insert_internal(
+                GlobalTransform::from_transform(unsafe { &*transform }),
+                replace,
+            );
         }
     }
 }
@@ -189,11 +198,11 @@ impl Commands {
     }
 
     pub fn insert_resource<R: Resource>(&mut self, resource: R) -> &mut Self {
-        let boxed_resource = Box::new(resource);
+        let resource_data = ResourceData::new(resource, Tick::default());
         let resource_type_id = TypeId::of::<R>();
 
         self.commands
-            .push(Command::InsertResource(resource_type_id, boxed_resource));
+            .push(Command::InsertResource(resource_type_id, resource_data));
         self
     }
 
@@ -220,8 +229,9 @@ impl Commands {
     pub(crate) fn apply(self, world: &mut World) {
         for command in self.commands {
             match command {
-                Command::InsertResource(type_id, resource) => {
-                    world.resources.insert_boxed(type_id, resource);
+                Command::InsertResource(type_id, mut resource_data) => {
+                    resource_data.set_tick(world.tick);
+                    world.resources.insert_resource_data(type_id, resource_data);
                 }
                 Command::RemoveResource(type_id) => {
                     world.resources.remove(type_id);
@@ -236,7 +246,9 @@ impl Commands {
                     world.entities.despawn_entity_recursive(entity_id);
                 }
                 Command::InsertComponent(entity_id, component, replace) => {
-                    world.entities.insert_component(entity_id, component, replace);
+                    world
+                        .entities
+                        .insert_component(entity_id, component, replace);
                 }
                 Command::RemoveComponent(entity_id, type_id) => {
                     world.entities.remove_component(entity_id, type_id);
