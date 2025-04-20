@@ -5,6 +5,7 @@ pub mod entities;
 pub mod components;
 
 pub mod store;
+pub mod ptr;
 pub mod tick;
 
 pub mod prelude {
