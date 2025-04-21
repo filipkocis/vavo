@@ -5,25 +5,57 @@ use std::{
 
 use crate::ecs::tick::{TickStamp, TickStampMut};
 
+#[repr(transparent)]
+#[derive(Debug)]
+/// Pointer to a component or resource, wrapper around NonNull<u8>
+pub struct UntypedPtr {
+    ptr: NonNull<u8>,
+}
+
+impl UntypedPtr {
+    #[inline]
+    /// Creates new untyped pointer
+    pub fn new(ptr: NonNull<u8>) -> Self {
+        Self { ptr }
+    }
+
+    #[inline]
+    /// Unwraps the pointer
+    pub fn inner(self) -> NonNull<u8> {
+        self.ptr
+    }
+
+    #[inline]
+    /// Returns the internal pointer
+    pub fn as_ptr(&self) -> &NonNull<u8> {
+        &self.ptr
+    }
+
+    #[inline]
+    /// Returns the internal pointer
+    pub fn as_mut(&mut self) -> &mut NonNull<u8> {
+        &mut self.ptr
+    }
+}
+
 /// Immutable data pointer to either a component or resource with its tick timestamps
-pub struct DataPtr<T> {
-    ptr: *const T,
+pub struct DataPtr {
+    ptr: UntypedPtr,
     stamp: TickStamp,
 }
 
 /// Mutable data pointer to either a component or resource with its tick timestamps.
 /// Provides automatic change detection update on mutable deref
-pub struct DataPtrMut<T> {
-    ptr: *mut T,
-    stamp: TickStampMut,
-}
+pub struct DataPtrMut {
+    ptr: UntypedPtr,
+    stamp: TickStampMut, }
 
-impl<T> DataPtr<T> {
+impl DataPtr {
     #[inline]
     /// Creates a new typed pointer from a (blob's) raw pointer and it's timestamps
-    pub fn new(data: NonNull<u8>, stamp: TickStamp) -> Self {
+    pub fn new(data: UntypedPtr, stamp: TickStamp) -> Self {
         Self {
-            ptr: data.cast::<T>().as_ptr(),
+            ptr: data,
             stamp,
         }
     }
@@ -41,12 +73,12 @@ impl<T> DataPtr<T> {
     }
 }
 
-impl<T> DataPtrMut<T> {
+impl DataPtrMut {
     #[inline]
     /// Creates a new mutable typed pointer from a (blob's) raw pointer and it's timestamps
-    pub fn new(data: NonNull<u8>, stamp: TickStampMut) -> Self {
+    pub fn new(data: UntypedPtr, stamp: TickStampMut) -> Self {
         Self {
-            ptr: data.cast::<T>().as_ptr(),
+            ptr: data,
             stamp,
         }
     }
