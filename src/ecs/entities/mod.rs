@@ -1,5 +1,8 @@
 pub mod archetype;
 pub mod relation;
+pub mod components;
+
+pub use components::Component;
 
 use std::{
     any::{Any, TypeId}, collections::HashMap, hash::Hash, ops::{Add, Sub}
