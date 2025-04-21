@@ -29,6 +29,25 @@ pub(crate) struct ComponentInfo {
     pub drop: Option<DropFn>,
 }
 
+#[repr(transparent)]
+#[derive(Debug, Clone, Copy)]
+/// Raw pointer wrapper around [`ComponentInfo`]
+pub(crate) struct ComponentInfoPtr(*const ComponentInfo);
+
+impl ComponentInfoPtr {
+    #[inline]
+    /// Create new ptr
+    pub fn new(ptr: *const ComponentInfo) -> Self {
+        Self(ptr)
+    }
+
+    #[inline]
+    /// Returns a reference to the pointer
+    pub fn as_ref(&self) -> &ComponentInfo {
+        unsafe { &*self.0 }
+    }
+}
+
 #[derive(Debug)]
 /// Holds type-erased components of one type in a row, and their metadata.
 pub(crate) struct ComponentsData {
@@ -43,7 +62,8 @@ pub(crate) struct ComponentsData {
 
 impl ComponentsData {
     /// Create new empty components row based on its [`ComponentInfo`].
-    pub(crate) fn new(info: &ComponentInfo) -> Self {
+    pub(crate) fn new(info: ComponentInfoPtr) -> Self {
+        let info = info.as_ref();
         let data = BlobVec::new(info.layout, info.drop, 0);
 
         Self {
