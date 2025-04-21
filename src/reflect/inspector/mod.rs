@@ -116,12 +116,12 @@ fn create_inspector(
                 .filter_map(|(i, c)| {
                     if i == id_idx {
                         entity_id = registry
-                            .reflect(&*c[entity])
+                            .reflect(c.get_untyped_lt(entity), c.get_type_id())
                             .unwrap()
                             .downcast_ref::<EntityId>();
                         return None;
                     }
-                    registry.reflect(&*c[entity])
+                    registry.reflect(c.get_untyped_lt(entity), c.get_type_id())
                 })
                 .collect();
 

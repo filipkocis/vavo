@@ -48,6 +48,34 @@ impl UntypedPtr {
     }
 }
 
+/// Same as [`UntypedPtr`], but with a lifetime
+pub struct UntypedPtrLt<'a> {
+    ptr: NonNull<u8>,
+    _marker: std::marker::PhantomData<&'a ()>,
+}
+
+impl<'a> UntypedPtrLt<'a> {
+    /// Wraps the pointer with a lifetime
+    pub fn new(untyped: UntypedPtr) -> Self {
+        Self {
+            ptr: untyped.ptr,
+            _marker: std::marker::PhantomData,
+        }
+    }
+
+    #[inline]
+    /// Returns the internal pointer
+    pub fn as_ptr(&self) -> &NonNull<u8> {
+        &self.ptr
+    }
+
+    #[inline]
+    /// Returns the internal pointer
+    pub fn as_mut(&mut self) -> &mut NonNull<u8> {
+        &mut self.ptr
+    }
+}
+
 /// Immutable data pointer to either a component or resource with its tick timestamps
 pub struct DataPtr {
     ptr: UntypedPtr,

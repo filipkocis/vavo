@@ -2,7 +2,7 @@ use std::{alloc::Layout, any::TypeId, collections::HashMap};
 
 use crate::{
     ecs::{
-        ptr::{DataPtr, DataPtrMut, UntypedPtr},
+        ptr::{DataPtr, DataPtrMut, UntypedPtr, UntypedPtrLt},
         store::blob::{BlobVec, DropFn},
         tick::{TickStamp, TickStampMut},
     },
@@ -113,6 +113,19 @@ impl ComponentsData {
     }
 
     #[inline]
+    /// Returns [`UntypedPtrLt`] for component at `index`. Useful for when you need just the data,
+    /// and it needs to be tied with a lifetime.
+    ///
+    /// # Panics
+    /// Panics if `index` is out of bounds.
+    pub fn get_untyped_lt<'a>(&'a self, index: usize) -> UntypedPtrLt<'a> {
+        debug_assert!(index < self.len(), "Index out of bounds");
+        // Safety: index is callers responsibility
+        let untyped = unsafe { self.data.get(index) };
+        UntypedPtrLt::new(untyped)
+    }
+
+    #[inline]
     /// Returns immutable data for component at `index`.
     ///
     /// # Panics
@@ -120,7 +133,7 @@ impl ComponentsData {
     pub fn get(&self, index: usize, current_tick: Tick) -> DataPtr {
         debug_assert!(index < self.len(), "Index out of bounds");
 
-        // Safety: type is correct and index is callers responsibility
+        // Safety: index is callers responsibility
         let ptr = unsafe { self.data.get(index) };
         DataPtr::new(ptr, self.get_ticks(index, current_tick))
     }
@@ -133,7 +146,7 @@ impl ComponentsData {
     pub fn get_mut(&mut self, index: usize, current_tick: Tick) -> DataPtrMut {
         debug_assert!(index < self.len(), "Index out of bounds");
 
-        // Safety: type is correct and index is callers responsibility
+        // Safety: index is callers responsibility
         let ptr = unsafe { self.data.get_mut(index) };
         DataPtrMut::new(ptr, self.get_ticks_mut(index, current_tick))
     }
@@ -146,7 +159,7 @@ impl ComponentsData {
     pub fn remove(&mut self, index: usize) -> (UntypedPtr, Tick, Tick) {
         debug_assert!(index < self.len(), "Index out of bounds");
 
-        // Safety: type is correct and index is callers responsibility
+        // Safety: index is callers responsibility
         (
             unsafe { self.data.remove(index) },
             self.changed_at.swap_remove(index),

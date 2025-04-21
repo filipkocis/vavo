@@ -1,9 +1,11 @@
-use std::{any::{Any, TypeId}, collections::HashMap};
+use std::{any::TypeId, collections::HashMap};
+
+use crate::ecs::ptr::UntypedPtrLt;
 
 use super::Reflect;
 
 /// Function which transforms a value into a [`Reflect`] trait object.
-pub type ReflectTransformer = fn(&dyn Any) -> &dyn Reflect;
+pub type ReflectTransformer = for<'a> fn(UntypedPtrLt<'a>) -> &'a dyn Reflect;
 
 /// Type Registry for reflectable types. It is used to transform unknown components into
 /// [`Reflect`] trait objects.
@@ -23,8 +25,8 @@ impl ReflectTypeRegistry {
 
     /// Register new reflectable type.
     pub fn register<T: Reflect>(&mut self) {
-        self.type_ids.insert(TypeId::of::<T>(), |value| {
-            value.downcast_ref::<T>().unwrap()
+        self.type_ids.insert(TypeId::of::<T>(), |value| unsafe {
+            value.as_ptr().cast::<T>().as_ref()
         });
     }
 
@@ -34,8 +36,7 @@ impl ReflectTypeRegistry {
     }
 
     /// Reflects the given value if it is registered.
-    pub fn reflect<'a>(&self, value: &'a dyn Any) -> Option<&'a dyn Reflect> {
-        let type_id = value.type_id();
+    pub fn reflect<'a>(&self, value: UntypedPtrLt<'a>, type_id: TypeId) -> Option<&'a dyn Reflect> {
         self.get(type_id).map(|transformer| transformer(value))
     }
 }
