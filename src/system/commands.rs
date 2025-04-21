@@ -2,8 +2,7 @@ use std::any::{Any, TypeId};
 
 use crate::{
     ecs::{
-        components::Component,
-        entities::EntityId,
+        entities::{EntityId, Component},
         resources::{Resource, ResourceData},
         tick::Tick,
         world::World,

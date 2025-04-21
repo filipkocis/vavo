@@ -1,27 +1,22 @@
+pub mod entities;
 pub mod resources;
 pub mod state;
 pub mod world;
-pub mod entities;
-pub mod components;
-
-pub mod store;
-pub mod ptr;
 pub mod tick;
 
+pub mod ptr;
+pub mod store;
+
 pub mod prelude {
-    pub use super::resources::{
-        Resource,
-        Resources, Res, ResMut, 
-        Time, FixedTime, Timer, TimerVariant,
-    };
-    pub use super::state::{
-        States, State, NextState,
-        StateTransitionEvent, conditions::*,
-    };
-    pub use super::world::World;
     pub use super::entities::{
-        Entities, EntityId, 
+        components::Component,
         relation::{Children, Parent},
+        Entities, EntityId,
     };
-    pub use super::components::Component;
+    pub use super::resources::{
+        FixedTime, Res, ResMut, Resource, Resources, Time, Timer, TimerVariant,
+    };
+    pub use super::state::{conditions::*, NextState, State, StateTransitionEvent, States};
+    pub use super::tick::Tick;
+    pub use super::world::World;
 }

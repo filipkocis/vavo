@@ -93,7 +93,7 @@ pub fn derive_component(item: proc_macro::TokenStream) -> TokenStream {
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
     
     let expanded = quote! {
-        impl #impl_generics #path::ecs::components::Component for #name #ty_generics #where_clause {}
+        impl #impl_generics #path::ecs::entities::components::Component for #name #ty_generics #where_clause {}
     };
 
     TokenStream::from(expanded)

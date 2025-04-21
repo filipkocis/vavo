@@ -22,7 +22,7 @@ impl World {
         };
 
         // Initialize entities
-        // world.entities.initialize_tick(&world.tick);
+        world.entities.initialize_tick(&world.tick);
 
         // Initialize resources
         world.resources.initialize_tick(&world.tick);

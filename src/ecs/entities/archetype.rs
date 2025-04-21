@@ -1,6 +1,6 @@
 use std::{any::{Any, TypeId}, collections::HashMap, hash::{DefaultHasher, Hash, Hasher}};
 
-use crate::query::filter::Filters;
+use crate::{prelude::Tick, query::filter::Filters};
 
 use super::{EntityId, QueryComponentType};
 
@@ -15,8 +15,8 @@ pub struct Archetype {
     /// Stores component type ids and their index in `self.components`
     types: HashMap<TypeId, usize>,
     /// Same layout as components, stores the last tick the component was updated
-    ticks: Vec<Vec<u64>>,
-    current_tick: *const u64,
+    ticks: Vec<Vec<Tick>>,
+    current_tick: *const Tick,
 
     /// Components of the same type are stored together in a row:
     ///
@@ -33,7 +33,7 @@ pub struct Archetype {
 }
 
 impl Archetype {
-    pub fn new(types: Vec<TypeId>, current_tick: *const u64) -> Self {
+    pub fn new(types: Vec<TypeId>, current_tick: *const Tick) -> Self {
         assert!(!current_tick.is_null(), "Cannot create archetype, current_tick pointer is null");
 
         let original_len = types.len();
@@ -121,7 +121,7 @@ impl Archetype {
         false
     }
 
-    fn current_tick(&self) -> u64 {
+    fn current_tick(&self) -> Tick {
         unsafe { *self.current_tick }
     }
 

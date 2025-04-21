@@ -57,8 +57,5 @@ impl Plugin for TimePlugin {
     fn build(&self, app: &mut App) {
         app.world.resources.insert(Time::new());
         app.world.resources.insert(FixedTime::from_hz(60.0));
-
-        let time = app.world.resources.get::<Time>().unwrap();
-        app.world.entities.initialize_tick(time.tick_raw());
     }
 }

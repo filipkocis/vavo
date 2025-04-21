@@ -1,10 +1,8 @@
 use std::any::Any;
 
-use crate::ecs::entities::EntityId;
+use crate::ecs::entities::{EntityId, Component};
 
 use super::{filter::{Filters, QueryFilter}, Query, QueryComponentType};
-
-use crate::ecs::components::Component;
 
 pub trait RunQuery {
     type Output;

@@ -14,7 +14,7 @@ use crate::macros::{Component, Reflect};
 use archetype::{Archetype, ArchetypeId};
 use relation::{Children, Parent};
 
-use super::prelude::Component;
+use super::tick::Tick;
 
 /// Unique identifier for an [entity](Entities) in a [`World`](crate::ecs::world::World)
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
@@ -48,10 +48,11 @@ impl Sub<u32> for EntityId {
 }
 
 #[derive(Debug)]
+/// Entity store, manages archetypes and all their entities (components) in the `world`
 pub struct Entities {
     next_entity_id: EntityId,
     archetypes: HashMap<ArchetypeId, Archetype>, // Map archetype ID to its storage
-    current_tick: *const u64,
+    current_tick: *const Tick,
 }
 
 
@@ -73,8 +74,8 @@ impl Entities {
     }
 
     /// Initialize tick pointer, necessary for entity creation. Done in
-    /// [`TimePlugin`](crate::plugins::TimePlugin)
-    pub fn initialize_tick(&mut self, current_tick: *const u64) {
+    /// [`World`](crate::prelude::World) initialization.
+    pub fn initialize_tick(&mut self, current_tick: *const Tick) {
         self.current_tick = current_tick
     }
 
