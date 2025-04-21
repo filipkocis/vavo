@@ -20,6 +20,16 @@ impl UntypedPtr {
     }
 
     #[inline]
+    /// Creates new untyped pointer
+    ///
+    /// # Safety
+    /// Pointer must be non-null and valid
+    pub fn new_raw(ptr: *mut u8) -> Self {
+        let ptr = unsafe { NonNull::new_unchecked(ptr) };
+        Self { ptr }
+    }
+
+    #[inline]
     /// Unwraps the pointer
     pub fn inner(self) -> NonNull<u8> {
         self.ptr
@@ -48,16 +58,20 @@ pub struct DataPtr {
 /// Provides automatic change detection update on mutable deref
 pub struct DataPtrMut {
     ptr: UntypedPtr,
-    stamp: TickStampMut, }
+    stamp: TickStampMut,
+}
 
 impl DataPtr {
     #[inline]
     /// Creates a new typed pointer from a (blob's) raw pointer and it's timestamps
     pub fn new(data: UntypedPtr, stamp: TickStamp) -> Self {
-        Self {
-            ptr: data,
-            stamp,
-        }
+        Self { ptr: data, stamp }
+    }
+
+    #[inline]
+    /// Returns the inner raw pointer
+    pub(crate) fn raw(&self) -> *const u8 {
+        self.ptr.as_ptr().as_ptr()
     }
 
     #[inline]
@@ -77,10 +91,13 @@ impl DataPtrMut {
     #[inline]
     /// Creates a new mutable typed pointer from a (blob's) raw pointer and it's timestamps
     pub fn new(data: UntypedPtr, stamp: TickStampMut) -> Self {
-        Self {
-            ptr: data,
-            stamp,
-        }
+        Self { ptr: data, stamp }
+    }
+
+    #[inline]
+    /// Returns the inner raw pointer
+    pub(crate) fn raw(&mut self) -> *mut u8 {
+        self.ptr.as_ptr().as_ptr()
     }
 
     #[inline]
