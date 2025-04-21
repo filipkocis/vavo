@@ -1,9 +1,9 @@
-use std::any::TypeId;
+use std::{alloc::Layout, any::TypeId, collections::HashMap};
 
 use crate::{
     ecs::{
-        ptr::{DataPtr, DataPtrMut},
-        store::blob::BlobVec,
+        ptr::{DataPtr, DataPtrMut, UntypedPtr},
+        store::blob::{BlobVec, DropFn},
         tick::{TickStamp, TickStampMut},
     },
     prelude::Tick,
@@ -16,9 +16,22 @@ pub trait Component: Send + Sync + 'static {
     }
 }
 
+// /// Type registry for components.
+// pub(crate) struct ComponentsRegistry {
+//     store: HashMap<TypeId, ComponentInfo>,
+// }
+
+#[derive(Debug)]
+/// Holds metadata about a component type.
+pub(crate) struct ComponentInfo {
+    pub type_id: TypeId,
+    pub layout: Layout,
+    pub drop: Option<DropFn>,
+}
+
+#[derive(Debug)]
 /// Holds type-erased components of one type in a row, and their metadata.
 pub(crate) struct ComponentsData {
-    /// TypeId of the stored components
     type_id: TypeId,
     /// Components storage
     data: BlobVec,
@@ -29,13 +42,12 @@ pub(crate) struct ComponentsData {
 }
 
 impl ComponentsData {
-    /// Create new empty components row of type `C`
-    pub(crate) fn new<C: Component>() -> Self {
-        let type_id = C::get_type_id();
-        let data = BlobVec::new_type::<C>(0);
+    /// Create new empty components row based on its [`ComponentInfo`].
+    pub(crate) fn new(info: &ComponentInfo) -> Self {
+        let data = BlobVec::new(info.layout, info.drop, 0);
 
         Self {
-            type_id,
+            type_id: info.type_id,
             data,
             changed_at: Vec::new(),
             added_at: Vec::new(),
@@ -71,7 +83,7 @@ impl ComponentsData {
     ///
     /// # Panics
     /// Panics if `index` is out of bounds.
-    pub fn get<C: Component>(&self, index: usize, current_tick: Tick) -> DataPtr<C> {
+    pub fn get(&self, index: usize, current_tick: Tick) -> DataPtr {
         debug_assert!(index < self.len(), "Index out of bounds");
 
         // Safety: type is correct and index is callers responsibility
@@ -84,7 +96,7 @@ impl ComponentsData {
     ///
     /// # Panics
     /// Panics if `index` is out of bounds.
-    pub fn get_mut<C: Component>(&mut self, index: usize, current_tick: Tick) -> DataPtrMut<C> {
+    pub fn get_mut(&mut self, index: usize, current_tick: Tick) -> DataPtrMut {
         debug_assert!(index < self.len(), "Index out of bounds");
 
         // Safety: type is correct and index is callers responsibility
@@ -92,11 +104,12 @@ impl ComponentsData {
         DataPtrMut::new(ptr, self.get_ticks_mut(index, current_tick))
     }
 
-    // TODO: refactor, no monomorphic function. Best case is remove T from DataPtr and from BlobVec
-    // public api, move it up to archetype/queryrun and res/resmut itself
     #[inline]
     /// Removes component at `index` and returns `(component, changed_at, added_at)` tuple.
-    pub fn remove<C: Component>(&mut self, index: usize) -> (C, Tick, Tick) {
+    ///
+    /// # Panics
+    /// Panics if `index` is out of bounds.
+    pub fn remove(&mut self, index: usize) -> (UntypedPtr, Tick, Tick) {
         debug_assert!(index < self.len(), "Index out of bounds");
 
         // Safety: type is correct and index is callers responsibility
@@ -108,9 +121,33 @@ impl ComponentsData {
     }
 
     #[inline]
+    /// Sets component at `index` to `component` and updates its ticks to `added_at` since 'set' is
+    /// considered a new addition.
+    ///
+    /// # Panics
+    /// Panics if `index` is out of bounds.
+    ///
+    /// # Safety
+    /// You must ensure the component is of the same type as this row.
+    pub fn set(&mut self, index: usize, component: UntypedPtr, added_at: Tick) {
+        debug_assert!(index < self.len(), "Index out of bounds");
+
+        // Safety: callers responsibility
+        unsafe {
+            self.data.set(component, index);
+        }
+
+        self.changed_at[index] = added_at;
+        self.added_at[index] = added_at;
+    }
+
+    #[inline]
     /// Insert new component with its `changed_at` and `added_at` ticks.
-    pub fn insert<C: Component>(&mut self, component: C, changed_at: Tick, added_at: Tick) {
-        // Safety: type and value is correct
+    ///
+    /// # Safety
+    /// You must ensure the component is of the same type as this row.
+    pub fn insert(&mut self, component: UntypedPtr, changed_at: Tick, added_at: Tick) {
+        // Safety: callers responsibility
         unsafe {
             self.data.push(component);
         }
