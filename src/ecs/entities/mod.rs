@@ -3,10 +3,9 @@ pub mod relation;
 pub mod components;
 
 pub use components::Component;
+use components::ComponentInfoPtr;
 
-use std::{
-    any::{Any, TypeId}, collections::HashMap, hash::Hash, ops::{Add, Sub}
-};
+use std::{any::TypeId, collections::HashMap, hash::Hash, ops::{Add, Sub}};
 
 use crate::query::{filter::Filters, QueryComponentType};
 use crate::macros::{Component, Reflect};
@@ -14,7 +13,7 @@ use crate::macros::{Component, Reflect};
 use archetype::{Archetype, ArchetypeId};
 use relation::{Children, Parent};
 
-use super::tick::Tick;
+use super::{ptr::UntypedPtr, tick::Tick};
 
 /// Unique identifier for an [entity](Entities) in a [`World`](crate::ecs::world::World)
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
@@ -68,6 +67,12 @@ impl Entities {
         }
     }
 
+    #[inline]
+    /// Returns current tick
+    pub fn tick(&self) -> Tick {
+        unsafe { *self.current_tick }
+    }
+
     /// Exposes archetyeps
     pub fn archetypes(&self) -> impl Iterator<Item = &Archetype> { 
         self.archetypes.values().into_iter()
@@ -108,16 +113,18 @@ impl Entities {
     ///
     /// # Panic
     /// Panics if components contain EntityId
-    pub(crate) fn spawn_entity(&mut self, entity_id: EntityId, mut components: Vec<Box<dyn Any>>) {
+    pub(crate) fn spawn_entity(&mut self, entity_id: EntityId, mut components: Vec<(ComponentInfoPtr, UntypedPtr)>) {
         let entity_id_type = TypeId::of::<EntityId>();
         assert!(
-            !components.iter().any(|c| (**c).type_id() == entity_id_type),
+            !components.iter().any(|(info, _)| info.as_ref().type_id == entity_id_type),
             "Cannot insert EntityId as a component"
         );
 
+        let tick = self.tick();
+        let components = components.into_iter().map(|(info, ptr)| (info, ptr, tick, tick)).collect::<Vec<_>>();
         components.push(Box::new(entity_id));
-        let types = components.iter().map(|c| (**c).type_id()).collect::<Vec<_>>();
-        let archetype_id = Archetype::hash_types(types.clone()); 
+        let infos = components.iter().map(|(info, ..)| *info).collect::<Vec<_>>();
+        let archetype_id = Archetype::hash_types(infos.clone()); 
 
         assert!(
             self.next_entity_id == entity_id, 
@@ -127,7 +134,7 @@ impl Entities {
         self.step_entity_id();
 
         self.archetypes.entry(archetype_id)
-            .or_insert_with(|| Archetype::new(types, self.current_tick))
+            .or_insert_with(|| Archetype::new(infos, self.current_tick))
             .insert_entity(entity_id, components);
     }
 
@@ -169,32 +176,33 @@ impl Entities {
     ///
     /// # Panics
     /// Panics if components type_id is EntityId
-    pub(crate) fn insert_component(&mut self, entity_id: EntityId, component: Box<dyn Any>, replace: bool) {
-        let type_id = (*component).type_id(); 
+    pub(crate) fn insert_component(&mut self, entity_id: EntityId, component: UntypedPtr, info: ComponentInfoPtr, replace: bool) {
+        let current_tick = self.tick();
+        let type_id = info.as_ref().type_id;
         assert_ne!(type_id, TypeId::of::<EntityId>(), "Cannot insert EntityId as a component");
 
         let mut emptied_archetype = None;
         if let Some((id, archetype)) = self.archetypes.iter_mut().find(|(_, a)| a.has_entity(&entity_id)) {
             if archetype.has_type(&type_id) {
                 if replace {
-                    assert!(archetype.update_component(entity_id, component), "Failed to update component");
+                    assert!(archetype.set_component(entity_id, component, info.as_ref().type_id), "Failed to set component");
                 }
                 return;
             }
 
             let mut old_components = archetype.remove_entity(entity_id).expect("entity_id should exist in archetype");
-            old_components.push(component);
+            old_components.push((info, component, current_tick, current_tick));
 
             if archetype.len() == 0 {
                 emptied_archetype = Some(*id);
             }
 
-            let mut types = archetype.types_vec();
-            types.push(type_id);
+            let mut infos = archetype.types_vec();
+            infos.push(info);
 
-            let archetype_id = Archetype::hash_types(types.clone());
+            let archetype_id = Archetype::hash_types(infos.clone());
             self.archetypes.entry(archetype_id)
-                .or_insert_with(|| Archetype::new(types, self.current_tick))
+                .or_insert_with(|| Archetype::new(infos, self.current_tick))
                 .insert_entity(entity_id, old_components);
         }
 
@@ -239,6 +247,7 @@ impl Entities {
 
     /// Get component mutably
     pub(crate) fn get_component_mut<C: Component>(&mut self, entity_id: EntityId) -> Option<&mut C> {
+        let current_tick = self.tick();
         let type_id = TypeId::of::<C>();
         for archetype in self.archetypes.values_mut() {
             let entity_index = match archetype.get_entity_index(entity_id) {
@@ -248,8 +257,9 @@ impl Entities {
 
             if let Some(component_index) = archetype.get_component_index(&type_id) {
                 archetype.mark_mutated_single(entity_index, component_index);
-                let component = &mut archetype.components[component_index][entity_index];
-                return component.downcast_mut::<C>();
+                let raw = archetype.components[component_index].get_mut(entity_index, current_tick).raw();
+                let cast = unsafe { &mut *(raw as *mut C) };
+                return Some(cast);
             } else {
                 return None
             }
@@ -268,8 +278,9 @@ impl Entities {
             };
 
             if let Some(component_index) = archetype.get_component_index(&type_id) {
-                let component = &archetype.components[component_index][entity_index];
-                return component.downcast_ref::<C>();
+                let raw = archetype.components[component_index].get(entity_index, self.tick()).raw();
+                let cast = unsafe { &*(raw as *const C) };
+                return Some(cast);
             } else {
                 return None
             }
@@ -292,10 +303,14 @@ impl Entities {
         if let Some(children) = self.get_component_mut::<Children>(parent_id) {
             children.add(child_id);
         } else {
-            self.insert_component(parent_id, Box::new(Children::new(vec![child_id])), true);
+            let ptr = Box::into_raw(Box::new(Children::new(vec![child_id]))) as *mut _;
+            let ptr = UntypedPtr::new_raw(ptr);
+            self.insert_component(parent_id, ptr, info, true);
         }
 
-        self.insert_component(child_id, Box::new(Parent::new(parent_id)), true);
+        let ptr = Box::into_raw(Box::new(Parent::new(parent_id))) as *mut _;
+        let ptr = UntypedPtr::new_raw(ptr);
+        self.insert_component(child_id, ptr, info, true);
     }
 
     /// Remove child from parent's Children component, and remove Parent component from child
