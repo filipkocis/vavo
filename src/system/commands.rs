@@ -1,8 +1,9 @@
-use std::any::{Any, TypeId};
+use std::any::TypeId;
 
 use crate::{
     ecs::{
-        entities::{EntityId, Component},
+        entities::{components::ComponentInfo, Component, EntityId},
+        ptr::UntypedPtr,
         resources::{Resource, ResourceData},
         tick::Tick,
         world::World,
@@ -16,7 +17,7 @@ enum Command {
     SpawnEntity(EntityId),
     DespawnEntity(EntityId),
     DespawnEntityRecursive(EntityId),
-    InsertComponent(EntityId, Box<dyn Any>, bool),
+    InsertComponent(EntityId, UntypedPtr, ComponentInfo, bool),
     RemoveComponent(EntityId, TypeId),
     AddChild(EntityId, EntityId),
     RemoveChild(EntityId, EntityId),
@@ -161,9 +162,19 @@ impl<'a> EntityCommands<'a> {
 
     /// Inserts a new component
     fn insert_internal<C: Component>(&mut self, component: C, replace: bool) {
+        let ptr = Box::into_raw(Box::new(component)) as *mut _;
+        let ptr = UntypedPtr::new_raw(ptr);
+
+        let component_info = ComponentInfo {
+            type_id: TypeId::of::<C>(),
+            layout: std::alloc::Layout::new::<C>(),
+            drop: TODO,
+        };
+
         self.commands.commands.push(Command::InsertComponent(
             self.entity_id,
-            Box::new(component),
+            ptr,
+            component_info,
             replace,
         ));
     }
@@ -244,10 +255,10 @@ impl Commands {
                 Command::DespawnEntityRecursive(entity_id) => {
                     world.entities.despawn_entity_recursive(entity_id);
                 }
-                Command::InsertComponent(entity_id, component, replace) => {
+                Command::InsertComponent(entity_id, component, info, replace) => {
                     world
                         .entities
-                        .insert_component(entity_id, component, replace);
+                        .insert_component(entity_id, component, info, replace);
                 }
                 Command::RemoveComponent(entity_id, type_id) => {
                     world.entities.remove_component(entity_id, type_id);
