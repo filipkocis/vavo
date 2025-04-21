@@ -55,6 +55,20 @@ impl ComponentsData {
     }
 
     #[inline]
+    /// Check if component at `index` has changed at `tick`.
+    pub fn has_changed(&self, index: usize, current_tick: Tick) -> bool {
+        debug_assert!(index < self.len(), "Index out of bounds");
+        self.changed_at[index] == current_tick
+    }
+
+    #[inline]
+    /// Check if component at `index` was added at `tick`.
+    pub fn was_added(&self, index: usize, current_tick: Tick) -> bool {
+        debug_assert!(index < self.len(), "Index out of bounds");
+        self.added_at[index] == current_tick
+    }
+
+    #[inline]
     /// Returns the type id of the components
     pub fn get_type_id(&self) -> TypeId {
         self.type_id
