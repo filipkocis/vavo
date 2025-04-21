@@ -1,106 +1,94 @@
 use std::{any::{Any, TypeId}, collections::HashMap, hash::{DefaultHasher, Hash, Hasher}};
 
-use crate::{prelude::Tick, query::filter::Filters};
+use crate::{ecs::ptr::UntypedPtr, prelude::Tick, query::filter::Filters};
 
-use super::{EntityId, QueryComponentType};
+use super::{components::{ComponentInfoPtr, ComponentsData}, EntityId, QueryComponentType};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub(super) struct ArchetypeId(u64);
 
 #[derive(Debug)]
 pub struct Archetype {
-    /// Vec of entity ids in this archetype, where the index corresponds to the entity's component
-    /// in `self.components[component_index]`
-    entity_ids: Vec<EntityId>,
     /// Stores component type ids and their index in `self.components`
-    types: HashMap<TypeId, usize>,
-    /// Same layout as components, stores the last tick the component was updated
-    ticks: Vec<Vec<Tick>>,
+    types: HashMap<TypeId, (usize, ComponentInfoPtr)>,
     current_tick: *const Tick,
-
-    /// Components of the same type are stored together in a row:
-    ///
-    /// `row 0: A components`
-    /// `row 1: B components`
-    /// `row 2: ...`
-    ///
-    ///
-    /// Indexes in rows correspond to entity_ids indexes, so that index N in each row represents
-    /// the same entity and its components:
-    ///
-    /// `entity_ids: E1, E2, E3`
-    pub components: Vec<Vec<Box<dyn Any>>>,
+    /// Entity ids in this archetype, `self.entity_ids[entity]` has components at
+    /// `self.components[N][entity]` `
+    entity_ids: Vec<EntityId>,
+    /// Component buckets
+    pub components: Vec<ComponentsData>,
 }
 
 impl Archetype {
-    pub fn new(types: Vec<TypeId>, current_tick: *const Tick) -> Self {
+    /// Create new archetype with `types`.
+    pub fn new(infos: Vec<ComponentInfoPtr>, current_tick: *const Tick) -> Self {
         assert!(!current_tick.is_null(), "Cannot create archetype, current_tick pointer is null");
 
-        let original_len = types.len();
-        let types = Self::sort_types(types);
-        let types = types.into_iter().enumerate()
-            .map(|(i, v)| (v, i))
-            .collect::<HashMap<TypeId, usize>>();
+        let original_len = infos.len();
+        let sorted_types = Self::sort_types(infos);
+
+        let components = sorted_types.iter()
+            .map(|t| ComponentsData::new(*t)).collect();
+
+        let types = sorted_types.into_iter().enumerate()
+            .map(|(i, v)| (v.as_ref().type_id, (i, v)))
+            .collect::<HashMap<_, _>>();
 
         assert!(types.len() == original_len, "Duplicate types in archetype");
-
-        let components = types.iter().map(|_| Vec::new()).collect();
-        let ticks = types.iter().map(|_| Vec::new()).collect();
 
         Self {
             entity_ids: Vec::new(),
             types,
-            ticks,
             current_tick,
             components,
         }
     }
 
     /// Insert new entity
-    pub(super) fn insert_entity(&mut self, entity_id: EntityId, components: Vec<Box<dyn Any>>) {
+    pub(super) fn insert_entity(&mut self, entity_id: EntityId, components: Vec<(ComponentInfoPtr, UntypedPtr, Tick, Tick)>) {
         self.entity_ids.push(entity_id);
 
-        let components = components.into_iter()
-            .map(|v| ((*v).type_id(), v))
-            .collect::<Vec<_>>();
+        // let components = components.into_iter()
+        //     .map(|v| ((*v).type_id(), v))
+        //     .collect::<Vec<_>>();
 
-        let component_types = components.iter().map(|(t, _)| *t).collect::<Vec<_>>();
+        let component_types = components.iter().map(|(t, ..)| t.as_ref().type_id).collect::<Vec<_>>();
         assert!(self.has_types_all(&component_types), "Component types mismatch with archetype types");
 
-        for (type_id, component) in components {
-            let component_index = self.types[&type_id];
-            self.components[component_index].push(component);
-            let current_tick = self.current_tick();
-            self.ticks[component_index].push(current_tick.max(1)); // 0 is during startup
+        for (info, component, changed_at, added_at) in components {
+            let component_index = self.types[&info.as_ref().type_id].0;
+            self.components[component_index].insert(component, changed_at, added_at);
+
+            // TODO: this is no longer valid syntax, so find a place where to use tick+=1 or
+            // tick.max(1)
+            // let current_tick = self.current_tick();
+            // self.ticks[component_index].push(current_tick.max(1)); // 0 is during startup
         }
 
-        assert!(
+        debug_assert!(
             self.components.iter().all(|row| row.len() == self.entity_ids.len()), 
             "Specific components length mismatch with entity IDs length"
         );
-        assert!(
-            self.ticks.iter().all(|row| row.len() == self.entity_ids.len()), 
-            "Specific ticks length mismatch with entity IDs length"
-        );
-        assert!(
+        debug_assert!(
             self.components.len() == self.types.len(),
             "Components length mismatch with types length"
         );
-        assert!(
-            self.ticks.len() == self.types.len(),
-            "Ticks length mismatch with types length"
-        );
     }
 
-    /// Remove entity, returns removed components or None if entity_id doesn't exist
-    pub(super) fn remove_entity(&mut self, entity_id: EntityId) -> Option<Vec<Box<dyn Any>>> {
+    /// Remove entity, returns removed components with `(changed_at, added_at)` ticks or None if entity_id doesn't exist
+    pub(super) fn remove_entity(&mut self, entity_id: EntityId) -> Option<Vec<(ComponentInfoPtr, UntypedPtr, Tick, Tick)>> {
         if let Some(index) = self.entity_ids.iter().position(|id| *id == entity_id) {
             self.entity_ids.remove(index);
-            self.ticks.iter_mut().for_each(|ticks| { ticks.remove(index); });
 
             let mut removed = Vec::with_capacity(self.components.len());
-            for components in self.components.iter_mut() {
-                removed.push(components.remove(index))
+            for (components_data, (_, info_ptr)) in self.components.iter_mut().zip(self.types.values()) {
+                let rem = components_data.remove(index);
+                removed.push((
+                    *info_ptr,
+                    rem.0,
+                    rem.1,
+                    rem.2,
+                ))
             }
 
             return Some(removed);
@@ -109,51 +97,56 @@ impl Archetype {
         None
     }
 
-    /// Update component, returns true if successful
-    pub(super) fn update_component(&mut self, entity_id: EntityId, component: Box<dyn Any>) -> bool {
+    /// Sets component to a new value, returns true if successful
+    pub(super) fn set_component(&mut self, entity_id: EntityId, component: UntypedPtr, type_id: TypeId) -> bool {
+        let current_tick = self.current_tick();
         if let Some(entity_index) = self.entity_ids.iter().position(|id| *id == entity_id) {
-            let type_id = (*component).type_id();
-            let component_index = self.types[&type_id];
-            self.components[component_index][entity_index] = component;
+            let component_index = self.types[&type_id].0;
+            self.components[component_index].set(entity_index, component, current_tick);
             self.mark_mutated_single(entity_index, component_index);
             return true
         }
         false
     }
 
+    #[inline]
     fn current_tick(&self) -> Tick {
         unsafe { *self.current_tick }
     }
 
-    /// Mark all components in a row of a specific type as changed
-    pub(crate) fn mark_mutated(&mut self, type_index: usize) {
-        let current_tick = self.current_tick();
-        self.ticks[type_index].iter_mut().for_each(|tick| *tick = current_tick);
-    }
-
-    /// Mark a specific component of an entity as changed
-    pub(crate) fn mark_mutated_single(&mut self, entity_index: usize, type_index: usize) {
-        self.ticks[type_index][entity_index] = self.current_tick();
-    }
-
-    pub(crate) fn components_at_mut(&mut self, index: usize) -> *mut Vec<Box<dyn Any>> {
-        &mut self.components[index]
-    }
-
-    /// Returns sorted types
-    pub fn sort_types(mut types: Vec<TypeId>) -> Vec<TypeId> {
-        types.sort_by(|a, b| a.cmp(b));
-        types
-    }
-
+    #[inline]
     /// Amount of entities in this archetype
     pub fn len(&self) -> usize {
         self.entity_ids.len()
     }
 
+    /// Mark all components in a row of a specific type as changed
+    pub(crate) fn mark_mutated(&mut self, _type_index: usize) {
+        todo!("remove this function once query is rewritten")
+        // let current_tick = self.current_tick();
+        // self.ticks[type_index].iter_mut().for_each(|tick| *tick = current_tick);
+    }
+
+    /// Mark a specific component of an entity as changed
+    pub(crate) fn mark_mutated_single(&mut self, _entity_index: usize, _type_index: usize) {
+        todo!("remove this function once query is rewritten")
+        // self.ticks[type_index][entity_index] = self.current_tick();
+    }
+
+    pub(crate) fn components_at_mut(&mut self, _index: usize) -> *mut Vec<Box<dyn Any>> {
+        todo!("remove this function once query is rewritten")
+        // &mut self.components[index]
+    }
+
+    /// Returns sorted types
+    fn sort_types(mut types: Vec<ComponentInfoPtr>) -> Vec<ComponentInfoPtr> {
+        types.sort_by(|a, b| a.as_ref().type_id.cmp(&b.as_ref().type_id));
+        types.to_vec()
+    }
+
     /// Exposes `self.types` as a sorted vector
-    pub fn types_vec(&self) -> Vec<TypeId> {
-        let types: Vec<_> = self.types.iter().map(|(k, _)| *k).collect();
+    pub fn types_vec(&self) -> Vec<ComponentInfoPtr> {
+        let types: Vec<_> = self.types.iter().map(|(_, (_, v))| *v).collect();
         Self::sort_types(types)
     }
 
@@ -182,11 +175,6 @@ impl Archetype {
         self.types.len() == type_ids.len() && self.has_types(type_ids)
     }
 
-    /// Same as [`Self::has_type`] but with generic T type
-    pub fn has_t<T: 'static>(self) -> bool {
-        self.has_type(&TypeId::of::<T>())
-    }
-
     /// Check if archetype has `entity_id`
     pub fn has_entity(&self, entity_id: &EntityId) -> bool {
         self.entity_ids.contains(entity_id)
@@ -199,16 +187,16 @@ impl Archetype {
 
     /// Get component index in `types` if it exists
     pub fn get_component_index(&self, component_id: &TypeId) -> Option<usize> {
-        self.types.get(component_id).copied()
+        self.types.get(component_id).map(|(index, _)| *index)
     }
 
     /// Returns hash of sorted types as [`ArchetypeId`]
-    pub(super) fn hash_types(types: Vec<TypeId>) -> ArchetypeId {
+    pub(super) fn hash_types(types: Vec<ComponentInfoPtr>) -> ArchetypeId {
         let mut hasher = DefaultHasher::new();
         let types = Self::sort_types(types);
 
-        for type_id in types {
-            type_id.hash(&mut hasher);
+        for comp_info in types {
+            comp_info.as_ref().type_id.hash(&mut hasher);
         }
 
         let hash = hasher.finish();
@@ -294,11 +282,11 @@ impl Archetype {
         let current_tick = self.current_tick();
 
         // base filter
-        indices[0].iter().all(|&index| self.ticks[index][at] == current_tick)
+        indices[0].iter().all(|&index| self.components[index].has_changed(at, current_tick))
 
         // optional Or<T>
         && indices.iter().skip(1).all(|or_indices| 
-            or_indices.iter().any(|&index| self.ticks[index][at] == current_tick)
+            or_indices.iter().any(|&index| self.components[index].has_changed(at, current_tick))
         )
     }
 }
