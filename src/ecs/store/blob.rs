@@ -9,6 +9,13 @@ use crate::ecs::ptr::UntypedPtr;
 
 pub type DropFn = unsafe fn(NonNull<u8>);
 
+#[inline]
+/// Creates a new drop function for a type
+pub(crate) fn new_option_drop_fn<T>() -> Option<DropFn> {
+    needs_drop::<T>().then_some(new_drop_fn::<T> as _)
+}
+
+/// [`DropFn`] Drop function for a type
 unsafe fn new_drop_fn<T>(ptr: NonNull<u8>) {
     let ptr = ptr.cast::<T>().as_ptr();
     drop_in_place(ptr);
@@ -60,7 +67,7 @@ impl BlobVec {
     /// Create a new blob storage with the given type and capacity.
     pub fn new_type<T>(capacity: usize) -> Self {
         let layout = Layout::new::<T>();
-        let drop = needs_drop::<T>().then_some(new_drop_fn::<T> as _);
+        let drop = new_option_drop_fn::<T>();
 
         Self::new(layout, drop, capacity)
     }
