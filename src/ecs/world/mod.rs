@@ -9,27 +9,27 @@ pub struct World {
     pub entities: Entities,
     pub resources: Resources,
     /// Current world tick
-    pub tick: Tick,
+    pub tick: Box<Tick>,
     /// Component types metadata registry
     pub registry: ComponentsRegistry,
 }
 
 impl World {
     pub fn new() -> Self {
-        let resources = Resources::new();
+        let tick = Box::new(Tick::default());
 
         let mut world = Self {
             entities: Entities::new(),
-            resources,
-            tick: Tick::default(),
+            resources: Resources::new(),
+            tick,
             registry: ComponentsRegistry::new(),
         };
 
         // Initialize entities
-        world.entities.initialize_tick(&world.tick);
+        world.entities.initialize_tick(world.tick.as_ref());
 
         // Initialize resources
-        world.resources.initialize_tick(&world.tick);
+        world.resources.initialize_tick(world.tick.as_ref());
         world.resources.insert_default_resources();
 
         world
