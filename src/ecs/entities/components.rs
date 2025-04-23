@@ -46,6 +46,14 @@ impl ComponentInfoPtr {
     pub fn as_ref(&self) -> &ComponentInfo {
         unsafe { &*self.0 }
     }
+
+    #[inline]
+    /// Drops a component/resource
+    pub fn drop(&self, ptr: UntypedPtr) {
+        if let Some(drop_fn) = self.as_ref().drop {
+            unsafe { drop_fn(ptr.inner()) }
+        }
+    }
 }
 
 #[derive(Debug)]

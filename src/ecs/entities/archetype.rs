@@ -105,8 +105,10 @@ impl Archetype {
             self.components[component_index].set(entity_index, component, current_tick);
             self.mark_mutated_single(entity_index, component_index);
             return true
+        } else {
+            self.types[&type_id].1.drop(component);
+            return false
         }
-        false
     }
 
     #[inline]

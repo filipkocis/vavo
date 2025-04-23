@@ -148,7 +148,11 @@ impl Entities {
         // Remove entity
         let mut emptied_archetype = None;
         if let Some((id, archetype)) = self.archetypes.iter_mut().find(|(_, a)| a.has_entity(&entity_id)) {
-            archetype.remove_entity(entity_id);
+            if let Some(removed) = archetype.remove_entity(entity_id) {
+                for (info, component, ..) in removed {
+                    info.drop(component)
+                }
+            }
 
             if archetype.len() == 0 {
                 emptied_archetype = Some(*id);
@@ -186,6 +190,8 @@ impl Entities {
             if archetype.has_type(&type_id) {
                 if replace {
                     assert!(archetype.set_component(entity_id, component, info.as_ref().type_id), "Failed to set component");
+                } else {
+                    info.drop(component);
                 }
                 return;
             }
@@ -204,6 +210,8 @@ impl Entities {
             self.archetypes.entry(archetype_id)
                 .or_insert_with(|| Archetype::new(infos, self.current_tick))
                 .insert_entity(entity_id, old_components);
+        } else {
+            info.drop(component);
         }
 
         if let Some(id) = emptied_archetype {
@@ -225,7 +233,8 @@ impl Entities {
             };
 
             let mut old_components = archetype.remove_entity(entity_id).expect("entity_id should exist in archetype");
-            old_components.remove(component_index);
+            let removed = old_components.remove(component_index);
+            removed.0.drop(removed.1);
 
             if archetype.len() == 0 {
                 emptied_archetype = Some(*id);
