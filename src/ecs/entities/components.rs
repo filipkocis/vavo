@@ -3,7 +3,7 @@ use std::{alloc::Layout, any::TypeId, collections::HashMap};
 use crate::{
     ecs::{
         ptr::{DataPtr, DataPtrMut, UntypedPtr, UntypedPtrLt},
-        store::blob::{BlobVec, DropFn},
+        store::blob::{new_option_drop_fn, BlobVec, DropFn},
         tick::{TickStamp, TickStampMut},
     },
     prelude::Tick,
@@ -11,15 +11,48 @@ use crate::{
 
 /// A type which can be used as an entity component in the ECS.
 pub trait Component: Send + Sync + 'static {
+    #[inline]
     fn get_type_id() -> TypeId {
         TypeId::of::<Self>()
     }
 }
 
-// /// Type registry for components.
-// pub(crate) struct ComponentsRegistry {
-//     store: HashMap<TypeId, ComponentInfo>,
-// }
+#[derive(Debug)]
+/// Type registry for components.
+pub struct ComponentsRegistry {
+    pub(crate) store: HashMap<TypeId, ComponentInfo>,
+}
+
+impl ComponentsRegistry {
+    pub fn new() -> Self {
+        Self {
+            store: HashMap::default(),
+        }
+    }
+
+    #[inline]
+    /// Gets the [`ComponentInfo`] for a given type wrapped in a ptr.
+    pub fn get(&self, type_id: &TypeId) -> Option<ComponentInfoPtr> {
+        self.store
+            .get(type_id)
+            .map(|info| ComponentInfoPtr::new(info))
+    }
+
+    /// Register a new component type.
+    pub(crate) fn register<C: Component>(&mut self) {
+        let type_id = C::get_type_id();
+        let layout = Layout::new::<C>();
+        let drop = new_option_drop_fn::<C>();
+
+        let info = ComponentInfo {
+            type_id,
+            layout,
+            drop,
+        };
+
+        self.store.insert(info.type_id, info);
+    }
+}
 
 #[derive(Debug)]
 /// Holds metadata about a component type.
