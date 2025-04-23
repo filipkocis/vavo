@@ -12,6 +12,7 @@ use crate::{
         world::World,
     },
     math::{GlobalTransform, Transform},
+    prelude::{Children, Parent},
 };
 
 enum Command {
@@ -207,15 +208,8 @@ impl Commands {
 
     #[inline]
     fn get_or_register_comp_info<C: Component>(&mut self) -> ComponentInfoPtr {
-        let type_id = C::get_type_id();
         let registry = unsafe { &mut *self.registry }; // Safety: always valid ptr
-
-        if let Some(info) = registry.get(&type_id) {
-            info
-        } else {
-            registry.register::<C>();
-            unsafe { registry.get(&type_id).unwrap_unchecked() } // Safety: just registered
-        }
+        registry.get_or_register::<C>()
     }
 
     pub fn insert_resource<R: Resource>(&mut self, resource: R) -> &mut Self {
@@ -275,7 +269,11 @@ impl Commands {
                     world.entities.remove_component(entity_id, type_id);
                 }
                 Command::AddChild(parent_id, child_id) => {
-                    world.entities.add_child(parent_id, child_id);
+                    let parent_info = world.registry.get_or_register::<Parent>();
+                    let children_info = world.registry.get_or_register::<Children>();
+                    world
+                        .entities
+                        .add_child(parent_id, child_id, parent_info, children_info);
                 }
                 Command::RemoveChild(parent_id, child_id) => {
                     world.entities.remove_child(parent_id, child_id);

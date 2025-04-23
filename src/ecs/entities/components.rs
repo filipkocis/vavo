@@ -38,8 +38,9 @@ impl ComponentsRegistry {
             .map(|info| ComponentInfoPtr::new(info))
     }
 
+    #[inline]
     /// Register a new component type.
-    pub(crate) fn register<C: Component>(&mut self) {
+    fn register<C: Component>(&mut self) {
         let type_id = C::get_type_id();
         let layout = Layout::new::<C>();
         let drop = new_option_drop_fn::<C>();
@@ -51,6 +52,18 @@ impl ComponentsRegistry {
         };
 
         self.store.insert(info.type_id, info);
+    }
+
+    /// Returns the [`ComponentInfo`] for a given type, if it doesn't exist it will register it. 
+    pub(crate) fn get_or_register<C: Component>(&mut self) -> ComponentInfoPtr {
+        let type_id = C::get_type_id();
+
+        if let Some(info) = self.get(&type_id) {
+            info
+        } else {
+            self.register::<C>();
+            unsafe { self.get(&type_id).unwrap_unchecked() } // Safety: just registered
+        }
     }
 }
 

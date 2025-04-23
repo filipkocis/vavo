@@ -302,7 +302,13 @@ impl Entities {
     ///
     /// # Panics
     /// Panics if parent or child does not exist, or if child == parent
-    pub(crate) fn add_child(&mut self, parent_id: EntityId, child_id: EntityId) {
+    pub(crate) fn add_child(
+        &mut self,
+        parent_id: EntityId,
+        child_id: EntityId,
+        parent_info: ComponentInfoPtr,
+        children_info: ComponentInfoPtr
+    ) {
         assert_ne!(parent_id, child_id, "Parent and child cannot be the same entity");
         assert!(self.archetypes.values().any(|a| a.has_entity(&parent_id)), "Parent entity does not exist");
         assert!(self.archetypes.values().any(|a| a.has_entity(&child_id)), "Child entity does not exist");
@@ -314,12 +320,12 @@ impl Entities {
         } else {
             let ptr = Box::into_raw(Box::new(Children::new(vec![child_id]))) as *mut _;
             let ptr = UntypedPtr::new_raw(ptr);
-            self.insert_component(parent_id, ptr, info, true);
+            self.insert_component(parent_id, ptr, children_info, true);
         }
 
         let ptr = Box::into_raw(Box::new(Parent::new(parent_id))) as *mut _;
         let ptr = UntypedPtr::new_raw(ptr);
-        self.insert_component(child_id, ptr, info, true);
+        self.insert_component(child_id, ptr, parent_info, true);
     }
 
     /// Remove child from parent's Children component, and remove Parent component from child
