@@ -1,13 +1,15 @@
 use std::{
     any::TypeId,
     collections::HashMap,
+    marker::PhantomData,
+    mem::ManuallyDrop,
     ops::{Deref, DerefMut},
 };
 
 use crate::{
     assets::{AssetLoader, Assets, ShaderLoader},
     ecs::{
-        ptr::{DataPtr, DataPtrMut},
+        ptr::{DataPtr, DataPtrMut, UntypedPtr},
         resources::{FixedTime, Resource, Time},
         store::blob::BlobVec,
         tick::{Tick, TickStamp, TickStampMut},
@@ -63,36 +65,38 @@ impl ResourceData {
     }
 }
 
+#[repr(transparent)]
 /// Immutable resource reference.
 /// Holds a raw pointer to the resource.
-pub struct Res<R: Resource>(pub(crate) DataPtr<R>);
+pub struct Res<R: Resource>(DataPtr, PhantomData<R>);
 
 impl<R: Resource> Deref for Res<R> {
     type Target = R;
 
     #[inline]
     fn deref(&self) -> &Self::Target {
-        self.0.deref()
+        unsafe { &*self.0.raw().cast::<R>() }
     }
 }
 
+#[repr(transparent)]
 /// Mutable resource reference.
 /// Holds a raw mutable pointer to the resource.
-pub struct ResMut<R: Resource>(pub(crate) DataPtrMut<R>);
+pub struct ResMut<R: Resource>(DataPtrMut, PhantomData<R>);
 
 impl<R: Resource> Deref for ResMut<R> {
     type Target = R;
 
     #[inline]
     fn deref(&self) -> &Self::Target {
-        self.0.deref()
+        unsafe { &*self.0.raw().cast::<R>() }
     }
 }
 
 impl<R: Resource> DerefMut for ResMut<R> {
     #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
-        self.0.deref_mut()
+        unsafe { &mut *(self.0.raw() as *mut R) }
     }
 }
 
@@ -141,11 +145,12 @@ impl Resources {
     /// Get a resource by type.
     pub fn get<R: Resource>(&self) -> Option<Res<R>> {
         self.resources.get(&TypeId::of::<R>()).map(|r| {
-            Res(DataPtr::new(
+            let data = DataPtr::new(
                 // Safety: type is correct and index is always valid
                 unsafe { r.data.get(0) },
                 r.get_ticks(self.tick()),
-            ))
+            );
+            Res(data, PhantomData)
         })
     }
 
@@ -153,11 +158,12 @@ impl Resources {
     pub fn get_mut<R: Resource>(&mut self) -> Option<ResMut<R>> {
         let current_tick = self.tick();
         self.resources.get_mut(&TypeId::of::<R>()).map(|r| {
-            ResMut(DataPtrMut::new(
+            let data = DataPtrMut::new(
                 // Safety: type is correct and index is always valid
                 unsafe { r.data.get(0) },
                 r.get_ticks_mut(current_tick),
-            ))
+            );
+            ResMut(data, PhantomData)
         })
     }
 

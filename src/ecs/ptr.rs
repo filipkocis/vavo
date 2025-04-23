@@ -124,7 +124,7 @@ impl DataPtrMut {
 
     #[inline]
     /// Returns the inner raw pointer
-    pub(crate) fn raw(&mut self) -> *mut u8 {
+    pub(crate) fn raw(&self) -> *const u8 {
         self.ptr.as_ptr().as_ptr()
     }
 
