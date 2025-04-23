@@ -2,7 +2,10 @@ use std::any::TypeId;
 
 use crate::{
     ecs::{
-        entities::{components::ComponentInfo, Component, EntityId},
+        entities::{
+            components::{ComponentInfoPtr, ComponentsRegistry},
+            Component, EntityId,
+        },
         ptr::UntypedPtr,
         resources::{Resource, ResourceData},
         tick::Tick,
@@ -17,7 +20,7 @@ enum Command {
     SpawnEntity(EntityId),
     DespawnEntity(EntityId),
     DespawnEntityRecursive(EntityId),
-    InsertComponent(EntityId, UntypedPtr, ComponentInfo, bool),
+    InsertComponent(EntityId, UntypedPtr, ComponentInfoPtr, bool),
     RemoveComponent(EntityId, TypeId),
     AddChild(EntityId, EntityId),
     RemoveChild(EntityId, EntityId),
@@ -25,6 +28,7 @@ enum Command {
 
 pub struct Commands {
     next_entity_id: EntityId,
+    registry: *mut ComponentsRegistry,
     commands: Vec<Command>,
 }
 
@@ -160,23 +164,16 @@ impl<'a> EntityCommands<'a> {
         self
     }
 
+    #[inline]
     /// Inserts a new component
     fn insert_internal<C: Component>(&mut self, component: C, replace: bool) {
         let ptr = Box::into_raw(Box::new(component)) as *mut _;
         let ptr = UntypedPtr::new_raw(ptr);
+        let info = self.commands.get_or_register_comp_info::<C>();
 
-        let component_info = ComponentInfo {
-            type_id: TypeId::of::<C>(),
-            layout: std::alloc::Layout::new::<C>(),
-            drop: TODO,
-        };
-
-        self.commands.commands.push(Command::InsertComponent(
-            self.entity_id,
-            ptr,
-            component_info,
-            replace,
-        ));
+        self.commands
+            .commands
+            .push(Command::InsertComponent(self.entity_id, ptr, info, replace));
     }
 
     /// Checks and handles special cases of the component being inserted
@@ -203,7 +200,21 @@ impl Commands {
     pub(crate) fn build(world: &World) -> Self {
         Self {
             next_entity_id: world.entities.next_entity_id(),
+            registry: &world.registry as *const _ as *mut _,
             commands: Vec::new(),
+        }
+    }
+
+    #[inline]
+    fn get_or_register_comp_info<C: Component>(&mut self) -> ComponentInfoPtr {
+        let type_id = C::get_type_id();
+        let registry = unsafe { &mut *self.registry }; // Safety: always valid ptr
+
+        if let Some(info) = registry.get(&type_id) {
+            info
+        } else {
+            registry.register::<C>();
+            unsafe { registry.get(&type_id).unwrap_unchecked() } // Safety: just registered
         }
     }
 
