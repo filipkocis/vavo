@@ -27,13 +27,17 @@ pub(crate) struct ResourceData {
 }
 
 impl ResourceData {
+    #[inline]
     /// Creates a new resource data instance.
     pub(crate) fn new<R: Resource>(resource: R, current_tick: Tick) -> Self {
         let type_id = TypeId::of::<R>();
         let mut data = BlobVec::new_type::<R>(1);
-        // Safety: type and value is correct
+        let resource = ManuallyDrop::new(resource);
+        let ptr = &*resource as *const R as *mut _;
+        let ptr = UntypedPtr::new_raw(ptr);
+        // Safety: type and value are correct
         unsafe {
-            data.push(resource);
+            data.push(ptr);
         }
 
         Self {
