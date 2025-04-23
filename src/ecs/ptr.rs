@@ -1,7 +1,4 @@
-use std::{
-    ops::{Deref, DerefMut},
-    ptr::NonNull,
-};
+use std::ptr::NonNull;
 
 use crate::ecs::tick::{TickStamp, TickStampMut};
 
@@ -136,31 +133,5 @@ impl DataPtrMut {
     #[inline]
     pub fn added_at(&self) -> u64 {
         self.stamp.added()
-    }
-}
-
-impl<T> Deref for DataPtr<T> {
-    type Target = T;
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        unsafe { &*self.ptr }
-    }
-}
-
-impl<T> Deref for DataPtrMut<T> {
-    type Target = T;
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        unsafe { &*self.ptr }
-    }
-}
-
-impl<T> DerefMut for DataPtrMut<T> {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        self.stamp.mark_changed();
-        unsafe { &mut *self.ptr }
     }
 }
