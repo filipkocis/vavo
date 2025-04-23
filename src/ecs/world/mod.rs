@@ -1,5 +1,6 @@
 use crate::query::Query;
 
+use super::entities::components::ComponentsRegistry;
 use super::entities::Entities;
 use super::resources::Resources;
 use super::tick::Tick;
@@ -9,6 +10,8 @@ pub struct World {
     pub resources: Resources,
     /// Current world tick
     pub tick: Tick,
+    /// Component types metadata registry
+    pub registry: ComponentsRegistry,
 }
 
 impl World {
@@ -19,6 +22,7 @@ impl World {
             entities: Entities::new(),
             resources,
             tick: Tick::default(),
+            registry: ComponentsRegistry::new(),
         };
 
         // Initialize entities
