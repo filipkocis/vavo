@@ -20,7 +20,7 @@ pub trait Component: Send + Sync + 'static {
 #[derive(Debug)]
 /// Type registry for components.
 pub struct ComponentsRegistry {
-    pub(crate) store: HashMap<TypeId, ComponentInfo>,
+    pub(crate) store: HashMap<TypeId, Box<ComponentInfo>>,
 }
 
 impl ComponentsRegistry {
@@ -35,7 +35,7 @@ impl ComponentsRegistry {
     pub fn get(&self, type_id: &TypeId) -> Option<ComponentInfoPtr> {
         self.store
             .get(type_id)
-            .map(|info| ComponentInfoPtr::new(info))
+            .map(|info| ComponentInfoPtr::new(&**info))
     }
 
     #[inline]
@@ -51,7 +51,7 @@ impl ComponentsRegistry {
             drop,
         };
 
-        self.store.insert(info.type_id, info);
+        self.store.insert(info.type_id, Box::new(info));
     }
 
     /// Returns the [`ComponentInfo`] for a given type, if it doesn't exist it will register it. 
