@@ -113,7 +113,12 @@ impl Entities {
     ///
     /// # Panic
     /// Panics if components contain EntityId
-    pub(crate) fn spawn_entity(&mut self, entity_id: EntityId, mut components: Vec<(ComponentInfoPtr, UntypedPtr)>) {
+    pub(crate) fn spawn_entity(
+        &mut self, 
+        entity_id: EntityId, 
+        components: Vec<(ComponentInfoPtr, UntypedPtr)>, 
+        entity_info: ComponentInfoPtr
+    ) {
         let entity_id_type = TypeId::of::<EntityId>();
         assert!(
             !components.iter().any(|(info, _)| info.as_ref().type_id == entity_id_type),
@@ -121,8 +126,14 @@ impl Entities {
         );
 
         let tick = self.tick();
-        let components = components.into_iter().map(|(info, ptr)| (info, ptr, tick, tick)).collect::<Vec<_>>();
-        components.push(Box::new(entity_id));
+        let mut components = components.into_iter().map(|(info, ptr)| (info, ptr, tick, tick)).collect::<Vec<_>>();
+        let entity_id_ptr = UntypedPtr::new_raw(&entity_id as *const _ as *mut _);  
+        components.push((
+            entity_info,
+            entity_id_ptr,
+            tick,
+            tick,
+        ));
         let infos = components.iter().map(|(info, ..)| *info).collect::<Vec<_>>();
         let archetype_id = Archetype::hash_types(infos.clone()); 
 

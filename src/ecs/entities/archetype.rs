@@ -209,7 +209,7 @@ impl Archetype {
 impl Archetype {
     /// Evaluates filters against this archetype. 
     /// Does **NOT** check `changed` filters, only their type existence in the archetype.
-    pub fn matches_filters(&self, filters: &mut Filters) -> bool {
+    pub(crate) fn matches_filters(&self, filters: &mut Filters) -> bool {
         if filters.empty {
             return true
         }
@@ -241,7 +241,7 @@ impl Archetype {
     ///
     /// # Panics
     /// Panics if type_id in `filters.changed` is not found in archetype
-    pub fn get_changed_filter_indices(&self, filters: &Filters) -> Vec<Vec<usize>> {
+    pub(crate) fn get_changed_filter_indices(&self, filters: &Filters) -> Vec<Vec<usize>> {
         let mut result = Vec::with_capacity(1); 
 
         let base = filters.changed.iter().map(|component_id|

@@ -69,7 +69,7 @@ impl ComponentsRegistry {
 
 #[derive(Debug)]
 /// Holds metadata about a component type.
-pub(crate) struct ComponentInfo {
+pub struct ComponentInfo {
     pub type_id: TypeId,
     pub layout: Layout,
     pub drop: Option<DropFn>,
@@ -78,12 +78,12 @@ pub(crate) struct ComponentInfo {
 #[repr(transparent)]
 #[derive(Debug, Clone, Copy)]
 /// Raw pointer wrapper around [`ComponentInfo`]
-pub(crate) struct ComponentInfoPtr(*const ComponentInfo);
+pub struct ComponentInfoPtr(*const ComponentInfo);
 
 impl ComponentInfoPtr {
     #[inline]
     /// Create new ptr
-    pub fn new(ptr: *const ComponentInfo) -> Self {
+    pub(crate) fn new(ptr: *const ComponentInfo) -> Self {
         Self(ptr)
     }
 
@@ -104,7 +104,7 @@ impl ComponentInfoPtr {
 
 #[derive(Debug)]
 /// Holds type-erased components of one type in a row, and their metadata.
-pub(crate) struct ComponentsData {
+pub struct ComponentsData {
     type_id: TypeId,
     /// Components storage
     data: BlobVec,

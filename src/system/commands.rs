@@ -245,14 +245,15 @@ impl Commands {
         for command in self.commands {
             match command {
                 Command::InsertResource(type_id, mut resource_data) => {
-                    resource_data.set_tick(world.tick);
+                    resource_data.set_tick(*world.tick);
                     world.resources.insert_resource_data(type_id, resource_data);
                 }
                 Command::RemoveResource(type_id) => {
                     world.resources.remove(type_id);
                 }
                 Command::SpawnEntity(entity_id) => {
-                    world.entities.spawn_entity(entity_id, Vec::new());
+                    let entity_info = world.registry.get_or_register::<EntityId>();
+                    world.entities.spawn_entity(entity_id, Vec::new(), entity_info);
                 }
                 Command::DespawnEntity(entity_id) => {
                     world.entities.despawn_entity(entity_id);
