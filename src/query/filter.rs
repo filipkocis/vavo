@@ -1,14 +1,16 @@
 use std::{any::TypeId, marker::PhantomData};
 
+use crate::prelude::Component;
+
 /// A filter that checks if a component is marked as changed in the current frame. That is, if the
 /// component was requested as a mutable reference in a query.
-pub struct Changed<T>(PhantomData<T>);
+pub struct Changed<C: Component>(PhantomData<C>);
 
 /// A filter that checks if a component is present.
-pub struct With<T>(PhantomData<T>);
+pub struct With<C: Component>(PhantomData<C>);
 
 /// A filter that checks if a component is **not** present.
-pub struct Without<T>(PhantomData<T>);
+pub struct Without<C: Component>(PhantomData<C>);
 
 /// A special filter that checks if any of the [filters](QueryFilter) evaluate to true. 
 /// Nested Ors are not supported.
@@ -21,21 +23,21 @@ pub(crate) trait QueryFilter {
     fn into_filters(filters: &mut Filters);
 }
 
-impl<T: 'static> QueryFilter for Changed<T> {
+impl<C: Component> QueryFilter for Changed<C> {
     fn into_filters(filters: &mut Filters) {
-        filters.changed.push(TypeId::of::<T>())
+        filters.changed.push(C::get_type_id())
     }
 }
 
-impl<T: 'static> QueryFilter for With<T> {
+impl<C: Component> QueryFilter for With<C> {
     fn into_filters(filters: &mut Filters) {
-        filters.with.push(TypeId::of::<T>())
+        filters.with.push(C::get_type_id())
     }
 }
 
-impl<T: 'static> QueryFilter for Without<T> {
+impl<C: Component> QueryFilter for Without<C> {
     fn into_filters(filters: &mut Filters) {
-        filters.without.push(TypeId::of::<T>())
+        filters.without.push(C::get_type_id())
     }
 }
 
