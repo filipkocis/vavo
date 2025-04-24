@@ -60,6 +60,12 @@ impl TickStamp {
         unsafe { *self.added }.get()
     }
 
+    /// Returns the current tick.
+    #[inline]
+    pub fn current_tick(&self) -> u64 {
+        self.current.get()
+    }
+
     /// Checks if hte value was changed in the current tick.
     #[inline]
     pub fn is_changed(&self) -> bool {
@@ -101,6 +107,12 @@ impl TickStampMut {
     #[inline]
     pub fn added(&self) -> u64 {
         unsafe { *self.added }.get()
+    }
+
+    /// Returns the current tick.
+    #[inline]
+    pub fn current_tick(&self) -> u64 {
+        self.current.get()
     }
 
     /// Marks the changed tick as the current tick.

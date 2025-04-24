@@ -126,6 +126,12 @@ impl DataPtrMut {
     }
 
     #[inline]
+    /// Marks this component as changed
+    pub(crate) fn mark_changed(&mut self) {
+        self.stamp.mark_changed();
+    }
+
+    #[inline]
     pub fn changed_at(&self) -> u64 {
         self.stamp.changed()
     }
@@ -133,5 +139,11 @@ impl DataPtrMut {
     #[inline]
     pub fn added_at(&self) -> u64 {
         self.stamp.added()
+    }
+
+    /// Returns the current stamp tick.
+    #[inline]
+    pub fn current_stamp_tick(&self) -> u64 {
+        self.stamp.current_tick()
     }
 }
