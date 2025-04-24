@@ -172,7 +172,7 @@ impl App {
     pub(crate) fn update(&mut self, state: &mut AppState) {
         let mut context = RenderContext::new_update_context(state);
 
-        self.world.resources.update();
+        self.world.update();
 
         self.run_systems(SystemStage::First, context.as_renderer());
         self.run_systems(SystemStage::PreUpdate, context.as_renderer());

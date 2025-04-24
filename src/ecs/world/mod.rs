@@ -35,6 +35,12 @@ impl World {
         world
     }
 
+    /// Update function for the world, updates world tick and resources
+    pub(crate) fn update(&mut self) {
+        self.tick.increment();
+        self.resources.update();
+    }
+
     /// Creates new world query
     pub fn query<T>(&mut self) -> Query<T> {
         Query::new(&mut self.entities)

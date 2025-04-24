@@ -7,21 +7,25 @@ pub struct Tick {
 
 impl Tick {
     #[inline]
+    /// Create new tick with a starting value
     pub fn new(value: u64) -> Self {
         Self { value }
     }
 
     #[inline]
+    /// Get the current tick value
     pub fn get(&self) -> u64 {
         self.value
     }
 
     #[inline]
+    /// Set the tick value
     pub fn set(&mut self, value: u64) {
         self.value = value;
     }
 
     #[inline]
+    /// Increment the tick value by 1
     pub fn increment(&mut self) {
         self.value += 1;
     }
