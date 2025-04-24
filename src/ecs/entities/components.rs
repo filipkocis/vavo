@@ -1,4 +1,10 @@
-use std::{alloc::Layout, any::TypeId, collections::HashMap};
+use std::{
+    alloc::Layout,
+    any::TypeId,
+    collections::HashMap,
+    marker::PhantomData,
+    ops::{Deref, DerefMut},
+};
 
 use crate::{
     ecs::{
@@ -14,6 +20,68 @@ pub trait Component: Send + Sync + 'static {
     #[inline]
     fn get_type_id() -> TypeId {
         TypeId::of::<Self>()
+    }
+}
+
+#[repr(transparent)]
+/// Mutable component reference.
+/// Holds a raw mutable pointer to a component.
+pub struct Mut<C: Component>(DataPtrMut, PhantomData<C>);
+
+impl<C: Component> Mut<C> {
+    /// Creates a new mutable component reference from a raw pointer.
+    #[inline]
+    pub(crate) fn new(data: DataPtrMut) -> Self {
+        Self(data, PhantomData)
+    }
+
+    /// Returns the tick of when the component was last changed.
+    #[inline]
+    pub fn changed_at(&self) -> u64 {
+        self.0.changed_at()
+    }
+
+    /// Returns the tick of when the component was added.
+    #[inline]
+    pub fn added_at(&self) -> u64 {
+        self.0.added_at()
+    }
+
+    /// Returns whether the component was just changed.
+    #[inline]
+    pub fn just_changed(&self) -> bool {
+        self.0.changed_at() == self.0.current_stamp_tick()
+    }
+
+    /// Returns whether the component was just added.
+    #[inline]
+    pub fn just_added(&self) -> bool {
+        self.0.added_at() == self.0.current_stamp_tick()
+    }
+
+    /// Same as `deref_mut()` but without the change detection.
+    #[inline]
+    pub fn deref_mut_no_change(&mut self) -> &mut C {
+        let raw = self.0.raw() as *mut C;
+        unsafe { &mut *raw }
+    }
+}
+
+impl<C: Component> Deref for Mut<C> {
+    type Target = C;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        unsafe { &*self.0.raw().cast::<C>() }
+    }
+}
+
+impl<C: Component> DerefMut for Mut<C> {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.0.mark_changed();
+        // We just marked it as changed
+        self.deref_mut_no_change()
     }
 }
 
