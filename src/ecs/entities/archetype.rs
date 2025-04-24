@@ -81,10 +81,13 @@ impl Archetype {
             self.entity_ids.remove(index);
 
             let mut removed = Vec::with_capacity(self.components.len());
-            for (components_data, (_, info_ptr)) in self.components.iter_mut().zip(self.types.values()) {
+            for components_data in &mut self.components {
+                // TODO: create a self.types_vec copy so we dont have to use a hashmap here (if it
+                // helps the performance)
+                let info_ptr = self.types[&components_data.get_type_id()].1; 
                 let rem = components_data.remove(index);
                 removed.push((
-                    *info_ptr,
+                    info_ptr,
                     rem.0,
                     rem.1,
                     rem.2,
@@ -103,7 +106,6 @@ impl Archetype {
         if let Some(entity_index) = self.entity_ids.iter().position(|id| *id == entity_id) {
             let component_index = self.types[&type_id].0;
             self.components[component_index].set(entity_index, component, current_tick);
-            self.mark_mutated_single(entity_index, component_index);
             return true
         } else {
             self.types[&type_id].1.drop(component);

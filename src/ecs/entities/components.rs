@@ -54,7 +54,7 @@ impl ComponentsRegistry {
         self.store.insert(info.type_id, Box::new(info));
     }
 
-    /// Returns the [`ComponentInfo`] for a given type, if it doesn't exist it will register it. 
+    /// Returns the [`ComponentInfo`] for a given type, if it doesn't exist it will register it.
     pub(crate) fn get_or_register<C: Component>(&mut self) -> ComponentInfoPtr {
         let type_id = C::get_type_id();
 
