@@ -100,7 +100,9 @@ impl<R: Resource> Deref for ResMut<R> {
 impl<R: Resource> DerefMut for ResMut<R> {
     #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
-        unsafe { &mut *(self.0.raw() as *mut R) }
+        self.0.mark_changed();
+        let raw = self.0.raw() as *mut R;
+        unsafe { &mut *raw }
     }
 }
 
