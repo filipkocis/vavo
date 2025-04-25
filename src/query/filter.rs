@@ -24,24 +24,28 @@ pub(crate) trait QueryFilter {
 }
 
 impl<C: Component> QueryFilter for Changed<C> {
+    #[inline]
     fn into_filters(filters: &mut Filters) {
         filters.changed.push(C::get_type_id())
     }
 }
 
 impl<C: Component> QueryFilter for With<C> {
+    #[inline]
     fn into_filters(filters: &mut Filters) {
         filters.with.push(C::get_type_id())
     }
 }
 
 impl<C: Component> QueryFilter for Without<C> {
+    #[inline]
     fn into_filters(filters: &mut Filters) {
         filters.without.push(C::get_type_id())
     }
 }
 
 impl<F: QueryFilter> QueryFilter for Or<F> {
+    #[inline]
     fn into_filters(filters: &mut Filters) {
         let or_filters = Filters::from::<F>();
         filters.or.push(or_filters); 

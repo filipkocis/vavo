@@ -21,38 +21,45 @@ trait QueryGetType {
 }
 
 impl QueryGetType for EntityId {
+    #[inline]
     fn get_type_id() -> QueryComponentType {
         QueryComponentType::Normal(<EntityId as Component>::get_type_id())
     }
 }
 
 impl<C: Component> QueryGetType for &C {
+    #[inline]
     fn get_type_id() -> QueryComponentType {
         QueryComponentType::Normal(C::get_type_id())
     }
 }
 
 impl<C: Component> QueryGetType for &mut C {
+    #[inline]
     fn get_type_id() -> QueryComponentType {
         QueryComponentType::Normal(C::get_type_id())
     }
 }
 
 impl<C: Component> QueryGetType for Option<&C> {
+    #[inline]
     fn get_type_id() -> QueryComponentType {
         QueryComponentType::Option(C::get_type_id())
     }
 
+    #[inline]
     fn get_none() -> Self where Self: Sized {
         None
     }
 }
 
 impl<C: Component> QueryGetType for Option<&mut C> {
+    #[inline]
     fn get_type_id() -> QueryComponentType {
         QueryComponentType::Option(C::get_type_id())
     }
 
+    #[inline]
     fn get_none() -> Self where Self: Sized {
         None
     }
@@ -66,6 +73,7 @@ trait QueryGetDowncasted<'a> {
 
 impl<'a> QueryGetDowncasted<'a> for EntityId {
     type Output = EntityId;
+    #[inline]
     fn get_downcasted(comp: &mut ComponentsData, index: usize, _: Tick) -> Self::Output {
         unsafe { *comp.get_untyped_lt(index).as_ptr().cast::<EntityId>().as_ref() }
     }
@@ -73,6 +81,7 @@ impl<'a> QueryGetDowncasted<'a> for EntityId {
 
 impl<'a, C: Component> QueryGetDowncasted<'a> for &C {
     type Output = &'a C;
+    #[inline]
     fn get_downcasted(comp: &mut ComponentsData, index: usize, _: Tick) -> Self::Output {
         unsafe { comp.get_untyped_lt(index).as_ptr().cast::<C>().as_ref() }
     }
@@ -80,6 +89,7 @@ impl<'a, C: Component> QueryGetDowncasted<'a> for &C {
 
 impl<'a, C: Component> QueryGetDowncasted<'a> for &mut C {
     type Output = &'a mut C;
+    #[inline]
     fn get_downcasted(comp: &mut ComponentsData, index: usize, tick: Tick) -> Self::Output {
         comp.set_changed_at(index, tick);
         unsafe { comp.get_untyped_lt(index).as_ptr().cast::<C>().as_mut() }
@@ -88,6 +98,7 @@ impl<'a, C: Component> QueryGetDowncasted<'a> for &mut C {
 
 impl<'a, C: QueryGetDowncasted<'a>> QueryGetDowncasted<'a> for Option<C> {
     type Output = Option<C::Output>;
+    #[inline]
     fn get_downcasted(comp: &mut ComponentsData, index: usize, tick: Tick) -> Self::Output {
         Some(C::get_downcasted(comp, index, tick)) 
     }
