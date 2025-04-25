@@ -1,6 +1,4 @@
-use std::any::Any;
-
-use crate::ecs::entities::{EntityId, Component};
+use crate::{ecs::entities::{components::ComponentsData, Component, EntityId}, prelude::Tick};
 
 use super::{filter::{Filters, QueryFilter}, Query, QueryComponentType};
 
@@ -15,11 +13,6 @@ pub trait RunQuery {
 trait QueryGetType {
     /// Get component type wrapped in [`QueryComponentType`]
     fn get_type_id() -> QueryComponentType;
-
-    /// Check if component type was requested as a mutable reference
-    fn is_mut() -> bool {
-        false
-    }
 
     /// Returns `None` for option types, otherwise panics
     fn get_none() -> Self where Self: Sized {
@@ -43,10 +36,6 @@ impl<C: Component> QueryGetType for &mut C {
     fn get_type_id() -> QueryComponentType {
         QueryComponentType::Normal(C::get_type_id())
     }
-
-    fn is_mut() -> bool {
-        true
-    }
 }
 
 impl<C: Component> QueryGetType for Option<&C> {
@@ -64,10 +53,6 @@ impl<C: Component> QueryGetType for Option<&mut C> {
         QueryComponentType::Option(C::get_type_id())
     }
 
-    fn is_mut() -> bool {
-        true
-    }
-
     fn get_none() -> Self where Self: Sized {
         None
     }
@@ -76,34 +61,35 @@ impl<C: Component> QueryGetType for Option<&mut C> {
 /// Downcast the requested component archetype data into the correct target type
 trait QueryGetDowncasted<'a> {
     type Output;
-    fn get_downcasted(comp: &'a mut Box<dyn Any>) -> Self::Output;
+    fn get_downcasted(comp: &mut ComponentsData, index: usize, tick: Tick) -> Self::Output;
 }
 
 impl<'a> QueryGetDowncasted<'a> for EntityId {
     type Output = EntityId;
-    fn get_downcasted(comp: &'a mut Box<dyn Any>) -> Self::Output {
-        *comp.downcast_ref::<EntityId>().expect("downcast failed")
+    fn get_downcasted(comp: &mut ComponentsData, index: usize, _: Tick) -> Self::Output {
+        unsafe { *comp.get_untyped_lt(index).as_ptr().cast::<EntityId>().as_ref() }
     }
 }
 
 impl<'a, C: Component> QueryGetDowncasted<'a> for &C {
     type Output = &'a C;
-    fn get_downcasted(comp: &'a mut Box<dyn Any>) -> Self::Output {
-        comp.downcast_ref::<C>().expect("downcast failed")
+    fn get_downcasted(comp: &mut ComponentsData, index: usize, _: Tick) -> Self::Output {
+        unsafe { comp.get_untyped_lt(index).as_ptr().cast::<C>().as_ref() }
     }
 }
 
 impl<'a, C: Component> QueryGetDowncasted<'a> for &mut C {
     type Output = &'a mut C;
-    fn get_downcasted(comp: &'a mut Box<dyn Any>) -> Self::Output {
-        comp.downcast_mut::<C>().expect("downcast failed")
+    fn get_downcasted(comp: &mut ComponentsData, index: usize, tick: Tick) -> Self::Output {
+        comp.set_changed_at(index, tick);
+        unsafe { comp.get_untyped_lt(index).as_ptr().cast::<C>().as_mut() }
     }
 }
 
 impl<'a, C: QueryGetDowncasted<'a>> QueryGetDowncasted<'a> for Option<C> {
     type Output = Option<C::Output>;
-    fn get_downcasted(comp: &'a mut Box<dyn Any>) -> Self::Output {
-        Some(C::get_downcasted(comp)) 
+    fn get_downcasted(comp: &mut ComponentsData, index: usize, tick: Tick) -> Self::Output {
+        Some(C::get_downcasted(comp, index, tick)) 
     }
 }
 
@@ -124,10 +110,10 @@ macro_rules! impl_run_query {
             fn iter_mut(&mut self) -> Vec<($($types),+)> {
                 let mut filters = Filters::new();
                 $(filters.add::<$filter>();)*
-                let has_changed_filters = filters.has_changed_filters();
 
                 let requested_types = [$($types::get_type_id()),+];
                 let mut result = Vec::new();
+                let current_tick = unsafe { &*self.entities }.tick();
 
                 for (archetype, changed_filter_indices) in unsafe { &mut *self.entities }.archetypes_filtered(&requested_types, &mut filters) {
                     let mut type_index = 0;
@@ -149,13 +135,7 @@ macro_rules! impl_run_query {
                             };
 
                             if let Some(index) = maybe_index {
-                                // marks the whole column if query doesn't contain `changed` filters
-                                if !has_changed_filters && $types::is_mut() {
-                                    // Mark all components as mutated if $type is &mut T
-                                    archetype.mark_mutated(index);
-                                }
-
-                                Some((archetype.components_at_mut(index), index))
+                                Some(archetype.get_components_data_mut(index))
                             } else {
                                 None
                             }
@@ -163,20 +143,14 @@ macro_rules! impl_run_query {
                     )+
 
                     for entity_index in 0..archetype.len() {
-                        if !archetype.check_changed_fields(entity_index, &changed_filter_indices) {
+                        if !archetype.check_changed_fields(entity_index, &changed_filter_indices, self.system_last_run) {
                             continue;
                         }
 
                         // SAFETY: We know that the components are of the correct type $type
                         result.push(($(unsafe {
-                            if let Some((components, component_index)) = $types {
-                                // marks only specific components if query contains `changed` filters
-                                if has_changed_filters && $types::is_mut() {
-                                    // Mark entity's component as mutated if $type is &mut T
-                                    archetype.mark_mutated_single(entity_index, component_index);
-                                }
-
-                                $types::get_downcasted(&mut (&mut *components)[entity_index])
+                            if let Some(components) = $types {
+                                $types::get_downcasted(&mut *components, entity_index, current_tick)
                             } else {
                                 // If requested type is Option<T> and isn't present
                                 $types::get_none()
@@ -193,6 +167,7 @@ macro_rules! impl_run_query {
                 $(filters.add::<$filter>();)*
 
                 let requested_types = [$($types::get_type_id()),+];
+                let current_tick = unsafe { &*self.entities }.tick();
 
                 for (archetype, changed_filter_indices) in unsafe { &mut *self.entities }.archetypes_filtered(&requested_types, &mut filters) {
                     let entity_index = match archetype.get_entity_index(entity_id) {
@@ -218,26 +193,21 @@ macro_rules! impl_run_query {
                             };
 
                             if let Some(index) = maybe_index {
-                                Some((archetype.components_at_mut(index), index))
+                                Some(archetype.get_components_data_mut(index))
                             } else {
                                 None 
                             }
                         };
                     )+
 
-                    if !archetype.check_changed_fields(entity_index, &changed_filter_indices) {
+                    if !archetype.check_changed_fields(entity_index, &changed_filter_indices, self.system_last_run) {
                         return None;
                     }
 
                     // SAFETY: We know that the components are of the correct type $type
                     return Some(($(unsafe {
-                        if let Some((components, component_index)) = $types {
-                            if $types::is_mut() {
-                                // Mark entity's component as mutated if $type is &mut T
-                                archetype.mark_mutated_single(entity_index, component_index);
-                            }
-
-                            $types::get_downcasted(&mut (&mut *components)[entity_index])
+                        if let Some(components) = $types {
+                            $types::get_downcasted(&mut *components, entity_index, current_tick)
                         } else {
                             // If requested type is Option<T> and isn't present
                             $types::get_none()

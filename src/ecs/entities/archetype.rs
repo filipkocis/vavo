@@ -1,4 +1,4 @@
-use std::{any::{Any, TypeId}, collections::HashMap, hash::{DefaultHasher, Hash, Hasher}};
+use std::{any::TypeId, collections::HashMap, hash::{DefaultHasher, Hash, Hasher}};
 
 use crate::{ecs::ptr::UntypedPtr, prelude::Tick, query::filter::Filters};
 
@@ -48,21 +48,12 @@ impl Archetype {
     pub(super) fn insert_entity(&mut self, entity_id: EntityId, components: Vec<(ComponentInfoPtr, UntypedPtr, Tick, Tick)>) {
         self.entity_ids.push(entity_id);
 
-        // let components = components.into_iter()
-        //     .map(|v| ((*v).type_id(), v))
-        //     .collect::<Vec<_>>();
-
         let component_types = components.iter().map(|(t, ..)| t.as_ref().type_id).collect::<Vec<_>>();
         assert!(self.has_types_all(&component_types), "Component types mismatch with archetype types");
 
         for (info, component, changed_at, added_at) in components {
             let component_index = self.types[&info.as_ref().type_id].0;
             self.components[component_index].insert(component, changed_at, added_at);
-
-            // TODO: this is no longer valid syntax, so find a place where to use tick+=1 or
-            // tick.max(1)
-            // let current_tick = self.current_tick();
-            // self.ticks[component_index].push(current_tick.max(1)); // 0 is during startup
         }
 
         debug_assert!(
@@ -118,28 +109,16 @@ impl Archetype {
         unsafe { *self.current_tick }
     }
 
-    #[inline]
     /// Amount of entities in this archetype
+    #[inline]
     pub fn len(&self) -> usize {
         self.entity_ids.len()
     }
 
-    /// Mark all components in a row of a specific type as changed
-    pub(crate) fn mark_mutated(&mut self, _type_index: usize) {
-        todo!("remove this function once query is rewritten")
-        // let current_tick = self.current_tick();
-        // self.ticks[type_index].iter_mut().for_each(|tick| *tick = current_tick);
-    }
-
-    /// Mark a specific component of an entity as changed
-    pub(crate) fn mark_mutated_single(&mut self, _entity_index: usize, _type_index: usize) {
-        todo!("remove this function once query is rewritten")
-        // self.ticks[type_index][entity_index] = self.current_tick();
-    }
-
-    pub(crate) fn components_at_mut(&mut self, _index: usize) -> *mut Vec<Box<dyn Any>> {
-        todo!("remove this function once query is rewritten")
-        // &mut self.components[index]
+    /// Returns a pointer to the [`ComponentsData`] at `index`
+    #[inline]
+    pub(crate) fn get_components_data_mut(&mut self, index: usize) -> *mut ComponentsData {
+        &mut self.components[index]
     }
 
     /// Returns sorted types
@@ -155,6 +134,7 @@ impl Archetype {
     }
 
     /// Check if `type_id` exists in self
+    #[inline]
     pub fn has_type(&self, type_id: &TypeId) -> bool {
         self.types.contains_key(type_id)
     }

@@ -98,16 +98,16 @@ impl ComponentsRegistry {
         }
     }
 
-    #[inline]
     /// Gets the [`ComponentInfo`] for a given type wrapped in a ptr.
+    #[inline]
     pub fn get(&self, type_id: &TypeId) -> Option<ComponentInfoPtr> {
         self.store
             .get(type_id)
             .map(|info| ComponentInfoPtr::new(&**info))
     }
 
-    #[inline]
     /// Register a new component type.
+    #[inline]
     fn register<C: Component>(&mut self) {
         let type_id = C::get_type_id();
         let layout = Layout::new::<C>();
@@ -149,20 +149,20 @@ pub struct ComponentInfo {
 pub struct ComponentInfoPtr(*const ComponentInfo);
 
 impl ComponentInfoPtr {
-    #[inline]
     /// Create new ptr
+    #[inline]
     pub(crate) fn new(ptr: *const ComponentInfo) -> Self {
         Self(ptr)
     }
 
-    #[inline]
     /// Returns a reference to the pointer
+    #[inline]
     pub fn as_ref(&self) -> &ComponentInfo {
         unsafe { &*self.0 }
     }
 
-    #[inline]
     /// Drops a component/resource
+    #[inline]
     pub fn drop(&self, ptr: UntypedPtr) {
         if let Some(drop_fn) = self.as_ref().drop {
             unsafe { drop_fn(ptr.inner()) }
@@ -196,50 +196,50 @@ impl ComponentsData {
         }
     }
 
-    #[inline]
     /// Check if component at `index` has changed since `tick`.
+    #[inline]
     pub fn changed_since(&self, index: usize, tick: Tick) -> bool {
         debug_assert!(index < self.len(), "Index out of bounds");
         self.changed_at[index] > tick
     }
 
-    #[inline]
     /// Check if component at `index` was added at `tick`.
+    #[inline]
     pub fn was_added(&self, index: usize, current_tick: Tick) -> bool {
         debug_assert!(index < self.len(), "Index out of bounds");
         self.added_at[index] == current_tick
     }
 
-    #[inline]
     /// Returns the type id of the components
+    #[inline]
     pub fn get_type_id(&self) -> TypeId {
         self.type_id
     }
 
-    #[inline]
     /// Returns the number of stored components
+    #[inline]
     pub fn len(&self) -> usize {
         self.data.len()
     }
 
-    #[inline]
     /// Returns immutable [`TickStamp`] for component at `index`.
+    #[inline]
     pub fn get_ticks(&self, i: usize, current_tick: Tick) -> TickStamp {
         TickStamp::new(&self.changed_at[i], &self.added_at[i], current_tick)
     }
 
-    #[inline]
     /// Returns mutable [`TickStampMut`] for component at `index`.
+    #[inline]
     pub fn get_ticks_mut(&mut self, i: usize, current_tick: Tick) -> TickStampMut {
         TickStampMut::new(&mut self.changed_at[i], &mut self.added_at[i], current_tick)
     }
 
-    #[inline]
     /// Returns [`UntypedPtrLt`] for component at `index`. Useful for when you need just the data,
     /// and it needs to be tied with a lifetime.
     ///
     /// # Panics
     /// Panics if `index` is out of bounds.
+    #[inline]
     pub fn get_untyped_lt<'a>(&'a self, index: usize) -> UntypedPtrLt<'a> {
         debug_assert!(index < self.len(), "Index out of bounds");
         // Safety: index is callers responsibility
@@ -247,11 +247,18 @@ impl ComponentsData {
         UntypedPtrLt::new(untyped)
     }
 
+    /// Set the `changed_at` tick for component at `index`.
     #[inline]
+    pub fn set_changed_at(&mut self, index: usize, tick: Tick) {
+        debug_assert!(index < self.len(), "Index out of bounds");
+        self.changed_at[index] = tick;
+    }
+
     /// Returns immutable data for component at `index`.
     ///
     /// # Panics
     /// Panics if `index` is out of bounds.
+    #[inline]
     pub fn get(&self, index: usize, current_tick: Tick) -> DataPtr {
         debug_assert!(index < self.len(), "Index out of bounds");
 
@@ -260,11 +267,11 @@ impl ComponentsData {
         DataPtr::new(ptr, self.get_ticks(index, current_tick))
     }
 
-    #[inline]
     /// Returns mutable data for component at `index`.
     ///
     /// # Panics
     /// Panics if `index` is out of bounds.
+    #[inline]
     pub fn get_mut(&mut self, index: usize, current_tick: Tick) -> DataPtrMut {
         debug_assert!(index < self.len(), "Index out of bounds");
 
@@ -273,11 +280,11 @@ impl ComponentsData {
         DataPtrMut::new(ptr, self.get_ticks_mut(index, current_tick))
     }
 
-    #[inline]
     /// Removes component at `index` and returns `(component, changed_at, added_at)` tuple.
     ///
     /// # Panics
     /// Panics if `index` is out of bounds.
+    #[inline]
     pub fn remove(&mut self, index: usize) -> (UntypedPtr, Tick, Tick) {
         debug_assert!(index < self.len(), "Index out of bounds");
 
@@ -289,7 +296,6 @@ impl ComponentsData {
         )
     }
 
-    #[inline]
     /// Sets component at `index` to `component` and updates its ticks to `added_at` since 'set' is
     /// considered a new addition.
     ///
@@ -298,6 +304,7 @@ impl ComponentsData {
     ///
     /// # Safety
     /// You must ensure the component is of the same type as this row.
+    #[inline]
     pub fn set(&mut self, index: usize, component: UntypedPtr, added_at: Tick) {
         debug_assert!(index < self.len(), "Index out of bounds");
 
@@ -310,11 +317,11 @@ impl ComponentsData {
         self.added_at[index] = added_at;
     }
 
-    #[inline]
     /// Insert new component with its `changed_at` and `added_at` ticks.
     ///
     /// # Safety
     /// You must ensure the component is of the same type as this row.
+    #[inline]
     pub fn insert(&mut self, component: UntypedPtr, changed_at: Tick, added_at: Tick) {
         // Safety: callers responsibility
         unsafe {

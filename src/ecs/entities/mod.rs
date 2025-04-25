@@ -276,10 +276,15 @@ impl Entities {
             };
 
             if let Some(component_index) = archetype.get_component_index(&type_id) {
-                archetype.mark_mutated_single(entity_index, component_index);
-                let raw = archetype.components[component_index].get_mut(entity_index, current_tick).raw();
-                let cast = unsafe { &mut *(raw as *mut C) };
-                return Some(cast);
+                // TODO: dont mark mutated here, return the Mut<C> wrapper when its implemented
+                let comp = &mut archetype.components[component_index];
+                comp.set_changed_at(entity_index, current_tick);
+                let comp = unsafe { comp.get_untyped_lt(entity_index).as_ptr().cast::<C>().as_mut() };
+                return Some(comp)
+
+                // let data_ptr = archetype.components[component_index].get_mut(entity_index, current_tick);
+                // let mut_ref = Mut::new(data_ptr);
+                // return Some(mut_ref);
             } else {
                 return None
             }
