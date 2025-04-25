@@ -197,10 +197,10 @@ impl ComponentsData {
     }
 
     #[inline]
-    /// Check if component at `index` has changed at `tick`.
-    pub fn has_changed(&self, index: usize, current_tick: Tick) -> bool {
+    /// Check if component at `index` has changed since `tick`.
+    pub fn changed_since(&self, index: usize, tick: Tick) -> bool {
         debug_assert!(index < self.len(), "Index out of bounds");
-        self.changed_at[index] == current_tick
+        self.changed_at[index] > tick
     }
 
     #[inline]

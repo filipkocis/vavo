@@ -11,8 +11,8 @@ pub struct System {
     type_id: TypeId,
     /// Tick of the last run, or `0` 
     last_run: Tick,
-    exec: Box<dyn Fn(&mut SystemsContext, &mut Entities)>,
-    conditions: Vec<Box<dyn Fn(&mut SystemsContext, &mut Entities) -> bool>>,
+    exec: Box<dyn Fn(&mut SystemsContext, &mut Entities, Tick)>,
+    conditions: Vec<Box<dyn Fn(&mut SystemsContext, &mut Entities, Tick) -> bool>>,
 }
 
 impl System {
@@ -29,8 +29,8 @@ impl System {
             type_name,
             type_id,
             last_run: Tick::default(),
-            exec: Box::new(move |ctx, entities| {
-                let query = Query::new(entities);
+            exec: Box::new(move |ctx, entities, tick| {
+                let query = Query::new(entities, tick);
                 exec(ctx, query);
             }),
             conditions: Vec::new(),
@@ -44,10 +44,12 @@ impl System {
 
     /// Execute system if all conditions are met
     pub(crate) fn run(&mut self, ctx: &mut SystemsContext, entities: &mut Entities) {
-        if self.conditions.iter().all(|condition| condition(ctx, entities)) {
-            // Increment must come first to ensure `sys.last_run < world.tick`
-            ctx.increment_world_tick();
-            (self.exec)(ctx, entities);
+        let last_run = self.last_run;
+        // Increment must come first to ensure `sys.last_run < world.tick`
+        ctx.increment_world_tick();
+
+        if self.conditions.iter().all(|condition| condition(ctx, entities, last_run)) {
+            (self.exec)(ctx, entities, last_run);
             self.last_run = ctx.world_tick();
         }
     }
@@ -55,8 +57,8 @@ impl System {
     /// Add new run condition to the system
     pub fn run_if<T: 'static, F: 'static>(mut self, condition: impl IntoSystemCondition<T, F>) -> Self {
         let condition = condition.system_condition();
-        self.conditions.push(Box::new(move |ctx, entities| -> bool {
-            let query = Query::new(entities);
+        self.conditions.push(Box::new(move |ctx, entities, tick| -> bool {
+            let query = Query::new(entities, tick);
             condition(ctx, query)
         }));
         self
@@ -68,7 +70,7 @@ pub struct GraphSystem {
     func_ptr: *const (),
     /// Tick of the last run, or `0` 
     last_run: Tick,
-    exec: Box<dyn FnMut(RenderGraphContext, &mut SystemsContext, &mut Entities)>,
+    exec: Box<dyn FnMut(RenderGraphContext, &mut SystemsContext, &mut Entities, Tick)>,
 }
 
 impl GraphSystem {
@@ -77,8 +79,8 @@ impl GraphSystem {
             name: name.to_string(),
             func_ptr: func as *const (),
             last_run: Tick::default(),
-            exec: Box::new(move |graph_ctx, ctx, entities| {
-                let query = Query::new(entities);
+            exec: Box::new(move |graph_ctx, ctx, entities, tick| {
+                let query = Query::new(entities, tick);
                 func(graph_ctx, ctx, query);
             }),
         }
@@ -86,7 +88,7 @@ impl GraphSystem {
 
     pub(crate) fn run(&mut self, graph_ctx: RenderGraphContext, ctx: &mut SystemsContext, entities: &mut Entities) {
         ctx.increment_world_tick();
-        (self.exec)(graph_ctx, ctx, entities);
+        (self.exec)(graph_ctx, ctx, entities, self.last_run);
         self.last_run = ctx.world_tick();
     }
 }
@@ -96,7 +98,7 @@ pub struct CustomGraphSystem {
     func_ptr: *const (),
     /// Tick of the last run, or `0` 
     last_run: Tick,
-    exec: Box<dyn FnMut(CustomRenderGraphContext, &mut SystemsContext, &mut Entities)>,
+    exec: Box<dyn FnMut(CustomRenderGraphContext, &mut SystemsContext, &mut Entities, Tick)>,
 }
 
 impl CustomGraphSystem {
@@ -105,8 +107,8 @@ impl CustomGraphSystem {
             name: name.to_string(),
             func_ptr: func as *const (),
             last_run: Tick::default(),
-            exec: Box::new(move |graph_ctx, ctx, entities| {
-                let query = Query::new(entities);
+            exec: Box::new(move |graph_ctx, ctx, entities, tick| {
+                let query = Query::new(entities, tick);
                 func(graph_ctx, ctx, query);
             }),
         }
@@ -114,7 +116,7 @@ impl CustomGraphSystem {
 
     pub(crate) fn run(&mut self, graph_ctx: CustomRenderGraphContext, ctx: &mut SystemsContext, entities: &mut Entities) {
         ctx.increment_world_tick();
-        (self.exec)(graph_ctx, ctx, entities);
+        (self.exec)(graph_ctx, ctx, entities, self.last_run);
         self.last_run = ctx.world_tick();
     }
 }

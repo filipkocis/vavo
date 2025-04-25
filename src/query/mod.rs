@@ -1,11 +1,11 @@
-mod run;
 pub mod filter;
+mod run;
 
 use std::any::TypeId;
 
 pub use run::RunQuery;
 
-use crate::ecs::entities::Entities;
+use crate::{ecs::entities::Entities, prelude::Tick};
 
 /// Holds different types of requested [`component`](crate::ecs::components::Component) types in a query. Used to differentiate between normal
 /// references and `Option<Component>`.
@@ -47,14 +47,17 @@ pub struct Query<T, F = ()> {
     /// # Safety
     /// Always valid
     entities: *mut Entities,
+    /// Each system execution context provides its own `last_run` tick.
+    system_last_run: Tick,
     _marker: std::marker::PhantomData<(T, F)>,
 }
 
 impl<T, F> Query<T, F> {
     #[inline]
-    pub(crate) fn new(entities: &mut Entities) -> Query<T, F> {
+    pub(crate) fn new(entities: &mut Entities, system_last_run: Tick) -> Query<T, F> {
         Query {
             entities,
+            system_last_run,
             _marker: std::marker::PhantomData,
         }
     }
@@ -67,7 +70,8 @@ impl<T, F> Query<T, F> {
     pub fn cast<U, V>(&mut self) -> Query<U, V> {
         Query {
             entities: self.entities,
-            _marker: std::marker::PhantomData
+            system_last_run: self.system_last_run,
+            _marker: std::marker::PhantomData,
         }
     }
 }

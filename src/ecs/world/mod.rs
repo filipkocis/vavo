@@ -42,14 +42,16 @@ impl World {
     }
 
     /// Creates new world query
+    /// It is without a system execution context
     #[inline]
     pub fn query<T>(&mut self) -> Query<T> {
-        Query::new(&mut self.entities)
+        Query::new(&mut self.entities, *self.tick)
     }
 
     /// Creates new world query with filters
+    /// It is without a system execution context
     #[inline]
     pub fn query_filtered<T, F>(&mut self) -> Query<T, F> {
-        Query::new(&mut self.entities)
+        Query::new(&mut self.entities, *self.tick)
     }
 }

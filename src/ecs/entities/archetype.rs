@@ -283,19 +283,17 @@ impl Archetype {
     ///
     /// # Note
     /// To get the correct indices call `archetype.get_changed_filter_indices(filters)`
-    pub fn check_changed_fields(&self, at: usize, indices: &[Vec<usize>]) -> bool {
+    pub fn check_changed_fields(&self, at: usize, indices: &[Vec<usize>], system_last_run: Tick) -> bool {
         if indices.len() == 1 && indices[0].is_empty() {
             return true
         }
 
-        let current_tick = self.current_tick();
-
         // base filter
-        indices[0].iter().all(|&index| self.components[index].has_changed(at, current_tick))
+        indices[0].iter().all(|&index| self.components[index].changed_since(at, system_last_run))
 
         // optional Or<T>
         && indices.iter().skip(1).all(|or_indices| 
-            or_indices.iter().any(|&index| self.components[index].has_changed(at, current_tick))
+            or_indices.iter().any(|&index| self.components[index].changed_since(at, system_last_run))
         )
     }
 }
