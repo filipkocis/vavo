@@ -170,26 +170,31 @@ impl Archetype {
     }
 
     /// Check if all `type_ids` exist in self
+    #[inline]
     pub fn has_types(&self, type_ids: &[TypeId]) -> bool {
         type_ids.iter().all(|type_id| self.has_type(type_id))
     }
 
     /// Check if all `type_ids` exist in self, no more no less
+    #[inline]
     pub fn has_types_all(&self, type_ids: &[TypeId]) -> bool {
         self.types.len() == type_ids.len() && self.has_types(type_ids)
     }
 
     /// Check if archetype has `entity_id`
+    #[inline]
     pub fn has_entity(&self, entity_id: &EntityId) -> bool {
         self.entity_ids.contains(entity_id)
     }
 
     /// Get entity index in `entity_ids` if it exists
+    #[inline]
     pub fn get_entity_index(&self, entity_id: EntityId) -> Option<usize> {
         self.entity_ids.iter().position(|id| *id == entity_id)
     }
 
     /// Get component index in `types` if it exists
+    #[inline]
     pub fn get_component_index(&self, component_id: &TypeId) -> Option<usize> {
         self.types.get(component_id).map(|(index, _)| *index)
     }
