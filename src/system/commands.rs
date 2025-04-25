@@ -241,8 +241,8 @@ impl Commands {
         entity_commands
     }
 
-    pub(crate) fn apply(self, world: &mut World) {
-        for command in self.commands {
+    pub(crate) fn apply(&mut self, world: &mut World) {
+        for command in self.commands.drain(..) {
             match command {
                 Command::InsertResource(type_id, mut resource_data) => {
                     resource_data.set_tick(*world.tick);

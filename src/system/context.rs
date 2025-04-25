@@ -63,4 +63,11 @@ impl<'a, 'b> SystemsContext<'a, 'b> {
     pub(crate) fn increment_world_tick(&mut self) {
         unsafe { &mut *self.app }.world.tick.increment();
     }
+
+    /// Flushes stored commands and applies them to the world. Commands get flushed automatically
+    /// after each system stage has finished, this can be used to flush them manually.
+    pub fn flush_internal_commands(&mut self) {
+        let app = unsafe { &mut *self.app };
+        self.commands.apply(&mut app.world)
+    }
 }
