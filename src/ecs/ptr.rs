@@ -45,6 +45,7 @@ impl UntypedPtr {
     }
 }
 
+#[repr(transparent)]
 /// Same as [`UntypedPtr`], but with a lifetime
 pub struct UntypedPtrLt<'a> {
     ptr: NonNull<u8>,
