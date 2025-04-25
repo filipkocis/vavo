@@ -31,13 +31,13 @@ impl Debug for TempNode<'_> {
 }
 
 /// Returns temp nodes with populated children, or empty if zero nodes were updated.
-/// Runs on `Changed<Node | Text | UiImage>` filters, or `WindowEvent::Resized` event
+/// Runs on `Changed<Node | Text | UiImage | Transform>` filters, or `WindowEvent::Resized` event
 pub fn nodes_to_temp_graph<'a>(ctx: &mut SystemsContext, q: &mut Query<()>) -> Vec<TempNode<'a>> {
     let mut check_updated = q.cast::<
         EntityId,
         (
-            With<Node>, With<ComputedNode>, With<Transform>, 
-            Or<(Changed<Node>, Changed<Text>, Changed<UiImage>)>
+            With<Node>, With<ComputedNode>, 
+            Or<(Changed<Node>, Changed<Text>, Changed<UiImage>, Changed<Transform>)>
         )
     >();
 
