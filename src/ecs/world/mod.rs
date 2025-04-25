@@ -35,18 +35,20 @@ impl World {
         world
     }
 
-    /// Update function for the world, updates world tick and resources
+    /// Update function for the world, updates resources
+    #[inline]
     pub(crate) fn update(&mut self) {
-        self.tick.increment();
         self.resources.update();
     }
 
     /// Creates new world query
+    #[inline]
     pub fn query<T>(&mut self) -> Query<T> {
         Query::new(&mut self.entities)
     }
 
     /// Creates new world query with filters
+    #[inline]
     pub fn query_filtered<T, F>(&mut self) -> Query<T, F> {
         Query::new(&mut self.entities)
     }

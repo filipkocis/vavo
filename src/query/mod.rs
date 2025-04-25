@@ -18,6 +18,7 @@ pub(crate) enum QueryComponentType {
 
 impl QueryComponentType {
     /// True if component was requested as an `Option<T>`.
+    #[inline]
     pub fn is_option(&self) -> bool {
         match self {
             QueryComponentType::Option(_) => true,
@@ -26,6 +27,7 @@ impl QueryComponentType {
     }
 
     /// Returns the underlying [`component`](crate::ecs::components::Component) type id.
+    #[inline]
     pub fn get_inner_type(&self) -> &TypeId {
         match self {
             QueryComponentType::Normal(inner) => inner,
@@ -49,6 +51,7 @@ pub struct Query<T, F = ()> {
 }
 
 impl<T, F> Query<T, F> {
+    #[inline]
     pub(crate) fn new(entities: &mut Entities) -> Query<T, F> {
         Query {
             entities,
@@ -60,6 +63,7 @@ impl<T, F> Query<T, F> {
     ///
     /// It is possible to query for the same component multiple times, even as a mutable reference
     /// so you must be careful with this method.
+    #[inline]
     pub fn cast<U, V>(&mut self) -> Query<U, V> {
         Query {
             entities: self.entities,
