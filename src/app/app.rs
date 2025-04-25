@@ -141,7 +141,6 @@ impl App {
         for _ in 0..iterations {
             for system in systems.iter_mut() {
                 system.run(&mut ctx, &mut self.world.entities);
-                self.world.tick.increment();
             }
         }
 

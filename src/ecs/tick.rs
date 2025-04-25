@@ -1,6 +1,7 @@
 #[repr(transparent)]
 #[derive(Copy, Clone, Default, Debug, PartialEq, Eq, PartialOrd, Ord)]
-/// A tick is a simple counter used to track the number of updates or frames in a game loop.
+/// A tick is a simple counter used to track the number of updates or frames in a game loop. Used
+/// heavily in the ECS for change detection.
 pub struct Tick {
     value: u64,
 }

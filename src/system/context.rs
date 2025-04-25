@@ -1,7 +1,16 @@
-use crate::{app::App, core::graph::RenderGraph, ecs::resources::Resources, event::{event_handler::{EventReader, EventWriter}, Events}, window::Renderer};
+use crate::{
+    app::App,
+    core::graph::RenderGraph,
+    ecs::resources::Resources,
+    event::{
+        event_handler::{EventReader, EventWriter},
+        Events,
+    },
+    prelude::Tick,
+    window::Renderer,
+};
 
 use super::Commands;
-
 
 pub struct SystemsContext<'a, 'b> {
     pub commands: Commands,
@@ -21,17 +30,37 @@ pub struct SystemsContext<'a, 'b> {
 }
 
 impl<'a, 'b> SystemsContext<'a, 'b> {
-    pub fn new(commands: Commands, resources: &'a mut Resources, events: &'a mut Events, renderer: Renderer<'b>, app: *mut App, graph: *mut RenderGraph) -> Self {
+    #[inline]
+    pub fn new(
+        commands: Commands,
+        resources: &'a mut Resources,
+        events: &'a mut Events,
+        renderer: Renderer<'b>,
+        app: *mut App,
+        graph: *mut RenderGraph,
+    ) -> Self {
         let (event_reader, event_writer) = events.handlers();
 
         Self {
             commands,
             resources,
-            event_writer, 
-            event_reader, 
+            event_writer,
+            event_reader,
             renderer,
             app,
             graph,
         }
+    }
+
+    /// Returns the current world tick
+    #[inline]
+    pub fn world_tick(&self) -> Tick {
+        *unsafe { &*self.app }.world.tick
+    }
+
+    /// Increments the world tick
+    #[inline]
+    pub(crate) fn increment_world_tick(&mut self) {
+        unsafe { &mut *self.app }.world.tick.increment();
     }
 }
