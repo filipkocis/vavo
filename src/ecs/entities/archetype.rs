@@ -69,7 +69,7 @@ impl Archetype {
     /// Remove entity, returns removed components with `(changed_at, added_at)` ticks or None if entity_id doesn't exist
     pub(super) fn remove_entity(&mut self, entity_id: EntityId) -> Option<Vec<(ComponentInfoPtr, UntypedPtr, Tick, Tick)>> {
         if let Some(index) = self.entity_ids.iter().position(|id| *id == entity_id) {
-            self.entity_ids.remove(index);
+            self.entity_ids.swap_remove(index);
 
             let mut removed = Vec::with_capacity(self.components.len());
             for components_data in &mut self.components {
