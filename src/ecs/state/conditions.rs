@@ -24,7 +24,7 @@ pub fn on_enter<S: States + 'static>(state: S) -> impl IntoSystemCondition<(), (
 
 /// Evaluates to true if any state transition event has occured
 pub fn on_transition<S: States + 'static>() -> impl IntoSystemCondition<(), ()> {
-    move |ctx: &mut SystemsContext, _| ctx.event_reader.read::<StateTransitionEvent<S>>().len() > 0
+    move |ctx: &mut SystemsContext, _| ctx.event_reader.has_any::<StateTransitionEvent<S>>()
 }
 
 /// Evaluates to true if the current state is `state`
