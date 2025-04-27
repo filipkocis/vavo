@@ -3,7 +3,7 @@ pub mod relation;
 pub mod components;
 
 pub use components::Component;
-use components::{ComponentInfoPtr, Mut};
+use components::ComponentInfoPtr;
 
 use std::{any::TypeId, collections::HashMap, hash::Hash, mem::ManuallyDrop, ops::{Add, Sub}};
 
@@ -285,15 +285,10 @@ impl Entities {
             };
 
             if let Some(component_index) = archetype.get_component_index(&type_id) {
-                // TODO: dont mark mutated here, return the Mut<C> wrapper when its implemented
                 let comp = &mut archetype.components[component_index];
                 comp.set_changed_at(entity_index, current_tick);
                 let comp = unsafe { comp.get_untyped_lt(entity_index).as_ptr().cast::<C>().as_mut() };
                 return Some(comp)
-
-                // let data_ptr = archetype.components[component_index].get_mut(entity_index, current_tick);
-                // let mut_ref = Mut::new(data_ptr);
-                // return Some(mut_ref);
             } else {
                 return None
             }
@@ -312,9 +307,9 @@ impl Entities {
             };
 
             if let Some(component_index) = archetype.get_component_index(&type_id) {
-                let raw = archetype.components[component_index].get(entity_index, self.tick()).raw();
-                let cast = unsafe { &*(raw as *const C) };
-                return Some(cast);
+                let comp = &archetype.components[component_index];
+                let comp = unsafe { comp.get_untyped_lt(entity_index).as_ptr().cast::<C>().as_ref() };
+                return Some(comp)
             } else {
                 return None
             }
