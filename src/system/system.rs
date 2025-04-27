@@ -47,6 +47,7 @@ impl System {
         let last_run = self.last_run;
         // Increment must come first to ensure `sys.last_run < world.tick`
         ctx.increment_world_tick();
+        ctx.resources.set_system_last_run(self.last_run);
 
         if self.conditions.iter().all(|condition| condition(ctx, entities, last_run)) {
             (self.exec)(ctx, entities, last_run);
@@ -88,6 +89,7 @@ impl GraphSystem {
 
     pub(crate) fn run(&mut self, graph_ctx: RenderGraphContext, ctx: &mut SystemsContext, entities: &mut Entities) {
         ctx.increment_world_tick();
+        ctx.resources.set_system_last_run(self.last_run);
         (self.exec)(graph_ctx, ctx, entities, self.last_run);
         self.last_run = ctx.world_tick();
     }
@@ -116,6 +118,7 @@ impl CustomGraphSystem {
 
     pub(crate) fn run(&mut self, graph_ctx: CustomRenderGraphContext, ctx: &mut SystemsContext, entities: &mut Entities) {
         ctx.increment_world_tick();
+        ctx.resources.set_system_last_run(self.last_run);
         (self.exec)(graph_ctx, ctx, entities, self.last_run);
         self.last_run = ctx.world_tick();
     }

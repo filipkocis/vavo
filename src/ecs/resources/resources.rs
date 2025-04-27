@@ -9,7 +9,7 @@ use std::{
 use crate::{
     assets::{AssetLoader, Assets, ShaderLoader},
     ecs::{
-        ptr::{DataPtr, DataPtrMut, UntypedPtr},
+        ptr::{DataPtr, DataPtrMut, OwnedPtr},
         resources::{FixedTime, Resource, Time},
         store::blob::BlobVec,
         tick::{Tick, TickStamp, TickStampMut},
@@ -32,11 +32,11 @@ impl ResourceData {
     pub(crate) fn new<R: Resource>(resource: R, current_tick: Tick) -> Self {
         let type_id = TypeId::of::<R>();
         let mut data = BlobVec::new_type::<R>(1);
-        let resource = ManuallyDrop::new(resource);
-        let ptr = &*resource as *const R as *mut _;
-        let ptr = UntypedPtr::new_raw(ptr);
-        // Safety: type and value are correct
         unsafe {
+            let mut resource = ManuallyDrop::new(resource);
+            // Safety: resource is pushed and not used afterwards.
+            let ptr = OwnedPtr::new_ref(&mut resource);
+            // Safety: type and value are correct
             data.push(ptr);
         }
 
@@ -58,21 +58,21 @@ impl ResourceData {
 
     #[inline]
     /// Returns immutable [`TickStamp`] for the resource.
-    fn get_ticks(&self, current_tick: Tick) -> TickStamp {
-        TickStamp::new(&self.changed_at, &self.added_at, current_tick)
+    fn get_ticks(&self, current_tick: Tick, last_run: Tick) -> TickStamp {
+        TickStamp::new(&self.changed_at, &self.added_at, current_tick, last_run)
     }
 
     #[inline]
     /// Returns mutable [`TickStampMut`] for the resource.
-    fn get_ticks_mut(&mut self, current_tick: Tick) -> TickStampMut {
-        TickStampMut::new(&mut self.changed_at, &mut self.added_at, current_tick)
+    fn get_ticks_mut(&mut self, current_tick: Tick, last_run: Tick) -> TickStampMut {
+        TickStampMut::new(&mut self.changed_at, &mut self.added_at, current_tick, last_run)
     }
 }
 
 #[repr(transparent)]
 /// Immutable resource reference.
 /// Holds a raw pointer to the resource.
-pub struct Res<R: Resource>(DataPtr, PhantomData<R>);
+pub struct Res<R: Resource>(pub(crate) DataPtr, PhantomData<R>);
 
 impl<R: Resource> Deref for Res<R> {
     type Target = R;
@@ -86,7 +86,7 @@ impl<R: Resource> Deref for Res<R> {
 #[repr(transparent)]
 /// Mutable resource reference.
 /// Holds a raw mutable pointer to the resource.
-pub struct ResMut<R: Resource>(DataPtrMut, PhantomData<R>);
+pub struct ResMut<R: Resource>(pub(crate) DataPtrMut, PhantomData<R>);
 
 impl<R: Resource> Deref for ResMut<R> {
     type Target = R;
@@ -101,8 +101,8 @@ impl<R: Resource> DerefMut for ResMut<R> {
     #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.0.mark_changed();
-        let raw = self.0.raw() as *mut R;
-        unsafe { &mut *raw }
+        // We just marked it as changed
+        self.deref_mut_no_change()
     }
 }
 
@@ -110,6 +110,7 @@ impl<R: Resource> DerefMut for ResMut<R> {
 pub struct Resources {
     resources: HashMap<TypeId, ResourceData>,
     current_tick: *const Tick,
+    system_last_run: Tick,
 }
 
 impl Resources {
@@ -117,6 +118,7 @@ impl Resources {
         Self {
             resources: HashMap::new(),
             current_tick: std::ptr::null(),
+            system_last_run: Tick::default(),
         }
     }
 
@@ -126,10 +128,16 @@ impl Resources {
         self.current_tick = current_tick
     }
 
-    #[inline]
     /// Returns the current world tick.
+    #[inline]
     fn tick(&self) -> Tick {
         unsafe { *self.current_tick }
+    }
+
+    /// Sets the `last_run` tick
+    #[inline]
+    pub(crate) fn set_system_last_run(&mut self, last_run: Tick) {
+        self.system_last_run = last_run;
     }
 
     /// Used by [Commands](crate::system::Commands) to insert resources
@@ -154,7 +162,7 @@ impl Resources {
             let data = DataPtr::new(
                 // Safety: type is correct and index is always valid
                 unsafe { r.data.get(0) },
-                r.get_ticks(self.tick()),
+                r.get_ticks(self.tick(), self.system_last_run),
             );
             Res(data, PhantomData)
         })
@@ -167,7 +175,7 @@ impl Resources {
             let data = DataPtrMut::new(
                 // Safety: type is correct and index is always valid
                 unsafe { r.data.get(0) },
-                r.get_ticks_mut(current_tick),
+                r.get_ticks_mut(current_tick, self.system_last_run),
             );
             ResMut(data, PhantomData)
         })
