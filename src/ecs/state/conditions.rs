@@ -44,3 +44,16 @@ pub fn not_in_state<S: States + 'static>(state: S) -> impl IntoSystemCondition<(
             .map_or(true, |s| s.get() != state)
     }
 }
+
+/// Negates the result of the provided condition
+pub fn not<T: 'static, F: 'static>(
+    condition: impl IntoSystemCondition<T, F>,
+) -> impl IntoSystemCondition<T, F> {
+    let condition = condition.system_condition();
+    move |ctx: &mut SystemsContext, query: Query<T, F>| !condition(ctx, query)
+}
+
+/// Evaluates to true if any events of type `E` have been sent
+pub fn on_event<E: 'static>(ctx: &mut SystemsContext, _: Query<(), ()>) -> bool {
+    ctx.event_reader.has_any::<E>()
+}

@@ -30,6 +30,12 @@ impl<'a> EventReader<'a> {
     pub fn read<T: 'static>(&self) -> Vec<&T> {
         unsafe { (*self.events).read() }
     }
+
+    /// Check if any events of type T exist
+    #[inline]
+    pub fn has_any<T: 'static>(&self) -> bool {
+        unsafe { (*self.events).has_any::<T>() }
+    }
 }
 
 impl Events {
