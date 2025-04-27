@@ -1,6 +1,6 @@
 use std::{any::TypeId, collections::HashMap, hash::{DefaultHasher, Hash, Hasher}};
 
-use crate::{ecs::ptr::UntypedPtr, prelude::Tick, query::filter::Filters};
+use crate::{ecs::ptr::OwnedPtr, prelude::Tick, query::filter::Filters};
 
 use super::{components::{ComponentInfoPtr, ComponentsData}, EntityId, QueryComponentType};
 
@@ -45,7 +45,7 @@ impl Archetype {
     }
 
     /// Insert new entity
-    pub(super) fn insert_entity(&mut self, entity_id: EntityId, components: Vec<(ComponentInfoPtr, UntypedPtr, Tick, Tick)>) {
+    pub(super) fn insert_entity(&mut self, entity_id: EntityId, components: Vec<(ComponentInfoPtr, OwnedPtr, Tick, Tick)>) {
         self.entity_ids.push(entity_id);
 
         let component_types = components.iter().map(|(t, ..)| t.as_ref().type_id).collect::<Vec<_>>();
@@ -67,7 +67,7 @@ impl Archetype {
     }
 
     /// Remove entity, returns removed components with `(changed_at, added_at)` ticks or None if entity_id doesn't exist
-    pub(super) fn remove_entity(&mut self, entity_id: EntityId) -> Option<Vec<(ComponentInfoPtr, UntypedPtr, Tick, Tick)>> {
+    pub(super) fn remove_entity(&mut self, entity_id: EntityId) -> Option<Vec<(ComponentInfoPtr, OwnedPtr, Tick, Tick)>> {
         if let Some(index) = self.entity_ids.iter().position(|id| *id == entity_id) {
             self.entity_ids.swap_remove(index);
 
@@ -92,7 +92,7 @@ impl Archetype {
     }
 
     /// Sets component to a new value, returns true if successful
-    pub(super) fn set_component(&mut self, entity_id: EntityId, component: UntypedPtr, type_id: TypeId) -> bool {
+    pub(super) fn set_component(&mut self, entity_id: EntityId, component: OwnedPtr, type_id: TypeId) -> bool {
         let current_tick = self.current_tick();
         if let Some(entity_index) = self.entity_ids.iter().position(|id| *id == entity_id) {
             let component_index = self.types[&type_id].0;
