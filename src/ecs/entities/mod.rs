@@ -3,9 +3,9 @@ pub mod relation;
 pub mod components;
 
 pub use components::Component;
-use components::ComponentInfoPtr;
+use components::{ComponentInfoPtr, Mut};
 
-use std::{any::TypeId, collections::HashMap, hash::Hash, ops::{Add, Sub}};
+use std::{any::TypeId, collections::HashMap, hash::Hash, mem::ManuallyDrop, ops::{Add, Sub}};
 
 use crate::query::{filter::Filters, QueryComponentType};
 use crate::macros::{Component, Reflect};
@@ -13,7 +13,7 @@ use crate::macros::{Component, Reflect};
 use archetype::{Archetype, ArchetypeId};
 use relation::{Children, Parent};
 
-use super::{ptr::UntypedPtr, tick::Tick};
+use super::{ptr::OwnedPtr, tick::Tick};
 
 /// Unique identifier for an [entity](Entities) in a [`World`](crate::ecs::world::World)
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
@@ -116,7 +116,7 @@ impl Entities {
     pub(crate) fn spawn_entity(
         &mut self, 
         entity_id: EntityId, 
-        components: Vec<(ComponentInfoPtr, UntypedPtr)>, 
+        components: Vec<(ComponentInfoPtr, OwnedPtr)>, 
         entity_info: ComponentInfoPtr
     ) {
         let entity_id_type = TypeId::of::<EntityId>();
@@ -127,7 +127,10 @@ impl Entities {
 
         let tick = self.tick();
         let mut components = components.into_iter().map(|(info, ptr)| (info, ptr, tick, tick)).collect::<Vec<_>>();
-        let entity_id_ptr = UntypedPtr::new_raw(&entity_id as *const _ as *mut _);  
+        let mut entity_id_cpy = ManuallyDrop::new(entity_id);
+
+        // Safety: entity is copied because its just on the stack
+        let entity_id_ptr = unsafe { OwnedPtr::new_ref(&mut entity_id_cpy) }; 
         components.push((
             entity_info,
             entity_id_ptr,
@@ -191,9 +194,10 @@ impl Entities {
     ///
     /// # Panics
     /// Panics if components type_id is EntityId
-    pub(crate) fn insert_component(&mut self, entity_id: EntityId, component: UntypedPtr, info: ComponentInfoPtr, replace: bool) {
+    pub(crate) fn insert_component(&mut self, entity_id: EntityId, component: OwnedPtr, info: ComponentInfoPtr, replace: bool) {
         let current_tick = self.tick();
         let type_id = info.as_ref().type_id;
+        let archetypes_ptr = &mut self.archetypes as *mut HashMap<_, _>;
         assert_ne!(type_id, TypeId::of::<EntityId>(), "Cannot insert EntityId as a component");
 
         let mut emptied_archetype = None;
@@ -207,18 +211,20 @@ impl Entities {
                 return;
             }
 
-            let mut old_components = archetype.remove_entity(entity_id).expect("entity_id should exist in archetype");
-            old_components.push((info, component, current_tick, current_tick));
-
-            if archetype.len() == 0 {
+            if archetype.len() == 1 {
                 emptied_archetype = Some(*id);
             }
 
             let mut infos = archetype.types_vec();
             infos.push(info);
 
+            let mut old_components = archetype.remove_entity(entity_id).expect("entity_id should exist in archetype");
+            old_components.push((info, component, current_tick, current_tick));
+
             let archetype_id = Archetype::hash_types(infos.clone());
-            self.archetypes.entry(archetype_id)
+            // Safety: since old_components reference archetype, we need to do another mut borrow
+            // which is safe here because the reference is from `remove_entity`
+            unsafe { &mut *archetypes_ptr }.entry(archetype_id)
                 .or_insert_with(|| Archetype::new(infos, self.current_tick))
                 .insert_entity(entity_id, old_components);
         } else {
@@ -235,6 +241,7 @@ impl Entities {
     /// # Panics
     /// Panics if type_id is EntityId
     pub(crate) fn remove_component(&mut self, entity_id: EntityId, type_id: TypeId) {
+        let archetypes_ptr = &mut self.archetypes as *mut HashMap<_, _>;
         assert_ne!(type_id, TypeId::of::<EntityId>(), "Cannot remove builtin EntityId component");
 
         let mut emptied_archetype = None;
@@ -243,19 +250,21 @@ impl Entities {
                 return;
             };
 
-            let mut old_components = archetype.remove_entity(entity_id).expect("entity_id should exist in archetype");
-            let removed = old_components.remove(component_index);
-            removed.0.drop(removed.1);
-
-            if archetype.len() == 0 {
+            if archetype.len() == 1 {
                 emptied_archetype = Some(*id);
             }
 
             let mut types = archetype.types_vec();
             types.remove(component_index);
 
+            let mut old_components = archetype.remove_entity(entity_id).expect("entity_id should exist in archetype");
+            let removed = old_components.remove(component_index);
+            removed.0.drop(removed.1);
+
             let archetype_id = Archetype::hash_types(types.clone());
-            self.archetypes.entry(archetype_id)
+             // Safety: since old_components reference archetype, we need to do another mut borrow
+            // which is safe here because the reference is from `remove_entity`
+            unsafe { &mut *archetypes_ptr }.entry(archetype_id)
                 .or_insert_with(|| Archetype::new(types, self.current_tick))
                 .insert_entity(entity_id, old_components);
         }
@@ -334,13 +343,15 @@ impl Entities {
         if let Some(children) = self.get_component_mut::<Children>(parent_id) {
             children.add(child_id);
         } else {
-            let ptr = Box::into_raw(Box::new(Children::new(vec![child_id]))) as *mut _;
-            let ptr = UntypedPtr::new_raw(ptr);
+            let children = Children::new(vec![child_id]);
+            let mut children = ManuallyDrop::new(children);
+            let ptr = unsafe { OwnedPtr::new_ref(&mut children) }; // safety: children not used after this
             self.insert_component(parent_id, ptr, children_info, true);
         }
 
-        let ptr = Box::into_raw(Box::new(Parent::new(parent_id))) as *mut _;
-        let ptr = UntypedPtr::new_raw(ptr);
+        let parent = Parent::new(parent_id);
+        let mut parent = ManuallyDrop::new(parent);
+        let ptr = unsafe { OwnedPtr::new_ref(&mut parent) }; // safety: parent not used after this
         self.insert_component(child_id, ptr, parent_info, true);
     }
 
