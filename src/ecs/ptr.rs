@@ -127,63 +127,47 @@ pub struct DataPtrMut {
 }
 
 impl DataPtr {
-    #[inline]
     /// Creates a new typed pointer from a (blob's) raw pointer and it's timestamps
+    #[inline]
     pub fn new(data: UntypedPtr, stamp: TickStamp) -> Self {
         Self { ptr: data, stamp }
     }
 
-    #[inline]
     /// Returns the inner raw pointer
+    #[inline]
     pub(crate) fn raw(&self) -> *const u8 {
         self.ptr.as_ptr().as_ptr()
     }
 
+    /// Returns the current tick stamp.
     #[inline]
-    /// Returns the timestamp of the last change to the data
-    pub fn changed_at(&self) -> u64 {
-        self.stamp.changed()
-    }
-
-    #[inline]
-    /// Returns the timestamp of when the data was created
-    pub fn added_at(&self) -> u64 {
-        self.stamp.added()
+    pub fn stamp(&self) -> &TickStamp {
+        &self.stamp
     }
 }
 
 impl DataPtrMut {
-    #[inline]
     /// Creates a new mutable typed pointer from a (blob's) raw pointer and it's timestamps
+    #[inline]
     pub fn new(data: UntypedPtr, stamp: TickStampMut) -> Self {
         Self { ptr: data, stamp }
     }
 
-    #[inline]
     /// Returns the inner raw pointer
+    #[inline]
     pub(crate) fn raw(&self) -> *const u8 {
         self.ptr.as_ptr().as_ptr()
     }
 
-    #[inline]
     /// Marks this component as changed
+    #[inline]
     pub(crate) fn mark_changed(&mut self) {
         self.stamp.mark_changed();
     }
 
+    /// Returns the current tick stamp.
     #[inline]
-    pub fn changed_at(&self) -> u64 {
-        self.stamp.changed()
-    }
-
-    #[inline]
-    pub fn added_at(&self) -> u64 {
-        self.stamp.added()
-    }
-
-    /// Returns the current stamp tick.
-    #[inline]
-    pub fn current_stamp_tick(&self) -> u64 {
-        self.stamp.current_tick()
+    pub fn stamp(&self) -> &TickStampMut {
+        &self.stamp
     }
 }

@@ -37,15 +37,17 @@ pub struct TickStamp {
     changed: *const Tick,
     added: *const Tick,
     current: Tick,
+    last_run: Tick,
 }
 
 impl TickStamp {
     #[inline]
-    pub fn new(changed: &Tick, added: &Tick, current: Tick) -> Self {
+    pub fn new(changed: &Tick, added: &Tick, current: Tick, last_run: Tick) -> Self {
         Self {
             changed,
             added,
             current,
+            last_run,
         }
     }
 
@@ -67,16 +69,10 @@ impl TickStamp {
         self.current.get()
     }
 
-    /// Checks if hte value was changed in the current tick.
+    /// Returns the tick of the last system run.
     #[inline]
-    pub fn is_changed(&self) -> bool {
-        self.changed() == self.current.get()
-    }
-
-    /// Checks if the value was added in the current tick.
-    #[inline]
-    pub fn is_added(&self) -> bool {
-        self.added() == self.current.get()
+    pub fn last_run(&self) -> u64 {
+        self.last_run.get()
     }
 }
 
@@ -86,15 +82,17 @@ pub struct TickStampMut {
     changed: *mut Tick,
     added: *mut Tick,
     current: Tick,
+    last_run: Tick,
 }
 
 impl TickStampMut {
     #[inline]
-    pub fn new(changed: &mut Tick, added: &mut Tick, current: Tick) -> Self {
+    pub fn new(changed: &mut Tick, added: &mut Tick, current: Tick, last_run: Tick) -> Self {
         Self {
             changed,
             added,
             current,
+            last_run,
         }
     }
 
@@ -116,21 +114,15 @@ impl TickStampMut {
         self.current.get()
     }
 
+    /// Returns the tick of the last system run.
+    #[inline]
+    pub fn last_run(&self) -> u64 {
+        self.last_run.get()
+    }
+
     /// Marks the changed tick as the current tick.
     #[inline]
     pub fn mark_changed(&mut self) {
         unsafe { *self.changed = self.current };
-    }
-
-    /// Checks if hte value was changed in the current tick.
-    #[inline]
-    pub fn is_changed(&self) -> bool {
-        self.changed() == self.current.get()
-    }
-
-    /// Checks if the value was added in the current tick.
-    #[inline]
-    pub fn is_added(&self) -> bool {
-        self.added() == self.current.get()
     }
 }
