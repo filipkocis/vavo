@@ -31,6 +31,7 @@ pub struct State<S: States>(pub S);
 pub struct NextState<S: States>(pub Option<S>);
 
 impl<S: States + Default> State<S> {
+    #[inline]
     pub(crate) fn new() -> Self {
         Self(S::default())
     }
@@ -38,32 +39,38 @@ impl<S: States + Default> State<S> {
 
 impl<S: States> State<S> {
     /// Apply the next state
+    #[inline]
     pub(crate) fn update(&mut self, value: S) {
         self.0 = value;
     }
 
     /// Get the state value
+    #[inline]
     pub fn get(&self) -> S {
         self.0
     }
 }
 
 impl<S: States> NextState<S> {
+    #[inline]
     pub(crate) fn new() -> Self {
         Self(None)
     }
 
     /// Take out the next state value
+    #[inline]
     pub(crate) fn take(&mut self) -> Option<S> {
         self.0.take()
     }
 
     /// Queue a state transition for the next frame
+    #[inline]
     pub fn set(&mut self, value: S) {
         self.0 = Some(value);
     }
 
     /// Get the next state value
+    #[inline]
     pub fn get(&self) -> Option<S> {
         self.0
     }
