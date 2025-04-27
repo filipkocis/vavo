@@ -1,4 +1,4 @@
-use std::any::TypeId;
+use std::{any::TypeId, mem::ManuallyDrop};
 
 use crate::{
     ecs::{
@@ -6,7 +6,7 @@ use crate::{
             components::{ComponentInfoPtr, ComponentsRegistry},
             Component, EntityId,
         },
-        ptr::UntypedPtr,
+        ptr::OwnedPtr,
         resources::{Resource, ResourceData},
         tick::Tick,
         world::World,
@@ -21,7 +21,7 @@ enum Command {
     SpawnEntity(EntityId),
     DespawnEntity(EntityId),
     DespawnEntityRecursive(EntityId),
-    InsertComponent(EntityId, UntypedPtr, ComponentInfoPtr, bool),
+    InsertComponent(Box<dyn FnOnce(&mut World)>),
     RemoveComponent(EntityId, TypeId),
     AddChild(EntityId, EntityId),
     RemoveChild(EntityId, EntityId),
@@ -168,13 +168,21 @@ impl<'a> EntityCommands<'a> {
     #[inline]
     /// Inserts a new component
     fn insert_internal<C: Component>(&mut self, component: C, replace: bool) {
-        let ptr = Box::into_raw(Box::new(component)) as *mut _;
-        let ptr = UntypedPtr::new_raw(ptr);
-        let info = self.commands.get_or_register_comp_info::<C>();
+        let entity_id = self.entity_id;
+
+        let insert_closure = move |world: &mut World| {
+            let info = world.registry.get_or_register::<C>();
+            let mut component = ManuallyDrop::new(component);
+            // Safety: component is inserted and not used anymore
+            let ptr = unsafe { OwnedPtr::new_ref(&mut component) };
+
+            world.entities
+                .insert_component(entity_id, ptr, info, replace);
+        };
 
         self.commands
             .commands
-            .push(Command::InsertComponent(self.entity_id, ptr, info, replace));
+            .push(Command::InsertComponent(Box::new(insert_closure)))
     }
 
     /// Checks and handles special cases of the component being inserted
@@ -261,10 +269,8 @@ impl Commands {
                 Command::DespawnEntityRecursive(entity_id) => {
                     world.entities.despawn_entity_recursive(entity_id);
                 }
-                Command::InsertComponent(entity_id, component, info, replace) => {
-                    world
-                        .entities
-                        .insert_component(entity_id, component, info, replace);
+                Command::InsertComponent(insert_closure) => {
+                    insert_closure(world);
                 }
                 Command::RemoveComponent(entity_id, type_id) => {
                     world.entities.remove_component(entity_id, type_id);
