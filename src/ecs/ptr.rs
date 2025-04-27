@@ -1,6 +1,55 @@
-use std::ptr::NonNull;
+use std::{marker::PhantomData, mem::ManuallyDrop, ptr::NonNull};
 
 use crate::ecs::tick::{TickStamp, TickStampMut};
+
+#[repr(transparent)]
+#[derive(Debug)]
+/// Pointer to a component or resource
+///
+/// The inner pointer is:
+/// - always non-null
+/// - exclusively owned data but behind a reference like `&mut T`
+/// - valid for the lifetime `'a`
+/// - data must be dropped manually
+pub struct OwnedPtr<'a> {
+    ptr: NonNull<u8>,
+    marker: PhantomData<&'a ()>,
+}
+
+impl<'a> OwnedPtr<'a> {
+    /// Creates new owned pointer, you must ensure `ptr` is valid for `Self` requirements
+    #[inline]
+    pub unsafe fn from_raw(ptr: NonNull<u8>) -> Self {
+        Self {
+            ptr,
+            marker: PhantomData,
+        }
+    }
+
+    /// Creates new owned pointer, you must ensure `ptr` is valid for `Self` requirements
+    /// The reference must not be used after this call
+    #[inline]
+    pub unsafe fn new_ref<T>(ptr: &'a mut ManuallyDrop<T>) -> OwnedPtr<'a> {
+        let raw = &**ptr as *const T as _;
+        let ptr = NonNull::new_unchecked(raw); // Safety: pointer is valid
+        Self::from_raw(ptr) // Safety:
+    }
+
+    /// Consumes self and returns the inner pointer
+    #[inline]
+    pub fn inner(self) -> NonNull<u8> {
+        self.ptr
+    }
+
+    /// Consumes self and reads the inner value as `T`
+    ///
+    /// # Safety
+    /// The pointer must be valid for `T`
+    #[inline]
+    pub unsafe fn read<T>(self) -> T {
+        self.inner().cast::<T>().read()
+    }
+}
 
 #[repr(transparent)]
 #[derive(Debug)]
