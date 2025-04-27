@@ -26,44 +26,13 @@ pub trait Component: Send + Sync + 'static {
 #[repr(transparent)]
 /// Mutable component reference.
 /// Holds a raw mutable pointer to a component.
-pub struct Mut<'a, C: Component>(DataPtrMut, PhantomData<&'a C>);
+pub struct Mut<'a, C: Component>(pub(crate) DataPtrMut, PhantomData<&'a C>);
 
 impl<'a, C: Component> Mut<'a, C> {
     /// Creates a new mutable component reference from a raw pointer.
     #[inline]
     pub(crate) fn new(data: DataPtrMut) -> Self {
         Self(data, PhantomData)
-    }
-
-    /// Returns the tick of when the component was last changed.
-    #[inline]
-    pub fn changed_at(&self) -> u64 {
-        self.0.changed_at()
-    }
-
-    /// Returns the tick of when the component was added.
-    #[inline]
-    pub fn added_at(&self) -> u64 {
-        self.0.added_at()
-    }
-
-    /// Returns whether the component was just changed.
-    #[inline]
-    pub fn just_changed(&self) -> bool {
-        self.0.changed_at() == self.0.current_stamp_tick()
-    }
-
-    /// Returns whether the component was just added.
-    #[inline]
-    pub fn just_added(&self) -> bool {
-        self.0.added_at() == self.0.current_stamp_tick()
-    }
-
-    /// Same as `deref_mut()` but without the change detection.
-    #[inline]
-    pub fn deref_mut_no_change(&mut self) -> &mut C {
-        let raw = self.0.raw() as *mut C;
-        unsafe { &mut *raw }
     }
 }
 
@@ -82,6 +51,28 @@ impl<'a, C: Component> DerefMut for Mut<'a, C> {
         self.0.mark_changed();
         // We just marked it as changed
         self.deref_mut_no_change()
+    }
+}
+
+#[repr(transparent)]
+/// Mutable component reference.
+/// Holds a raw mutable pointer to a component.
+pub struct Ref<'a, C: Component>(pub(crate) DataPtr, PhantomData<&'a C>);
+
+impl<'a, C: Component> Ref<'a, C> {
+    /// Creates a new mutable component reference from a raw pointer.
+    #[inline]
+    pub(crate) fn new(data: DataPtr) -> Self {
+        Self(data, PhantomData)
+    }
+}
+
+impl<'a, C: Component> Deref for Ref<'a, C> {
+    type Target = C;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        unsafe { &*self.0.raw().cast::<C>() }
     }
 }
 
@@ -203,11 +194,11 @@ impl ComponentsData {
         self.changed_at[index] > tick
     }
 
-    /// Check if component at `index` was added at `tick`.
+    /// Check if component at `index` was added since `tick`. 
     #[inline]
-    pub fn was_added(&self, index: usize, current_tick: Tick) -> bool {
+    pub fn added_since(&self, index: usize, tick: Tick) -> bool {
         debug_assert!(index < self.len(), "Index out of bounds");
-        self.added_at[index] == current_tick
+        self.added_at[index] > tick
     }
 
     /// Returns the type id of the components
@@ -224,14 +215,24 @@ impl ComponentsData {
 
     /// Returns immutable [`TickStamp`] for component at `index`.
     #[inline]
-    pub fn get_ticks(&self, i: usize, current_tick: Tick) -> TickStamp {
-        TickStamp::new(&self.changed_at[i], &self.added_at[i], current_tick)
+    pub fn get_ticks(&self, i: usize, current_tick: Tick, last_run: Tick) -> TickStamp {
+        TickStamp::new(
+            &self.changed_at[i],
+            &self.added_at[i],
+            current_tick,
+            last_run,
+        )
     }
 
     /// Returns mutable [`TickStampMut`] for component at `index`.
     #[inline]
-    pub fn get_ticks_mut(&mut self, i: usize, current_tick: Tick) -> TickStampMut {
-        TickStampMut::new(&mut self.changed_at[i], &mut self.added_at[i], current_tick)
+    pub fn get_ticks_mut(&mut self, i: usize, current_tick: Tick, last_run: Tick) -> TickStampMut {
+        TickStampMut::new(
+            &mut self.changed_at[i],
+            &mut self.added_at[i],
+            current_tick,
+            last_run,
+        )
     }
 
     /// Returns [`UntypedPtrLt`] for component at `index`. Useful for when you need just the data,
@@ -259,12 +260,12 @@ impl ComponentsData {
     /// # Panics
     /// Panics if `index` is out of bounds.
     #[inline]
-    pub fn get(&self, index: usize, current_tick: Tick) -> DataPtr {
+    pub fn get(&self, index: usize, current_tick: Tick, last_run: Tick) -> DataPtr {
         debug_assert!(index < self.len(), "Index out of bounds");
 
         // Safety: index is callers responsibility
         let ptr = unsafe { self.data.get(index) };
-        DataPtr::new(ptr, self.get_ticks(index, current_tick))
+        DataPtr::new(ptr, self.get_ticks(index, current_tick, last_run))
     }
 
     /// Returns mutable data for component at `index`.
@@ -272,12 +273,12 @@ impl ComponentsData {
     /// # Panics
     /// Panics if `index` is out of bounds.
     #[inline]
-    pub fn get_mut(&mut self, index: usize, current_tick: Tick) -> DataPtrMut {
+    pub fn get_mut(&mut self, index: usize, current_tick: Tick, last_run: Tick) -> DataPtrMut {
         debug_assert!(index < self.len(), "Index out of bounds");
 
         // Safety: index is callers responsibility
         let ptr = unsafe { self.data.get_mut(index) };
-        DataPtrMut::new(ptr, self.get_ticks_mut(index, current_tick))
+        DataPtrMut::new(ptr, self.get_ticks_mut(index, current_tick, last_run))
     }
 
     /// Removes component at `index` and returns `(component, changed_at, added_at)` tuple.
