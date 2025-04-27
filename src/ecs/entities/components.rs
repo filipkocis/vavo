@@ -8,7 +8,7 @@ use std::{
 
 use crate::{
     ecs::{
-        ptr::{DataPtr, DataPtrMut, UntypedPtr, UntypedPtrLt},
+        ptr::{DataPtr, DataPtrMut, OwnedPtr, UntypedPtrLt},
         store::blob::{new_option_drop_fn, BlobVec, DropFn},
         tick::{TickStamp, TickStampMut},
     },
@@ -163,7 +163,7 @@ impl ComponentInfoPtr {
 
     /// Drops a component/resource
     #[inline]
-    pub fn drop(&self, ptr: UntypedPtr) {
+    pub fn drop(&self, ptr: OwnedPtr) {
         if let Some(drop_fn) = self.as_ref().drop {
             unsafe { drop_fn(ptr.inner()) }
         }
@@ -285,7 +285,7 @@ impl ComponentsData {
     /// # Panics
     /// Panics if `index` is out of bounds.
     #[inline]
-    pub fn remove(&mut self, index: usize) -> (UntypedPtr, Tick, Tick) {
+    pub fn remove(&mut self, index: usize) -> (OwnedPtr, Tick, Tick) {
         debug_assert!(index < self.len(), "Index out of bounds");
 
         // Safety: index is callers responsibility
@@ -305,7 +305,7 @@ impl ComponentsData {
     /// # Safety
     /// You must ensure the component is of the same type as this row.
     #[inline]
-    pub fn set(&mut self, index: usize, component: UntypedPtr, added_at: Tick) {
+    pub fn set(&mut self, index: usize, component: OwnedPtr, added_at: Tick) {
         debug_assert!(index < self.len(), "Index out of bounds");
 
         // Safety: callers responsibility
@@ -322,7 +322,7 @@ impl ComponentsData {
     /// # Safety
     /// You must ensure the component is of the same type as this row.
     #[inline]
-    pub fn insert(&mut self, component: UntypedPtr, changed_at: Tick, added_at: Tick) {
+    pub fn insert(&mut self, component: OwnedPtr, changed_at: Tick, added_at: Tick) {
         // Safety: callers responsibility
         unsafe {
             self.data.push(component);
