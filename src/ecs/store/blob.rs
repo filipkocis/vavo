@@ -5,7 +5,7 @@ use std::{
     ptr::{drop_in_place, NonNull},
 };
 
-use crate::ecs::ptr::UntypedPtr;
+use crate::ecs::ptr::{OwnedPtr, UntypedPtr};
 
 pub type DropFn = unsafe fn(NonNull<u8>);
 
@@ -219,7 +219,7 @@ impl BlobVec {
 
     /// Swap remove the element at index `i`.
     /// Caller must ensure the index is within bounds.
-    unsafe fn swap_remove_raw(&mut self, i: usize) -> NonNull<u8> {
+    unsafe fn swap_remove_raw(&mut self, i: usize) -> OwnedPtr {
         debug_assert!(i <= self.len, "Index out of bounds");
         let last = self.len - 1;
         let last_ptr = self.get_raw(last); // Safety: valid index
@@ -231,7 +231,8 @@ impl BlobVec {
         }
 
         self.len -= 1;
-        last_ptr
+        // Safety: ptr is exclusive, we lowered the length
+        OwnedPtr::from_raw(last_ptr)
     }
 
     /// Get a mutable slice of the blob.
@@ -298,7 +299,7 @@ impl BlobVec {
     ///
     /// # Panic
     /// Panics if the new capacity overflows `isize::MAX`
-    pub unsafe fn push(&mut self, value: UntypedPtr) {
+    pub unsafe fn push(&mut self, value: OwnedPtr) {
         self.push_raw(value.inner()); // Safety: caller
     }
 
@@ -309,7 +310,7 @@ impl BlobVec {
     ///
     /// # Panics
     /// Panics if the new capacity overflows `isize::MAX`
-    pub unsafe fn set(&mut self, value: UntypedPtr, i: usize) {
+    pub unsafe fn set(&mut self, value: OwnedPtr, i: usize) {
         self.set_raw(value.inner(), i);
     }
 
@@ -317,9 +318,9 @@ impl BlobVec {
     ///
     /// # Safety
     /// Caller must ensure correct index
-    pub unsafe fn remove(&mut self, i: usize) -> UntypedPtr {
-        let ptr = self.swap_remove_raw(i); // Safety: caller
-        UntypedPtr::new(ptr)
+    #[inline]
+    pub unsafe fn remove(&mut self, i: usize) -> OwnedPtr {
+        self.swap_remove_raw(i) // Safety: caller
     }
 
     /// Get a reference to an element
