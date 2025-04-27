@@ -59,36 +59,26 @@ pub struct UntypedPtr {
 }
 
 impl UntypedPtr {
-    #[inline]
     /// Creates new untyped pointer
-    pub fn new(ptr: NonNull<u8>) -> Self {
+    #[inline]
+    pub fn from_raw(ptr: NonNull<u8>) -> Self {
         Self { ptr }
     }
 
-    #[inline]
-    /// Creates new untyped pointer
-    ///
-    /// # Safety
-    /// Pointer must be non-null and valid
-    pub fn new_raw(ptr: *mut u8) -> Self {
-        let ptr = unsafe { NonNull::new_unchecked(ptr) };
-        Self { ptr }
-    }
-
-    #[inline]
     /// Unwraps the pointer
+    #[inline]
     pub fn inner(self) -> NonNull<u8> {
         self.ptr
     }
 
-    #[inline]
     /// Returns the internal pointer
+    #[inline]
     pub fn as_ptr(&self) -> &NonNull<u8> {
         &self.ptr
     }
 
-    #[inline]
     /// Returns the internal pointer
+    #[inline]
     pub fn as_mut(&mut self) -> &mut NonNull<u8> {
         &mut self.ptr
     }
@@ -98,7 +88,7 @@ impl UntypedPtr {
 /// Same as [`UntypedPtr`], but with a lifetime
 pub struct UntypedPtrLt<'a> {
     ptr: NonNull<u8>,
-    _marker: std::marker::PhantomData<&'a ()>,
+    marker: PhantomData<&'a ()>,
 }
 
 impl<'a> UntypedPtrLt<'a> {
@@ -106,7 +96,7 @@ impl<'a> UntypedPtrLt<'a> {
     pub fn new(untyped: UntypedPtr) -> Self {
         Self {
             ptr: untyped.ptr,
-            _marker: std::marker::PhantomData,
+            marker: PhantomData,
         }
     }
 

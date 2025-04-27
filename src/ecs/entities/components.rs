@@ -26,9 +26,9 @@ pub trait Component: Send + Sync + 'static {
 #[repr(transparent)]
 /// Mutable component reference.
 /// Holds a raw mutable pointer to a component.
-pub struct Mut<C: Component>(DataPtrMut, PhantomData<C>);
+pub struct Mut<'a, C: Component>(DataPtrMut, PhantomData<&'a C>);
 
-impl<C: Component> Mut<C> {
+impl<'a, C: Component> Mut<'a, C> {
     /// Creates a new mutable component reference from a raw pointer.
     #[inline]
     pub(crate) fn new(data: DataPtrMut) -> Self {
@@ -67,7 +67,7 @@ impl<C: Component> Mut<C> {
     }
 }
 
-impl<C: Component> Deref for Mut<C> {
+impl<'a, C: Component> Deref for Mut<'a, C> {
     type Target = C;
 
     #[inline]
@@ -76,7 +76,7 @@ impl<C: Component> Deref for Mut<C> {
     }
 }
 
-impl<C: Component> DerefMut for Mut<C> {
+impl<'a, C: Component> DerefMut for Mut<'a, C> {
     #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.0.mark_changed();

@@ -329,7 +329,7 @@ impl BlobVec {
     /// Caller must ensure correct index
     pub unsafe fn get(&self, i: usize) -> UntypedPtr {
         let ptr = self.get_raw(i);
-        UntypedPtr::new(ptr)
+        UntypedPtr::from_raw(ptr)
     }
 
     /// Get a mutable reference to an element
@@ -338,7 +338,7 @@ impl BlobVec {
     /// Caller must ensure correct index
     pub unsafe fn get_mut(&mut self, i: usize) -> UntypedPtr {
         let ptr = self.get_raw(i);
-        UntypedPtr::new(ptr)
+        UntypedPtr::from_raw(ptr)
     }
 
     /// Get a slice of the blob
