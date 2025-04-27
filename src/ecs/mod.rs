@@ -3,13 +3,14 @@ pub mod resources;
 pub mod state;
 pub mod world;
 pub mod tick;
+pub mod change_detection;
 
 pub mod ptr;
 pub mod store;
 
 pub mod prelude {
     pub use super::entities::{
-        components::Component,
+        components::{Component, Ref, Mut},
         relation::{Children, Parent},
         Entities, EntityId,
     };
@@ -19,4 +20,5 @@ pub mod prelude {
     pub use super::state::{conditions::*, NextState, State, StateTransitionEvent, States};
     pub use super::tick::Tick;
     pub use super::world::World;
+    pub use super::change_detection::ChangeDetection;
 }
