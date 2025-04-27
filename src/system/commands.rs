@@ -2,10 +2,7 @@ use std::{any::TypeId, mem::ManuallyDrop};
 
 use crate::{
     ecs::{
-        entities::{
-            components::{ComponentInfoPtr, ComponentsRegistry},
-            Component, EntityId,
-        },
+        entities::{Component, EntityId},
         ptr::OwnedPtr,
         resources::{Resource, ResourceData},
         tick::Tick,
@@ -29,7 +26,6 @@ enum Command {
 
 pub struct Commands {
     next_entity_id: EntityId,
-    registry: *mut ComponentsRegistry,
     commands: Vec<Command>,
 }
 
@@ -206,18 +202,13 @@ impl<'a> EntityCommands<'a> {
 }
 
 impl Commands {
-    pub(crate) fn build(world: &World) -> Self {
+    /// Creates new command queue.
+    /// Provide `next_entity_id` from [`Entities::next_entity_id`](crate::prelude::Entities::next_entity_id)
+    pub(crate) fn build(next_entity_id: EntityId) -> Self {
         Self {
-            next_entity_id: world.entities.next_entity_id(),
-            registry: &world.registry as *const _ as *mut _,
+            next_entity_id,
             commands: Vec::new(),
         }
-    }
-
-    #[inline]
-    fn get_or_register_comp_info<C: Component>(&mut self) -> ComponentInfoPtr {
-        let registry = unsafe { &mut *self.registry }; // Safety: always valid ptr
-        registry.get_or_register::<C>()
     }
 
     pub fn insert_resource<R: Resource>(&mut self, resource: R) -> &mut Self {

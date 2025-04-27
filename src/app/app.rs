@@ -127,7 +127,7 @@ impl App {
             return;
         }
 
-        let commands = Commands::build(&self.world);
+        let commands = Commands::build(self.world.entities.next_entity_id());
         let mut ctx = SystemsContext::new(commands, &mut self.world.resources, &mut self.events, renderer, self_ptr, &mut self.render_graph);
 
         let iterations = if stage.has_fixed_time() {
@@ -148,7 +148,7 @@ impl App {
     }
 
     fn execute_render_graph(&mut self, renderer: Renderer) {
-        let commands = Commands::build(&self.world);
+        let commands = Commands::build(self.world.entities.next_entity_id());
         let self_ptr = self as *mut App;
         let mut ctx = SystemsContext::new(commands, &mut self.world.resources, &mut self.events, renderer, self_ptr, &mut self.render_graph);
 
