@@ -41,6 +41,6 @@ pub fn not_in_state<S: States + 'static>(state: S) -> impl IntoSystemCondition<(
     move |ctx: &mut SystemsContext, _| {
         ctx.resources
             .get::<State<S>>()
-            .map_or(false, |s| s.get() != state)
+            .map_or(true, |s| s.get() != state)
     }
 }
