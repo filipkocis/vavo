@@ -51,7 +51,7 @@ pub fn not_in_state<S: States + 'static>(state: S) -> impl IntoSystemCondition<(
 pub fn not<T: 'static, F: 'static>(
     condition: impl IntoSystemCondition<T, F>,
 ) -> impl IntoSystemCondition<T, F> {
-    let condition = condition.system_condition();
+    let mut condition = condition.system_condition();
     move |ctx: &mut SystemsContext, query: Query<T, F>| !condition(ctx, query)
 }
 

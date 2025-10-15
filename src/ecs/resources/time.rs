@@ -46,11 +46,6 @@ impl Time {
         self.tick
     }
 
-    /// Raw pointer to the tick value. Used in multiple `ecs` systems
-    pub(crate) fn tick_raw(&self) -> *const u64 {
-        &self.tick
-    }
-
     /// Returns the duration of the last frame in seconds
     pub fn delta(&self) -> f32 {
         self.delta

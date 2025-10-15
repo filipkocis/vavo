@@ -12,7 +12,7 @@ pub struct System {
     /// Tick of the last run, or `0` 
     last_run: Tick,
     exec: Box<dyn Fn(&mut SystemsContext, &mut Entities, Tick)>,
-    conditions: Vec<Box<dyn Fn(&mut SystemsContext, &mut Entities, Tick) -> bool>>,
+    conditions: Vec<Box<dyn FnMut(&mut SystemsContext, &mut Entities, Tick) -> bool>>,
 }
 
 impl System {
@@ -49,7 +49,7 @@ impl System {
         ctx.increment_world_tick();
         ctx.resources.set_system_last_run(self.last_run);
 
-        if self.conditions.iter().all(|condition| condition(ctx, entities, last_run)) {
+        if self.conditions.iter_mut().all(|condition| condition(ctx, entities, last_run)) {
             (self.exec)(ctx, entities, last_run);
             self.last_run = ctx.world_tick();
         }
@@ -57,7 +57,7 @@ impl System {
 
     /// Add new run condition to the system
     pub fn run_if<T: 'static, F: 'static>(mut self, condition: impl IntoSystemCondition<T, F>) -> Self {
-        let condition = condition.system_condition();
+        let mut condition = condition.system_condition();
         self.conditions.push(Box::new(move |ctx, entities, tick| -> bool {
             let query = Query::new(entities, tick);
             condition(ctx, query)

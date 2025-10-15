@@ -12,7 +12,7 @@ pub struct With<C: Component>(PhantomData<C>);
 /// A filter that checks if a component is **not** present.
 pub struct Without<C: Component>(PhantomData<C>);
 
-/// A special filter that checks if any of the [filters](QueryFilter) evaluate to true. 
+/// A special filter that checks if any of the [filters](QueryFilter) evaluate to true.
 /// Nested Ors are not supported.
 #[allow(private_bounds)]
 pub struct Or<F: QueryFilter>(PhantomData<F>);
@@ -48,7 +48,7 @@ impl<F: QueryFilter> QueryFilter for Or<F> {
     #[inline]
     fn into_filters(filters: &mut Filters) {
         let or_filters = Filters::from::<F>();
-        filters.or.push(or_filters); 
+        filters.or.push(or_filters);
     }
 }
 
