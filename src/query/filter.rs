@@ -68,6 +68,17 @@ impl_query_filter!(A, B);
 impl_query_filter!(A, B, C);
 impl_query_filter!(A, B, C, D);
 impl_query_filter!(A, B, C, D, E);
+impl_query_filter!(A, B, C, D, E, F);
+impl_query_filter!(A, B, C, D, E, F, G);
+impl_query_filter!(A, B, C, D, E, F, G, H);
+impl_query_filter!(A, B, C, D, E, F, G, H, I);
+impl_query_filter!(A, B, C, D, E, F, G, H, I, J);
+impl_query_filter!(A, B, C, D, E, F, G, H, I, J, K);
+impl_query_filter!(A, B, C, D, E, F, G, H, I, J, K, L);
+impl_query_filter!(A, B, C, D, E, F, G, H, I, J, K, L, M);
+impl_query_filter!(A, B, C, D, E, F, G, H, I, J, K, L, M, N);
+impl_query_filter!(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O);
+impl_query_filter!(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P);
 
 /// Struct to store parsed T query filters
 #[derive(Debug)]
