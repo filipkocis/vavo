@@ -1,4 +1,4 @@
-use crate::{ecs::entities::{components::ComponentsData, Component, EntityId}, prelude::Tick};
+use crate::{ecs::entities::{components::ComponentsData, Component, EntityId}, prelude::{Mut, Ref, Tick}};
 
 use super::{filter::{Filters, QueryFilter}, Query, QueryComponentType};
 
@@ -35,6 +35,20 @@ impl<C: Component> QueryGetType for &C {
 }
 
 impl<C: Component> QueryGetType for &mut C {
+    #[inline]
+    fn get_type_id() -> QueryComponentType {
+        QueryComponentType::Normal(C::get_type_id())
+    }
+}
+
+impl<C: Component> QueryGetType for Ref<'_, C> {
+    #[inline]
+    fn get_type_id() -> QueryComponentType {
+        QueryComponentType::Normal(C::get_type_id())
+    }
+}
+
+impl<C: Component> QueryGetType for Mut<'_, C> {
     #[inline]
     fn get_type_id() -> QueryComponentType {
         QueryComponentType::Normal(C::get_type_id())
@@ -93,6 +107,24 @@ impl<'a, C: Component> QueryGetDowncasted<'a> for &mut C {
     fn get_downcasted(comp: &mut ComponentsData, index: usize, tick: Tick) -> Self::Output {
         comp.set_changed_at(index, tick);
         unsafe { comp.get_untyped_lt(index).as_ptr().cast::<C>().as_mut() }
+    }
+}
+
+impl<'a, C: Component> QueryGetDowncasted<'a> for Ref<'a, C> {
+    type Output = Ref<'a, C>; 
+    #[inline]
+    fn get_downcasted(comp: &mut ComponentsData, index: usize, tick: Tick) -> Self::Output {
+        let data= comp.get(index, tick, tick);
+        Ref::new(data)
+    }
+}
+
+impl<'a, C: Component> QueryGetDowncasted<'a> for Mut<'a, C> {
+    type Output = Mut<'a, C>; 
+    #[inline]
+    fn get_downcasted(comp: &mut ComponentsData, index: usize, tick: Tick) -> Self::Output {
+        let data= comp.get_mut(index, tick, tick);
+        Mut::new(data)
     }
 }
 
