@@ -17,6 +17,7 @@ use crate::{
 
 /// A type which can be used as an entity component in the ECS.
 pub trait Component: Send + Sync + 'static {
+    /// Returns the `TypeId` of the component.
     #[inline]
     fn get_type_id() -> TypeId {
         TypeId::of::<Self>()
@@ -194,7 +195,7 @@ impl ComponentsData {
         self.changed_at[index] > tick
     }
 
-    /// Check if component at `index` was added since `tick`. 
+    /// Check if component at `index` was added since `tick`.
     #[inline]
     pub fn added_since(&self, index: usize, tick: Tick) -> bool {
         debug_assert!(index < self.len(), "Index out of bounds");

@@ -105,7 +105,7 @@ impl Entities {
     }
 
     /// Exposes next entity ID
-    pub(crate) fn next_entity_id(&self) -> EntityId {
+    pub fn next_entity_id(&self) -> EntityId {
         self.next_entity_id
     }
 
