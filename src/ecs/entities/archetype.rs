@@ -67,7 +67,7 @@ impl Archetype {
     }
 
     /// Remove entity, returns removed components with `(changed_at, added_at)` ticks or None if entity_id doesn't exist
-    pub(super) fn remove_entity(&mut self, entity_id: EntityId) -> Option<Vec<(ComponentInfoPtr, OwnedPtr, Tick, Tick)>> {
+    pub(super) fn remove_entity(&mut self, entity_id: EntityId) -> Option<Vec<(ComponentInfoPtr, OwnedPtr<'_>, Tick, Tick)>> {
         if let Some(index) = self.entity_ids.iter().position(|id| *id == entity_id) {
             self.entity_ids.swap_remove(index);
 
@@ -97,10 +97,10 @@ impl Archetype {
         if let Some(entity_index) = self.entity_ids.iter().position(|id| *id == entity_id) {
             let component_index = self.types[&type_id].0;
             self.components[component_index].set(entity_index, component, current_tick);
-            return true
+            true
         } else {
             self.types[&type_id].1.drop(component);
-            return false
+            false
         }
     }
 
@@ -113,6 +113,12 @@ impl Archetype {
     #[inline]
     pub fn len(&self) -> usize {
         self.entity_ids.len()
+    }
+
+    /// Returns true if there are no entities in this archetype
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.entity_ids.is_empty()
     }
 
     /// Returns a pointer to the [`ComponentsData`] at `index`

@@ -65,7 +65,12 @@ impl ResourceData {
     #[inline]
     /// Returns mutable [`TickStampMut`] for the resource.
     fn get_ticks_mut(&mut self, current_tick: Tick, last_run: Tick) -> TickStampMut {
-        TickStampMut::new(&mut self.changed_at, &mut self.added_at, current_tick, last_run)
+        TickStampMut::new(
+            &mut self.changed_at,
+            &mut self.added_at,
+            current_tick,
+            last_run,
+        )
     }
 }
 
@@ -107,6 +112,7 @@ impl<R: Resource> DerefMut for ResMut<R> {
 }
 
 /// Storage for all resources in a world.
+#[derive(Default)]
 pub struct Resources {
     resources: HashMap<TypeId, ResourceData>,
     current_tick: *const Tick,
@@ -115,11 +121,7 @@ pub struct Resources {
 
 impl Resources {
     pub fn new() -> Self {
-        Self {
-            resources: HashMap::new(),
-            current_tick: std::ptr::null(),
-            system_last_run: Tick::default(),
-        }
+        Self::default()
     }
 
     /// Initialize tick pointer, necessary for correct tick tracking.
@@ -131,6 +133,10 @@ impl Resources {
     /// Returns the current world tick.
     #[inline]
     fn tick(&self) -> Tick {
+        debug_assert!(
+            !self.current_tick.is_null(),
+            "Resources tick pointer is null. Did you forget to call `initialize_tick`?",
+        );
         unsafe { *self.current_tick }
     }
 

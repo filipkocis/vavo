@@ -1,14 +1,14 @@
 pub mod archetype;
-pub mod relation;
 pub mod components;
+pub mod relation;
 
 pub use components::Component;
 use components::ComponentInfoPtr;
 
 use std::{any::TypeId, collections::HashMap, hash::Hash, mem::ManuallyDrop};
 
-use crate::query::{filter::Filters, QueryComponentType};
 use crate::macros::{Component, Reflect};
+use crate::query::{filter::Filters, QueryComponentType};
 
 use archetype::{Archetype, ArchetypeId};
 use relation::{Children, Parent};
@@ -17,8 +17,7 @@ use super::{ptr::OwnedPtr, tick::Tick};
 
 /// Unique identifier for an [entity](Entities) in a [`World`](crate::ecs::world::World).
 /// Consists of an `index` and a `generation` to avoid reusing IDs of despawned entities.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-#[derive(Component, Reflect)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Component, Reflect)]
 pub struct EntityId {
     /// Index of the entity, serves as the main identifier and is reused after despawning an
     /// entity. It's used as an index in the entities storage.
@@ -31,7 +30,7 @@ impl EntityId {
     /// Create new EntityId from index and generation
     #[inline]
     pub fn new(index: u32, generation: u32) -> Self {
-        Self {index, generation }
+        Self { index, generation }
     }
 
     /// Returns the index of the id
@@ -50,7 +49,7 @@ impl EntityId {
     /// Lower 32 bits are index, upper 32 bits are generation
     #[inline]
     pub fn to_bits(self) -> u64 {
-        (self.index as u64) | ((self.generation as u64) << 32) 
+        (self.index as u64) | ((self.generation as u64) << 32)
     }
 
     /// Create a new id from a u64 representation
@@ -71,27 +70,37 @@ pub struct Entities {
     current_tick: *const Tick,
 }
 
-
 // TODO: Implement the correct removal and transfer of ticks, not just components
 
-impl Entities {
+impl Default for Entities {
     /// Create new `Entities` manager with uninitialized tick pointer
-    pub fn new() -> Self {
+    fn default() -> Self {
         Self {
             next_entity_id: EntityId::new(0, 0),
             archetypes: HashMap::new(),
             current_tick: std::ptr::null(),
         }
     }
+}
+
+impl Entities {
+    /// Create new `Entities` manager with uninitialized tick pointer
+    pub fn new() -> Self {
+        Self::default()
+    }
 
     #[inline]
     /// Returns current tick
     pub fn tick(&self) -> Tick {
+        debug_assert!(
+            !self.current_tick.is_null(),
+            "Entities tick pointer is null. Did you forget to call `initialize_tick`?",
+        );
         unsafe { *self.current_tick }
     }
 
     /// Exposes archetyeps
-    pub fn archetypes(&self) -> impl Iterator<Item = &Archetype> { 
+    pub fn archetypes(&self) -> impl Iterator<Item = &Archetype> {
         self.archetypes.values()
     }
 
@@ -110,7 +119,11 @@ impl Entities {
 
     /// Returns archetypes with matching [`query types`](QueryComponentType) and filters, and component indices for
     /// `changed` filters acquired from [`Archetype::get_changed_filter_indices`]
-    pub(crate) fn archetypes_filtered<'a>(&'a mut self, type_ids: &'a [QueryComponentType], filters: &'a mut Filters) -> impl Iterator<Item = (&'a mut Archetype, Vec<Vec<usize>>)> {
+    pub(crate) fn archetypes_filtered<'a>(
+        &'a mut self,
+        type_ids: &'a [QueryComponentType],
+        filters: &'a mut Filters,
+    ) -> impl Iterator<Item = (&'a mut Archetype, Vec<Vec<usize>>)> {
         self.archetypes.values_mut().filter_map(|a| {
             if a.has_query_types(type_ids) && a.matches_filters(filters) {
                 let indices = a.get_changed_filter_indices(filters);
@@ -131,40 +144,45 @@ impl Entities {
     /// # Panic
     /// Panics if components contain EntityId
     pub(crate) fn spawn_entity(
-        &mut self, 
-        entity_id: EntityId, 
-        components: Vec<(ComponentInfoPtr, OwnedPtr)>, 
-        entity_info: ComponentInfoPtr
+        &mut self,
+        entity_id: EntityId,
+        components: Vec<(ComponentInfoPtr, OwnedPtr)>,
+        entity_info: ComponentInfoPtr,
     ) {
         let entity_id_type = TypeId::of::<EntityId>();
         assert!(
-            !components.iter().any(|(info, _)| info.as_ref().type_id == entity_id_type),
+            !components
+                .iter()
+                .any(|(info, _)| info.as_ref().type_id == entity_id_type),
             "Cannot insert EntityId as a component"
         );
 
         let tick = self.tick();
-        let mut components = components.into_iter().map(|(info, ptr)| (info, ptr, tick, tick)).collect::<Vec<_>>();
+        let mut components = components
+            .into_iter()
+            .map(|(info, ptr)| (info, ptr, tick, tick))
+            .collect::<Vec<_>>();
         let mut entity_id_cpy = ManuallyDrop::new(entity_id);
 
         // Safety: entity is copied because its just on the stack
-        let entity_id_ptr = unsafe { OwnedPtr::new_ref(&mut entity_id_cpy) }; 
-        components.push((
-            entity_info,
-            entity_id_ptr,
-            tick,
-            tick,
-        ));
-        let infos = components.iter().map(|(info, ..)| *info).collect::<Vec<_>>();
-        let archetype_id = Archetype::hash_types(infos.clone()); 
+        let entity_id_ptr = unsafe { OwnedPtr::new_ref(&mut entity_id_cpy) };
+        components.push((entity_info, entity_id_ptr, tick, tick));
+        let infos = components
+            .iter()
+            .map(|(info, ..)| *info)
+            .collect::<Vec<_>>();
+        let archetype_id = Archetype::hash_types(infos.clone());
 
         assert!(
-            self.next_entity_id == entity_id, 
-            "Entity ID mismatch with next entity ID (id {:?} != next {:?})", 
-            entity_id, self.next_entity_id
+            self.next_entity_id == entity_id,
+            "Entity ID mismatch with next entity ID (id {:?} != next {:?})",
+            entity_id,
+            self.next_entity_id
         );
         self.step_entity_id();
 
-        self.archetypes.entry(archetype_id)
+        self.archetypes
+            .entry(archetype_id)
             .or_insert_with(|| Archetype::new(infos, self.current_tick))
             .insert_entity(entity_id, components);
     }
@@ -178,14 +196,18 @@ impl Entities {
 
         // Remove entity
         let mut emptied_archetype = None;
-        if let Some((id, archetype)) = self.archetypes.iter_mut().find(|(_, a)| a.has_entity(&entity_id)) {
+        if let Some((id, archetype)) = self
+            .archetypes
+            .iter_mut()
+            .find(|(_, a)| a.has_entity(&entity_id))
+        {
             if let Some(removed) = archetype.remove_entity(entity_id) {
                 for (info, component, ..) in removed {
                     info.drop(component)
                 }
             }
 
-            if archetype.len() == 0 {
+            if archetype.is_empty() {
                 emptied_archetype = Some(*id);
             }
         }
@@ -211,17 +233,34 @@ impl Entities {
     ///
     /// # Panics
     /// Panics if components type_id is EntityId
-    pub(crate) fn insert_component(&mut self, entity_id: EntityId, component: OwnedPtr, info: ComponentInfoPtr, replace: bool) {
+    pub(crate) fn insert_component(
+        &mut self,
+        entity_id: EntityId,
+        component: OwnedPtr,
+        info: ComponentInfoPtr,
+        replace: bool,
+    ) {
         let current_tick = self.tick();
         let type_id = info.as_ref().type_id;
         let archetypes_ptr = &mut self.archetypes as *mut HashMap<_, _>;
-        assert_ne!(type_id, TypeId::of::<EntityId>(), "Cannot insert EntityId as a component");
+        assert_ne!(
+            type_id,
+            TypeId::of::<EntityId>(),
+            "Cannot insert EntityId as a component"
+        );
 
         let mut emptied_archetype = None;
-        if let Some((id, archetype)) = self.archetypes.iter_mut().find(|(_, a)| a.has_entity(&entity_id)) {
+        if let Some((id, archetype)) = self
+            .archetypes
+            .iter_mut()
+            .find(|(_, a)| a.has_entity(&entity_id))
+        {
             if archetype.has_type(&type_id) {
                 if replace {
-                    assert!(archetype.set_component(entity_id, component, info.as_ref().type_id), "Failed to set component");
+                    assert!(
+                        archetype.set_component(entity_id, component, info.as_ref().type_id),
+                        "Failed to set component"
+                    );
                 } else {
                     info.drop(component);
                 }
@@ -235,13 +274,16 @@ impl Entities {
             let mut infos = archetype.types_vec();
             infos.push(info);
 
-            let mut old_components = archetype.remove_entity(entity_id).expect("entity_id should exist in archetype");
+            let mut old_components = archetype
+                .remove_entity(entity_id)
+                .expect("entity_id should exist in archetype");
             old_components.push((info, component, current_tick, current_tick));
 
             let archetype_id = Archetype::hash_types(infos.clone());
             // Safety: since old_components reference archetype, we need to do another mut borrow
             // which is safe here because the reference is from `remove_entity`
-            unsafe { &mut *archetypes_ptr }.entry(archetype_id)
+            unsafe { &mut *archetypes_ptr }
+                .entry(archetype_id)
                 .or_insert_with(|| Archetype::new(infos, self.current_tick))
                 .insert_entity(entity_id, old_components);
         } else {
@@ -259,10 +301,18 @@ impl Entities {
     /// Panics if type_id is EntityId
     pub(crate) fn remove_component(&mut self, entity_id: EntityId, type_id: TypeId) {
         let archetypes_ptr = &mut self.archetypes as *mut HashMap<_, _>;
-        assert_ne!(type_id, TypeId::of::<EntityId>(), "Cannot remove builtin EntityId component");
+        assert_ne!(
+            type_id,
+            TypeId::of::<EntityId>(),
+            "Cannot remove builtin EntityId component"
+        );
 
         let mut emptied_archetype = None;
-        if let Some((id, archetype)) = self.archetypes.iter_mut().find(|(_, a)| a.has_entity(&entity_id)) {
+        if let Some((id, archetype)) = self
+            .archetypes
+            .iter_mut()
+            .find(|(_, a)| a.has_entity(&entity_id))
+        {
             let Some(component_index) = archetype.get_component_index(&type_id) else {
                 return;
             };
@@ -274,14 +324,17 @@ impl Entities {
             let mut types = archetype.types_vec();
             types.remove(component_index);
 
-            let mut old_components = archetype.remove_entity(entity_id).expect("entity_id should exist in archetype");
+            let mut old_components = archetype
+                .remove_entity(entity_id)
+                .expect("entity_id should exist in archetype");
             let removed = old_components.remove(component_index);
             removed.0.drop(removed.1);
 
             let archetype_id = Archetype::hash_types(types.clone());
-             // Safety: since old_components reference archetype, we need to do another mut borrow
+            // Safety: since old_components reference archetype, we need to do another mut borrow
             // which is safe here because the reference is from `remove_entity`
-            unsafe { &mut *archetypes_ptr }.entry(archetype_id)
+            unsafe { &mut *archetypes_ptr }
+                .entry(archetype_id)
                 .or_insert_with(|| Archetype::new(types, self.current_tick))
                 .insert_entity(entity_id, old_components);
         }
@@ -292,7 +345,10 @@ impl Entities {
     }
 
     /// Get component mutably
-    pub(crate) fn get_component_mut<C: Component>(&mut self, entity_id: EntityId) -> Option<&mut C> {
+    pub(crate) fn get_component_mut<C: Component>(
+        &mut self,
+        entity_id: EntityId,
+    ) -> Option<&mut C> {
         let current_tick = self.tick();
         let type_id = TypeId::of::<C>();
         for archetype in self.archetypes.values_mut() {
@@ -304,10 +360,15 @@ impl Entities {
             if let Some(component_index) = archetype.get_component_index(&type_id) {
                 let comp = &mut archetype.components[component_index];
                 comp.set_changed_at(entity_index, current_tick);
-                let comp = unsafe { comp.get_untyped_lt(entity_index).as_ptr().cast::<C>().as_mut() };
-                return Some(comp)
+                let comp = unsafe {
+                    comp.get_untyped_lt(entity_index)
+                        .as_ptr()
+                        .cast::<C>()
+                        .as_mut()
+                };
+                return Some(comp);
             } else {
-                return None
+                return None;
             }
         }
 
@@ -325,10 +386,15 @@ impl Entities {
 
             if let Some(component_index) = archetype.get_component_index(&type_id) {
                 let comp = &archetype.components[component_index];
-                let comp = unsafe { comp.get_untyped_lt(entity_index).as_ptr().cast::<C>().as_ref() };
-                return Some(comp)
+                let comp = unsafe {
+                    comp.get_untyped_lt(entity_index)
+                        .as_ptr()
+                        .cast::<C>()
+                        .as_ref()
+                };
+                return Some(comp);
             } else {
-                return None
+                return None;
             }
         }
 
@@ -344,11 +410,20 @@ impl Entities {
         parent_id: EntityId,
         child_id: EntityId,
         parent_info: ComponentInfoPtr,
-        children_info: ComponentInfoPtr
+        children_info: ComponentInfoPtr,
     ) {
-        assert_ne!(parent_id, child_id, "Parent and child cannot be the same entity");
-        assert!(self.archetypes.values().any(|a| a.has_entity(&parent_id)), "Parent entity does not exist");
-        assert!(self.archetypes.values().any(|a| a.has_entity(&child_id)), "Child entity does not exist");
+        assert_ne!(
+            parent_id, child_id,
+            "Parent and child cannot be the same entity"
+        );
+        assert!(
+            self.archetypes.values().any(|a| a.has_entity(&parent_id)),
+            "Parent entity does not exist"
+        );
+        assert!(
+            self.archetypes.values().any(|a| a.has_entity(&child_id)),
+            "Child entity does not exist"
+        );
 
         // TODO: Check if child already has a parent and remove it
 

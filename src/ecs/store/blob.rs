@@ -64,6 +64,7 @@ impl BlobVec {
         blob
     }
 
+    #[inline]
     /// Create a new blob storage with the given type and capacity.
     pub fn new_type<T>(capacity: usize) -> Self {
         let layout = Layout::new::<T>();
@@ -84,6 +85,12 @@ impl BlobVec {
     /// Amount of elements stored in the blob
     pub fn len(&self) -> usize {
         self.len
+    }
+
+    #[inline]
+    /// Returns true if the blob is empty
+    pub fn is_empty(&self) -> bool {
+        self.len == 0
     }
 
     #[inline]
@@ -216,7 +223,7 @@ impl BlobVec {
 
     /// Swap remove the element at index `i`.
     /// Caller must ensure the index is within bounds.
-    unsafe fn swap_remove_raw(&mut self, i: usize) -> OwnedPtr {
+    unsafe fn swap_remove_raw(&mut self, i: usize) -> OwnedPtr<'_> {
         debug_assert!(i <= self.len, "Index out of bounds");
         let last = self.len - 1;
         let last_ptr = self.get_raw(last); // Safety: valid index
@@ -232,16 +239,32 @@ impl BlobVec {
         OwnedPtr::from_raw(last_ptr)
     }
 
+    #[inline]
+    /// Get a slice of the blob.
+    /// Caller must ensure the range is valid and within bounds.
+    unsafe fn get_slice_raw<T>(&self, start: usize, end: usize) -> &[T] {
+        self.validate_slice_range(start, end);
+
+        let start_ptr = self.get_raw(start);
+        core::slice::from_raw_parts(start_ptr.as_ptr() as *mut T, end - start)
+    }
+
+    #[inline]
     /// Get a mutable slice of the blob.
     /// Caller must ensure the range is valid and within bounds.
-    unsafe fn get_slice_raw<T>(&self, start: usize, end: usize) -> &mut [T] {
+    unsafe fn get_slice_raw_mut<T>(&mut self, start: usize, end: usize) -> &mut [T] {
+        self.validate_slice_range(start, end);
+
+        let start_ptr = self.get_raw(start);
+        core::slice::from_raw_parts_mut(start_ptr.as_ptr() as *mut T, end - start)
+    }
+
+    /// Validate a slice range
+    #[inline]
+    fn validate_slice_range(&self, start: usize, end: usize) {
         debug_assert!(start < end, "Start index must be less than end index");
         debug_assert!(start <= self.len, "Start index out of bounds");
         debug_assert!(end <= self.len, "End index out of bounds");
-
-        let start_ptr = self.get_raw(start);
-        let ptr = start_ptr.as_ptr() as *mut _;
-        core::slice::from_raw_parts_mut(ptr, end - start)
     }
 
     /// Shrink the blob to fit the given capacity.
@@ -316,7 +339,7 @@ impl BlobVec {
     /// # Safety
     /// Caller must ensure correct index
     #[inline]
-    pub unsafe fn remove(&mut self, i: usize) -> OwnedPtr {
+    pub unsafe fn remove(&mut self, i: usize) -> OwnedPtr<'_> {
         self.swap_remove_raw(i) // Safety: caller
     }
 
@@ -351,7 +374,7 @@ impl BlobVec {
     /// # Safety
     /// Caller must ensure a correct type and index
     pub unsafe fn get_slice_mut<T>(&mut self, start: usize, end: usize) -> &mut [T] {
-        self.get_slice_raw(start, end)
+        self.get_slice_raw_mut(start, end)
     }
 
     /// Clear the blob

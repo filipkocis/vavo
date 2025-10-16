@@ -77,17 +77,17 @@ impl<'a, C: Component> Deref for Ref<'a, C> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 /// Type registry for components.
 pub struct ComponentsRegistry {
     pub(crate) store: HashMap<TypeId, Box<ComponentInfo>>,
 }
 
 impl ComponentsRegistry {
+    /// Creates a new empty registry.
+    #[inline]
     pub fn new() -> Self {
-        Self {
-            store: HashMap::default(),
-        }
+        Self::default()
     }
 
     /// Gets the [`ComponentInfo`] for a given type wrapped in a ptr.
@@ -147,18 +147,20 @@ impl ComponentInfoPtr {
         Self(ptr)
     }
 
-    /// Returns a reference to the pointer
-    #[inline]
-    pub fn as_ref(&self) -> &ComponentInfo {
-        unsafe { &*self.0 }
-    }
-
     /// Drops a component/resource
     #[inline]
     pub fn drop(&self, ptr: OwnedPtr) {
         if let Some(drop_fn) = self.as_ref().drop {
             unsafe { drop_fn(ptr.inner()) }
         }
+    }
+}
+
+impl AsRef<ComponentInfo> for ComponentInfoPtr {
+    /// Returns a reference to the underlying `ComponentInfo`.
+    #[inline]
+    fn as_ref(&self) -> &ComponentInfo {
+        unsafe { &*self.0 }
     }
 }
 
@@ -212,6 +214,12 @@ impl ComponentsData {
     #[inline]
     pub fn len(&self) -> usize {
         self.data.len()
+    }
+
+    /// Returns true if there are no stored components
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.data.is_empty()
     }
 
     /// Returns immutable [`TickStamp`] for component at `index`.
@@ -287,7 +295,7 @@ impl ComponentsData {
     /// # Panics
     /// Panics if `index` is out of bounds.
     #[inline]
-    pub fn remove(&mut self, index: usize) -> (OwnedPtr, Tick, Tick) {
+    pub fn remove(&mut self, index: usize) -> (OwnedPtr<'_>, Tick, Tick) {
         debug_assert!(index < self.len(), "Index out of bounds");
 
         // Safety: index is callers responsibility

@@ -14,8 +14,8 @@ pub struct World {
     pub registry: ComponentsRegistry,
 }
 
-impl World {
-    pub fn new() -> Self {
+impl Default for World {
+    fn default() -> Self {
         let tick = Box::new(Tick::default());
 
         let mut world = Self {
@@ -33,6 +33,14 @@ impl World {
         world.resources.insert_default_resources();
 
         world
+    }
+}
+
+impl World {
+    /// Creates a new empty world
+    #[inline]
+    pub fn new() -> Self {
+        Self::default()
     }
 
     /// Update function for the world, updates resources
