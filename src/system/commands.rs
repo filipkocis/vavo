@@ -62,8 +62,10 @@ impl<'a> ParentCommands<'a> {
 
 impl<'a> EntityCommands<'a> {
     fn new(commands: &'a mut Commands) -> Self {
+        let entity_id = EntityId::new(commands.next_entity_id.index() - 1, commands.next_entity_id.generation());
+
         Self {
-            entity_id: commands.next_entity_id - 1,
+            entity_id,
             commands,
         }
     }
@@ -229,7 +231,7 @@ impl Commands {
     pub fn spawn_empty(&mut self) -> EntityCommands {
         self.commands
             .push(Command::SpawnEntity(self.next_entity_id));
-        self.next_entity_id = self.next_entity_id + 1;
+        self.next_entity_id = EntityId::new(self.next_entity_id.index() + 1, self.next_entity_id.generation());
 
         EntityCommands::new(self)
     }

@@ -39,23 +39,21 @@ struct AssetHandleId(TypeId, u64);
 
 /// ID combining entity id and component type id
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-struct EntityComponentId(u32, TypeId);
+struct EntityComponentId(EntityId, TypeId);
 
-impl<R: Resource> Into<ResourceId> for &Res<R> {
-    fn into(self) -> ResourceId {
+impl<R:Resource> From<&Res<R>> for ResourceId {
+    fn from(_: &Res<R>) -> Self {
         ResourceId(TypeId::of::<R>())
     }
 }
-
-impl<A: Asset> Into<AssetHandleId> for &Handle<A> {
-    fn into(self) -> AssetHandleId {
-        AssetHandleId(TypeId::of::<A>(), self.id())
+impl<A:Asset> From<&Handle<A>> for AssetHandleId {
+    fn from(value: &Handle<A>) -> Self {
+       AssetHandleId(TypeId::of::<A>(), value.id())
     }
 }
-
-impl<C: Component> Into<EntityComponentId> for (EntityId, &C) {
-    fn into(self) -> EntityComponentId {
-        EntityComponentId(self.0.raw(), TypeId::of::<C>())
+impl<C:Component> From<(EntityId, &C)> for EntityComponentId {
+    fn from(value: (EntityId, &C)) -> Self {
+        EntityComponentId(value.0, TypeId::of::<C>())
     }
 }
 
@@ -92,7 +90,7 @@ impl<RA: RenderAsset> RenderAssets<RA> {
     }
 
     pub fn get(&self, handle: &RenderHandle<RA>) -> Option<Arc<RA>> {
-        self.storage.get(&handle).cloned()
+        self.storage.get(handle).cloned()
     }
 
     pub fn get_by_entity<C>(
@@ -177,9 +175,7 @@ impl<RA: RenderAsset> RenderAssets<RA> {
     where A: Asset + IntoRenderAsset<RA> {
         let assets = ctx.resources.get::<Assets<A>>().expect("Assets<A> not found");
         let asset = assets.get(handle).expect("Asset not found, invalid handle");
-        let render_asset = asset.create_render_asset(ctx, None);
-
-        render_asset
+        asset.create_render_asset(ctx, None)
     }
 
     pub fn remove<A: Asset>(&mut self, handle: &Handle<A>) -> Option<Arc<RA>> {

@@ -5,7 +5,7 @@ pub mod components;
 pub use components::Component;
 use components::ComponentInfoPtr;
 
-use std::{any::TypeId, collections::HashMap, hash::Hash, mem::ManuallyDrop, ops::{Add, Sub}};
+use std::{any::TypeId, collections::HashMap, hash::Hash, mem::ManuallyDrop};
 
 use crate::query::{filter::Filters, QueryComponentType};
 use crate::macros::{Component, Reflect};
@@ -15,34 +15,51 @@ use relation::{Children, Parent};
 
 use super::{ptr::OwnedPtr, tick::Tick};
 
-/// Unique identifier for an [entity](Entities) in a [`World`](crate::ecs::world::World)
+/// Unique identifier for an [entity](Entities) in a [`World`](crate::ecs::world::World).
+/// Consists of an `index` and a `generation` to avoid reusing IDs of despawned entities.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[derive(Component, Reflect)]
-pub struct EntityId(u32);
+pub struct EntityId {
+    /// Index of the entity, serves as the main identifier and is reused after despawning an
+    /// entity. It's used as an index in the entities storage.
+    index: u32,
+    /// Generation of the entity, incremented every time an entity with the same index is reused.
+    generation: u32,
+}
 
 impl EntityId {
-    pub fn from_raw(raw: u32) -> Self {
-        Self(raw)
+    /// Create new EntityId from index and generation
+    #[inline]
+    pub fn new(index: u32, generation: u32) -> Self {
+        Self {index, generation }
     }
 
-    pub(crate) fn raw(self) -> u32 {
-        self.0
+    /// Returns the index of the id
+    #[inline]
+    pub fn index(self) -> u32 {
+        self.index
     }
-}
 
-impl Add<u32> for EntityId {
-    type Output = EntityId;
-
-    fn add(self, rhs: u32) -> Self::Output {
-        EntityId(self.0 + rhs)
+    /// Returns the generation of the id
+    #[inline]
+    pub fn generation(self) -> u32 {
+        self.generation
     }
-}
 
-impl Sub<u32> for EntityId {
-    type Output = EntityId;
+    /// Returns a u64 representation of the id
+    /// Lower 32 bits are index, upper 32 bits are generation
+    #[inline]
+    pub fn to_bits(self) -> u64 {
+        (self.index as u64) | ((self.generation as u64) << 32) 
+    }
 
-    fn sub(self, rhs: u32) -> Self::Output {
-        EntityId(self.0 - rhs)
+    /// Create a new id from a u64 representation
+    /// Lower 32 bits are index, upper 32 bits are generation
+    #[inline]
+    pub fn from_bits(bits: u64) -> Self {
+        let index = (bits & 0xFFFFFFFF) as u32;
+        let generation = ((bits >> 32) & 0xFFFFFFFF) as u32;
+        Self { index, generation }
     }
 }
 
@@ -61,7 +78,7 @@ impl Entities {
     /// Create new `Entities` manager with uninitialized tick pointer
     pub fn new() -> Self {
         Self {
-            next_entity_id: EntityId(0),
+            next_entity_id: EntityId::new(0, 0),
             archetypes: HashMap::new(),
             current_tick: std::ptr::null(),
         }
@@ -75,7 +92,7 @@ impl Entities {
 
     /// Exposes archetyeps
     pub fn archetypes(&self) -> impl Iterator<Item = &Archetype> { 
-        self.archetypes.values().into_iter()
+        self.archetypes.values()
     }
 
     /// Initialize tick pointer, necessary for entity creation. Done in
@@ -87,7 +104,7 @@ impl Entities {
     /// Step next entity ID counter
     /// Returns new entity ID
     fn step_entity_id(&mut self) -> EntityId {
-        self.next_entity_id = self.next_entity_id + 1;
+        self.next_entity_id.index += 1;
         self.next_entity_id
     }
 

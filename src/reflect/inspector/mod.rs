@@ -95,7 +95,7 @@ fn create_inspector(
                     background_color: color::TRANSPARENT,
                     ..Default::default()
                 })
-                .insert(Text::new(format!("{:?}:", id.raw())));
+                .insert(Text::new(format!("{:?}:", id.index())));
         });
     }
 
@@ -125,7 +125,7 @@ fn create_inspector(
                 })
                 .collect();
 
-            print!("{:?}: ", entity_id.unwrap().raw());
+            print!("{:?}: ", entity_id.unwrap().to_bits());
             for c in components {
                 print!("{:?} ", c);
             }
