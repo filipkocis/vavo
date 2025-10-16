@@ -103,13 +103,10 @@ impl BlobVec {
     /// # Panic
     /// Panics if the new capacity overflows `isize::MAX`
     pub fn reserve(&mut self, additional: usize) {
-        let grow_by = self
-            .len
-            .checked_add(additional)
-            .expect("Overflow in length")
-            .saturating_sub(self.capacity);
-        if grow_by > 0 {
-            // Safety: `grow_by` is 0 for ZSTs, panics on overflow
+        let free = self.capacity - self.len;
+        if additional > free {
+            let grow_by = self.capacity.max(additional - free);
+            // Safety: `grow_by` is 0 for ZSTs because capacity is usize::MAX
             self.grow_by(grow_by);
         }
     }
@@ -120,7 +117,7 @@ impl BlobVec {
         debug_assert!(self.layout.size() != 0, "Cannot reallocate ZSTs");
         debug_assert!(new_capacity > 0, "New capacity must be greater than 0");
 
-        if new_capacity as isize > isize::MAX {
+        if new_capacity > isize::MAX as usize {
             panic!("Capacity overflow");
         }
 
