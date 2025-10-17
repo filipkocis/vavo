@@ -80,7 +80,7 @@ impl<'a, C: Component> Deref for Ref<'a, C> {
 #[derive(Debug, Default)]
 /// Type registry for components.
 pub struct ComponentsRegistry {
-    pub(crate) store: HashMap<TypeId, Box<ComponentInfo>>,
+    pub(crate) store: HashMap<TypeId, ComponentInfoPtr>,
 }
 
 impl ComponentsRegistry {
@@ -93,9 +93,7 @@ impl ComponentsRegistry {
     /// Gets the [`ComponentInfo`] for a given type wrapped in a ptr.
     #[inline]
     pub fn get(&self, type_id: &TypeId) -> Option<ComponentInfoPtr> {
-        self.store
-            .get(type_id)
-            .map(|info| ComponentInfoPtr::new(&**info))
+        self.store.get(type_id).copied()
     }
 
     /// Register a new component type.
@@ -111,7 +109,7 @@ impl ComponentsRegistry {
             drop,
         };
 
-        self.store.insert(info.type_id, Box::new(info));
+        self.store.insert(info.type_id, ComponentInfoPtr::new(info));
     }
 
     /// Returns the [`ComponentInfo`] for a given type, if it doesn't exist it will register it.
@@ -122,7 +120,19 @@ impl ComponentsRegistry {
             info
         } else {
             self.register::<C>();
-            unsafe { self.get(&type_id).unwrap_unchecked() } // Safety: just registered
+            // Safety: just registered
+            self.store[&type_id]
+        }
+    }
+}
+
+impl Drop for ComponentsRegistry {
+    fn drop(&mut self) {
+        for (_, info) in self.store.drain() {
+            unsafe {
+                // Safety: we own the pointer and it was allocated with Box
+                let _ = Box::from_raw(info.0 as *mut ComponentInfo);
+            }
         }
     }
 }
@@ -141,10 +151,23 @@ pub struct ComponentInfo {
 pub struct ComponentInfoPtr(*const ComponentInfo);
 
 impl ComponentInfoPtr {
-    /// Create new ptr
+    /// Create new ptr from owned info
     #[inline]
-    pub(crate) fn new(ptr: *const ComponentInfo) -> Self {
-        Self(ptr)
+    pub(crate) fn new(info: ComponentInfo) -> Self {
+        let boxed = Box::new(info);
+        Self(Box::into_raw(boxed))
+    }
+
+    /// Check if the pointer is null
+    #[inline]
+    pub(super) fn is_null(&self) -> bool {
+        self.0.is_null()
+    }
+
+    /// Create a null pointer
+    #[inline]
+    pub(super) fn null() -> Self {
+        Self(std::ptr::null())
     }
 
     /// Drops a component/resource
@@ -161,6 +184,24 @@ impl AsRef<ComponentInfo> for ComponentInfoPtr {
     #[inline]
     fn as_ref(&self) -> &ComponentInfo {
         unsafe { &*self.0 }
+    }
+}
+
+/// Holds owned component data, either removed from [ComponentsData] or newly created.
+#[derive(Debug)]
+pub(crate) struct UntypedComponentData<'a> {
+    pub data: OwnedPtr<'a>,
+    pub changed_at: Tick,
+    pub added_at: Tick,
+}
+
+impl<'a> UntypedComponentData<'a> {
+    pub fn new(data: OwnedPtr<'a>, changed_at: Tick, added_at: Tick) -> Self {
+        Self {
+            data,
+            changed_at,
+            added_at,
+        }
     }
 }
 
@@ -290,17 +331,18 @@ impl ComponentsData {
         DataPtrMut::new(ptr, self.get_ticks_mut(index, current_tick, last_run))
     }
 
-    /// Swap-Removes component at `index` and returns `(component, changed_at, added_at)` tuple.
+    /// Swap-Removes component at `index` and returns the component data.
     ///
     /// # Panics
     /// Panics if `index` is out of bounds.
     #[inline]
-    pub fn remove(&mut self, index: usize) -> (OwnedPtr<'_>, Tick, Tick) {
+    pub fn remove(&mut self, index: usize) -> UntypedComponentData {
         debug_assert!(index < self.len(), "Index out of bounds");
 
         // Safety: index is callers responsibility
-        (
-            unsafe { self.data.remove(index) },
+        let component = unsafe { self.data.remove(index) };
+        UntypedComponentData::new(
+            component,
             self.changed_at.swap_remove(index),
             self.added_at.swap_remove(index),
         )
@@ -327,18 +369,18 @@ impl ComponentsData {
         self.added_at[index] = added_at;
     }
 
-    /// Insert new component with its `changed_at` and `added_at` ticks.
+    /// Insert new component data at the end of the row.
     ///
     /// # Safety
     /// You must ensure the component is of the same type as this row.
     #[inline]
-    pub fn insert(&mut self, component: OwnedPtr, changed_at: Tick, added_at: Tick) {
+    pub fn insert(&mut self, component: UntypedComponentData) {
         // Safety: callers responsibility
         unsafe {
-            self.data.push(component);
+            self.data.push(component.data);
         }
 
-        self.changed_at.push(changed_at);
-        self.added_at.push(added_at);
+        self.changed_at.push(component.changed_at);
+        self.added_at.push(component.added_at);
     }
 }

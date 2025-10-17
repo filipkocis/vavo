@@ -4,12 +4,56 @@ use std::{
     hash::{DefaultHasher, Hash, Hasher},
 };
 
-use crate::{ecs::ptr::OwnedPtr, prelude::Tick, query::filter::Filters};
+use crate::{
+    ecs::{
+        entities::{components::UntypedComponentData, tracking::EntityLocation},
+        ptr::OwnedPtr,
+    },
+    prelude::Tick,
+    query::filter::Filters,
+};
 
 use super::{
     components::{ComponentInfoPtr, ComponentsData},
     EntityId, QueryComponentType,
 };
+
+/// Holds owned component data with its type information. Either from removed
+/// entity in [`Archetype`] or when moving components between archetypes.
+///
+/// # Note
+/// The data must be dropped manully by calling [`Self::drop`]
+#[derive(Debug)]
+pub(crate) struct TypedComponentData<'a> {
+    pub info: ComponentInfoPtr,
+    pub data: UntypedComponentData<'a>,
+}
+
+impl<'a> TypedComponentData<'a> {
+    pub fn new(info: ComponentInfoPtr, data: UntypedComponentData<'a>) -> Self {
+        Self { info, data }
+    }
+
+    /// Create new typed component data from its parts
+    #[inline]
+    pub fn from_parts(
+        info: ComponentInfoPtr,
+        data: OwnedPtr<'a>,
+        changed_at: Tick,
+        added_at: Tick,
+    ) -> Self {
+        Self {
+            info,
+            data: UntypedComponentData::new(data, changed_at, added_at),
+        }
+    }
+
+    /// Drops the component's data.
+    #[inline]
+    pub fn drop(self) {
+        self.info.drop(self.data.data)
+    }
+}
 
 /// Unique identifier for an archetype, based on hash of its component types.
 /// Received from [`Archetype::hash_types`].
@@ -18,7 +62,11 @@ pub struct ArchetypeId(u64);
 
 #[derive(Debug)]
 pub struct Archetype {
+    /// Unique id of this archetype computed from its types
+    id: ArchetypeId,
     /// Stores component type ids and their index in `self.components`
+    /// TODO: consider adding Vec copy
+    /// TODO: use ComponentLocation here ?
     types: HashMap<TypeId, (usize, ComponentInfoPtr)>,
     /// Entity ids in this archetype, `self.entity_ids[entity]` has components at
     /// `self.components[N][entity]` `
@@ -29,7 +77,7 @@ pub struct Archetype {
 
 impl Archetype {
     /// Create new archetype with `types`.
-    pub fn new(infos: Vec<ComponentInfoPtr>) -> Self {
+    pub fn new(id: ArchetypeId, infos: Vec<ComponentInfoPtr>) -> Self {
         let original_len = infos.len();
         let sorted_types = Self::sort_types(infos);
 
@@ -47,32 +95,37 @@ impl Archetype {
         assert!(types.len() == original_len, "Duplicate types in archetype");
 
         Self {
+            id,
             entity_ids: Vec::new(),
             types,
             components,
         }
     }
 
-    /// Insert new entity
+    /// Insert new entity with components matching this archetype, returns its location
+    #[must_use]
     pub(super) fn insert_entity(
         &mut self,
         entity_id: EntityId,
-        components: Vec<(ComponentInfoPtr, OwnedPtr, Tick, Tick)>,
-    ) {
+        components: Vec<TypedComponentData>,
+    ) -> EntityLocation {
+        // TODO: make this debug only
+        {
+            let component_types = components
+                .iter()
+                .map(|c| c.info.as_ref().type_id)
+                .collect::<Vec<_>>();
+            assert!(
+                self.has_types_all(&component_types),
+                "Component types mismatch with archetype types"
+            );
+        }
+
         self.entity_ids.push(entity_id);
 
-        let component_types = components
-            .iter()
-            .map(|(t, ..)| t.as_ref().type_id)
-            .collect::<Vec<_>>();
-        assert!(
-            self.has_types_all(&component_types),
-            "Component types mismatch with archetype types"
-        );
-
-        for (info, component, changed_at, added_at) in components {
-            let component_index = self.types[&info.as_ref().type_id].0;
-            self.components[component_index].insert(component, changed_at, added_at);
+        for component in components {
+            let component_index = self.types[&component.info.as_ref().type_id].0;
+            self.components[component_index].insert(component.data);
         }
 
         debug_assert!(
@@ -85,13 +138,12 @@ impl Archetype {
             self.components.len() == self.types.len(),
             "Components length mismatch with types length"
         );
+
+        EntityLocation::new(self.id, self.len() - 1)
     }
 
-    /// Remove entity, returns removed components with `(changed_at, added_at)` ticks or None if entity_id doesn't exist
-    pub(super) fn remove_entity(
-        &mut self,
-        entity_id: EntityId,
-    ) -> Option<Vec<(ComponentInfoPtr, OwnedPtr<'_>, Tick, Tick)>> {
+    /// Remove entity, returns removed components data or None if entity_id doesn't exist
+    pub(super) fn remove_entity(&mut self, entity_id: EntityId) -> Option<Vec<TypedComponentData>> {
         if let Some(index) = self.entity_ids.iter().position(|id| *id == entity_id) {
             self.entity_ids.swap_remove(index);
 
@@ -100,8 +152,8 @@ impl Archetype {
                 // TODO: create a self.types_vec copy so we dont have to use a hashmap here (if it
                 // helps the performance)
                 let info_ptr = self.types[&components_data.get_type_id()].1;
-                let rem = components_data.remove(index);
-                removed.push((info_ptr, rem.0, rem.1, rem.2))
+                let removed_data = components_data.remove(index);
+                removed.push(TypedComponentData::new(info_ptr, removed_data))
             }
 
             return Some(removed);

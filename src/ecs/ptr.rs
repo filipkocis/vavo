@@ -17,7 +17,10 @@ pub struct OwnedPtr<'a> {
 }
 
 impl<'a> OwnedPtr<'a> {
-    /// Creates new owned pointer, you must ensure `ptr` is valid for `Self` requirements
+    /// Creates new owned pointer, you must ensure `ptr` is valid for [OwnedPtr] requirements
+    ///
+    /// # Safety
+    /// The pointer must be valid for the lifetime `'a` and exlusively owned
     #[inline]
     pub unsafe fn from_raw(ptr: NonNull<u8>) -> Self {
         Self {
@@ -26,8 +29,11 @@ impl<'a> OwnedPtr<'a> {
         }
     }
 
-    /// Creates new owned pointer, you must ensure `ptr` is valid for `Self` requirements
-    /// The reference must not be used after this call
+    /// Creates new owned pointer, you must ensure `ptr` is valid for [OwnedPtr] requirements
+    ///
+    /// # Safety
+    /// The reference must not be used after this call, as the pointer will be exclusively owned by
+    /// the returned ptr
     #[inline]
     pub unsafe fn new_ref<T>(ptr: &'a mut ManuallyDrop<T>) -> OwnedPtr<'a> {
         let raw = &**ptr as *const T as _;

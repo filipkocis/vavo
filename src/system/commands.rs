@@ -269,10 +269,7 @@ impl Commands {
                     world.resources.remove(type_id);
                 }
                 Command::SpawnEntity(entity_id) => {
-                    let entity_info = world.registry.get_or_register::<EntityId>();
-                    world
-                        .entities
-                        .spawn_entity(entity_id, Vec::new(), entity_info);
+                    world.entities.spawn_entity(entity_id, Vec::new());
                 }
                 Command::DespawnEntity(entity_id) => {
                     world.entities.despawn_entity(entity_id);

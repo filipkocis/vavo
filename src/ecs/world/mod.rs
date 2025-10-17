@@ -1,3 +1,4 @@
+use crate::prelude::EntityId;
 use crate::query::Query;
 
 use super::entities::components::ComponentsRegistry;
@@ -26,7 +27,10 @@ impl Default for World {
         };
 
         // Initialize entities
-        world.entities.initialize_tick(world.tick.as_ref());
+        world.entities.initialize(
+            world.tick.as_ref(),
+            world.registry.get_or_register::<EntityId>(),
+        );
 
         // Initialize resources
         world.resources.initialize_tick(world.tick.as_ref());
