@@ -1,7 +1,10 @@
+#[cfg(debug_assertions)]
+use std::collections::HashSet;
+
 use crate::{ecs::entities::ArchetypeId, prelude::EntityId};
 
 /// Tracked location of an [entity](super::EntityId) in the [Entities](super::Entities) storage.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct EntityLocation {
     /// Archetype containing the entity
     archetype_id: ArchetypeId,
@@ -40,6 +43,13 @@ pub struct EntityTracking {
     free_ids: Vec<EntityId>,
     /// Locations of tracked entities
     locations: Vec<Option<EntityLocation>>,
+
+    /// Debug set of freed ids for easier tracking of errors
+    #[cfg(debug_assertions)]
+    debug_free_ids: HashSet<EntityId>,
+    /// Debug set of assigned locations for easier tracking of errors
+    #[cfg(debug_assertions)]
+    debug_locations: HashSet<EntityLocation>,
 }
 
 impl EntityTracking {
@@ -53,6 +63,8 @@ impl EntityTracking {
     #[inline]
     pub fn new_id(&mut self) -> EntityId {
         if let Some(id) = self.free_ids.pop() {
+            #[cfg(debug_assertions)]
+            self.debug_free_ids.remove(&id);
             EntityId::new(id.index(), id.generation() + 1)
         } else {
             let next_id = self.locations.len() as u32;
@@ -69,9 +81,28 @@ impl EntityTracking {
     pub fn set_location(&mut self, entity: EntityId, location: EntityLocation) {
         let index = entity.index() as usize;
 
-        assert!(
+        debug_assert!(
             index < self.locations.len(),
             "Trying to set location for untracked entity id {:?}",
+            entity
+        );
+
+        debug_assert!(
+            !self.debug_locations.contains(&location),
+            "Entity location {:?} is already assigned to another entity",
+            location
+        );
+        #[cfg(debug_assertions)]
+        {
+            self.debug_locations.insert(location);
+            if let Some(previous) = &self.locations[index] {
+                self.debug_locations.remove(previous);
+            }
+        }
+
+        debug_assert!(
+            !self.debug_free_ids.contains(&entity),
+            "Trying to set location for freed entity id {:?}",
             entity
         );
 
@@ -97,6 +128,13 @@ impl EntityTracking {
         if index < self.locations.len() {
             let location = self.locations[index].take();
             self.free_ids.push(entity);
+            #[cfg(debug_assertions)]
+            {
+                self.debug_free_ids.insert(entity);
+                if let Some(loc) = location {
+                    self.debug_locations.remove(&loc);
+                }
+            }
             location
         } else {
             None
