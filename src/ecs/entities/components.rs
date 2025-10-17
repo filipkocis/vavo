@@ -189,7 +189,7 @@ impl AsRef<ComponentInfo> for ComponentInfoPtr {
 
 /// Holds owned component data, either removed from [ComponentsData] or newly created.
 #[derive(Debug)]
-pub(crate) struct UntypedComponentData<'a> {
+pub struct UntypedComponentData<'a> {
     pub data: OwnedPtr<'a>,
     pub changed_at: Tick,
     pub added_at: Tick,
@@ -336,7 +336,7 @@ impl ComponentsData {
     /// # Panics
     /// Panics if `index` is out of bounds.
     #[inline]
-    pub fn remove(&mut self, index: usize) -> UntypedComponentData {
+    pub fn remove(&mut self, index: usize) -> UntypedComponentData<'_> {
         debug_assert!(index < self.len(), "Index out of bounds");
 
         // Safety: index is callers responsibility
@@ -357,16 +357,16 @@ impl ComponentsData {
     /// # Safety
     /// You must ensure the component is of the same type as this row.
     #[inline]
-    pub fn set(&mut self, index: usize, component: OwnedPtr, added_at: Tick) {
+    pub fn set(&mut self, index: usize, component: UntypedComponentData) {
         debug_assert!(index < self.len(), "Index out of bounds");
 
         // Safety: callers responsibility
         unsafe {
-            self.data.set(component, index);
+            self.data.set(component.data, index);
         }
 
-        self.changed_at[index] = added_at;
-        self.added_at[index] = added_at;
+        self.changed_at[index] = component.added_at;
+        self.added_at[index] = component.added_at;
     }
 
     /// Insert new component data at the end of the row.

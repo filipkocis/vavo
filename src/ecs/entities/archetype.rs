@@ -55,6 +55,27 @@ impl<'a> TypedComponentData<'a> {
     }
 }
 
+/// Holds information about a removed entity from an [`Archetype`]
+pub(crate) struct RemovedEntity<'a> {
+    /// If the removed entity was swapped with another, this is the id of the swapped entity
+    /// (now located at the location of the removed entity), **None** if no swap occured (i.e.
+    /// it was the last entity)
+    pub swapped: Option<EntityId>,
+    /// Components data of the removed entity
+    pub components: Vec<TypedComponentData<'a>>,
+}
+
+impl<'a> RemovedEntity<'a> {
+    /// Create new removed entity info
+    #[inline]
+    pub fn new(swapped: Option<EntityId>, capacity: usize) -> Self {
+        Self {
+            swapped,
+            components: Vec::with_capacity(capacity),
+        }
+    }
+}
+
 /// Unique identifier for an archetype, based on hash of its component types.
 /// Received from [`Archetype::hash_types`].
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
@@ -109,13 +130,13 @@ impl Archetype {
         entity_id: EntityId,
         components: Vec<TypedComponentData>,
     ) -> EntityLocation {
-        // TODO: make this debug only
+        #[cfg(debug_assertions)]
         {
             let component_types = components
                 .iter()
                 .map(|c| c.info.as_ref().type_id)
                 .collect::<Vec<_>>();
-            assert!(
+            debug_assert!(
                 self.has_types_all(&component_types),
                 "Component types mismatch with archetype types"
             );
@@ -142,42 +163,91 @@ impl Archetype {
         EntityLocation::new(self.id, self.len() - 1)
     }
 
-    /// Remove entity, returns removed components data or None if entity_id doesn't exist
-    pub(super) fn remove_entity(&mut self, entity_id: EntityId) -> Option<Vec<TypedComponentData>> {
-        if let Some(index) = self.entity_ids.iter().position(|id| *id == entity_id) {
-            self.entity_ids.swap_remove(index);
+    /// Remove entity, returns removed entity data
+    ///
+    /// # Panics
+    /// Panics if entity is not valid in this archetype
+    #[must_use]
+    pub(super) fn remove_entity(
+        &mut self,
+        entity_id: EntityId,
+        entity_location: EntityLocation,
+    ) -> RemovedEntity<'_> {
+        self.validate_entity(entity_id, entity_location);
+        let index = entity_location.index();
 
-            let mut removed = Vec::with_capacity(self.components.len());
-            for components_data in &mut self.components {
-                // TODO: create a self.types_vec copy so we dont have to use a hashmap here (if it
-                // helps the performance)
-                let info_ptr = self.types[&components_data.get_type_id()].1;
-                let removed_data = components_data.remove(index);
-                removed.push(TypedComponentData::new(info_ptr, removed_data))
-            }
+        self.entity_ids.swap_remove(index);
+        let swapped = self.entity_ids.get(index).copied();
+        let mut removed = RemovedEntity::new(swapped, self.components.len());
 
-            return Some(removed);
+        for components_data in &mut self.components {
+            // TODO: create a self.types_vec copy so we dont have to use a hashmap here (if it
+            // helps the performance)
+            let info_ptr = self.types[&components_data.get_type_id()].1;
+            let removed_data = components_data.remove(index);
+            removed
+                .components
+                .push(TypedComponentData::new(info_ptr, removed_data))
         }
 
-        None
+        removed
     }
 
-    /// Sets component to a new value, returns true if successful
+    /// Sets component to a new value
+    ///
+    /// # Panics
+    /// Panics if entity is not valid in this archetype or if component type does not exist in this
+    /// archetype
     pub(super) fn set_component(
         &mut self,
         entity_id: EntityId,
-        component: OwnedPtr,
-        type_id: TypeId,
-        current_tick: Tick,
-    ) -> bool {
-        if let Some(entity_index) = self.entity_ids.iter().position(|id| *id == entity_id) {
-            let component_index = self.types[&type_id].0;
-            self.components[component_index].set(entity_index, component, current_tick);
-            true
-        } else {
-            self.types[&type_id].1.drop(component);
-            false
+        location: EntityLocation,
+        component: TypedComponentData,
+    ) {
+        self.validate_entity(entity_id, location);
+
+        let type_id = component.info.as_ref().type_id;
+        let component_index = self.types[&type_id].0;
+        let index = location.index();
+
+        if index >= self.len() {
+            component.drop();
+            panic!(
+                "Entity index {} out of bounds for archetype with {} entities",
+                index,
+                self.len()
+            );
         }
+
+        self.components[component_index].set(index, component.data);
+        // self.types[&type_id].1.drop(component);
+    }
+
+    /// Debug assert that entity is valid in this archetype
+    #[inline(always)]
+    fn validate_entity(&self, entity_id: EntityId, location: EntityLocation) {
+        debug_assert!(
+            self.id == location.archetype_id(),
+            "Entity {:?} location archetype id {:?} does not match current archetype id {:?}",
+            entity_id,
+            location.archetype_id(),
+            self.id
+        );
+
+        debug_assert!(
+            location.index() < self.len(),
+            "Entity {:?} location index {} out of bounds for archetype with {} entities",
+            entity_id,
+            location.index(),
+            self.len()
+        );
+
+        debug_assert!(
+            self.entity_ids[location.index()] == entity_id,
+            "Entity {:?} not found at its location index {} in archetype",
+            entity_id,
+            location.index()
+        );
     }
 
     /// Amount of entities in this archetype
@@ -217,7 +287,7 @@ impl Archetype {
     }
 
     /// Check if all [`QueryComponentType::Normal`] types exist in self
-    pub(crate) fn has_query_types(&self, type_ids: &[QueryComponentType]) -> bool {
+    fn has_query_types(&self, type_ids: &[QueryComponentType]) -> bool {
         type_ids.iter().all(|type_id| match type_id {
             QueryComponentType::Normal(type_id) => self.has_type(type_id),
             QueryComponentType::Option(_) => true,
@@ -242,21 +312,32 @@ impl Archetype {
         type_ids.iter().any(|type_id| self.has_type(type_id))
     }
 
-    /// Check if archetype has `entity_id`
+    /// Check if archetype has `entity_id`. It is slower than checking by location, becuause it
+    /// uses a linear search.
     #[inline]
-    pub fn has_entity(&self, entity_id: &EntityId) -> bool {
+    pub fn has_entity_by_id(&self, entity_id: &EntityId) -> bool {
         self.entity_ids.contains(entity_id)
     }
 
-    /// Get entity index in `entity_ids` if it exists
+    /// Check if archetype has `entity_id` at `location`
     #[inline]
-    pub fn get_entity_index(&self, entity_id: EntityId) -> Option<usize> {
-        self.entity_ids.iter().position(|id| *id == entity_id)
+    pub fn has_entity(&self, entity_id: &EntityId, location: &EntityLocation) -> bool {
+        self.id == location.archetype_id()
+            && self.entity_ids.get(location.index()) == Some(entity_id)
+    }
+
+    /// Get component index in `types` if it exists
+    ///
+    /// # Panics
+    /// Panics if component type does not exist in this archetype
+    #[inline]
+    pub fn component_index(&self, component_id: &TypeId) -> usize {
+        self.types[component_id].0
     }
 
     /// Get component index in `types` if it exists
     #[inline]
-    pub fn get_component_index(&self, component_id: &TypeId) -> Option<usize> {
+    pub fn try_component_index(&self, component_id: &TypeId) -> Option<usize> {
         self.types.get(component_id).map(|(index, _)| *index)
     }
 
@@ -275,9 +356,25 @@ impl Archetype {
 }
 
 impl Archetype {
+    /// Returns archetypes with matching [`query types`](QueryComponentType) and filters, and component indices for
+    /// `changed` filters acquired from [`Archetype::get_changed_filter_indices`]
+    pub(crate) fn filtered(
+        &mut self,
+        type_ids: &[QueryComponentType],
+        filters: &mut Filters,
+    ) -> Option<Vec<Vec<usize>>> {
+        if self.has_query_types(type_ids) && self.matches_filters(filters) {
+            // Safety: we have alreayd checked that all changed filters exist in archetype
+            let indices = self.get_changed_filter_indices(filters);
+            Some(indices)
+        } else {
+            None
+        }
+    }
+
     /// Evaluates filters against this archetype.
     /// Does **NOT** check `changed` filters, only their type existence in the archetype.
-    pub(crate) fn matches_filters(&self, filters: &mut Filters) -> bool {
+    fn matches_filters(&self, filters: &mut Filters) -> bool {
         if filters.empty {
             return true;
         }
@@ -323,16 +420,13 @@ impl Archetype {
     ///
     /// # Panics
     /// Panics if type_id in `filters.changed` is not found in archetype
-    pub(crate) fn get_changed_filter_indices(&self, filters: &Filters) -> Vec<Vec<usize>> {
+    fn get_changed_filter_indices(&self, filters: &Filters) -> Vec<Vec<usize>> {
         let mut result = Vec::with_capacity(1);
 
         let base = filters
             .changed
             .iter()
-            .map(|component_id| {
-                self.get_component_index(component_id)
-                    .expect("Component from filters.changed not found in archetype")
-            })
+            .map(|component_id| self.component_index(component_id))
             .collect::<Vec<_>>();
         result.push(base);
 
@@ -345,7 +439,7 @@ impl Archetype {
             let or_indices = or_filters
                 .changed
                 .iter()
-                .filter_map(|component_id| self.get_component_index(component_id))
+                .filter_map(|component_id| self.try_component_index(component_id))
                 .collect::<Vec<_>>();
 
             if or_indices.is_empty() {
