@@ -1,6 +1,12 @@
-use crate::{ecs::entities::{components::ComponentsData, Component, EntityId}, prelude::{Mut, Ref, Tick}};
+use crate::{
+    ecs::entities::{components::ComponentsData, Component, EntityId},
+    prelude::{Mut, Ref, Tick},
+};
 
-use super::{filter::{Filters, QueryFilter}, Query, QueryComponentType};
+use super::{
+    filter::{Filters, QueryFilter},
+    Query, QueryComponentType,
+};
 
 pub trait RunQuery {
     type Output;
@@ -15,7 +21,10 @@ trait QueryGetType {
     fn get_type_id() -> QueryComponentType;
 
     /// Returns `None` for option types, otherwise panics
-    fn get_none() -> Self where Self: Sized {
+    fn get_none() -> Self
+    where
+        Self: Sized,
+    {
         panic!("get_none() should not be called on non-Option types")
     }
 }
@@ -62,7 +71,10 @@ impl<C: Component> QueryGetType for Option<&C> {
     }
 
     #[inline]
-    fn get_none() -> Self where Self: Sized {
+    fn get_none() -> Self
+    where
+        Self: Sized,
+    {
         None
     }
 }
@@ -74,7 +86,10 @@ impl<C: Component> QueryGetType for Option<&mut C> {
     }
 
     #[inline]
-    fn get_none() -> Self where Self: Sized {
+    fn get_none() -> Self
+    where
+        Self: Sized,
+    {
         None
     }
 }
@@ -89,7 +104,13 @@ impl<'a> QueryGetDowncasted<'a> for EntityId {
     type Output = EntityId;
     #[inline]
     fn get_downcasted(comp: &mut ComponentsData, index: usize, _: Tick) -> Self::Output {
-        unsafe { *comp.get_untyped_lt(index).as_ptr().cast::<EntityId>().as_ref() }
+        unsafe {
+            *comp
+                .get_untyped_lt(index)
+                .as_ptr()
+                .cast::<EntityId>()
+                .as_ref()
+        }
     }
 }
 
@@ -111,19 +132,19 @@ impl<'a, C: Component> QueryGetDowncasted<'a> for &mut C {
 }
 
 impl<'a, C: Component> QueryGetDowncasted<'a> for Ref<'a, C> {
-    type Output = Ref<'a, C>; 
+    type Output = Ref<'a, C>;
     #[inline]
     fn get_downcasted(comp: &mut ComponentsData, index: usize, tick: Tick) -> Self::Output {
-        let data= comp.get(index, tick, tick);
+        let data = comp.get(index, tick, tick);
         Ref::new(data)
     }
 }
 
 impl<'a, C: Component> QueryGetDowncasted<'a> for Mut<'a, C> {
-    type Output = Mut<'a, C>; 
+    type Output = Mut<'a, C>;
     #[inline]
     fn get_downcasted(comp: &mut ComponentsData, index: usize, tick: Tick) -> Self::Output {
-        let data= comp.get_mut(index, tick, tick);
+        let data = comp.get_mut(index, tick, tick);
         Mut::new(data)
     }
 }
@@ -132,7 +153,7 @@ impl<'a, C: QueryGetDowncasted<'a>> QueryGetDowncasted<'a> for Option<C> {
     type Output = Option<C::Output>;
     #[inline]
     fn get_downcasted(comp: &mut ComponentsData, index: usize, tick: Tick) -> Self::Output {
-        Some(C::get_downcasted(comp, index, tick)) 
+        Some(C::get_downcasted(comp, index, tick))
     }
 }
 
@@ -172,7 +193,7 @@ macro_rules! impl_run_query {
 
                             let maybe_index = if query_type.is_option() {
                                 // Don't panic since Option doesn't have to be present
-                                archetype.get_component_index(type_id)
+                                archetype.try_component_index(type_id)
                             } else {
                                 Some(archetype.get_component_index(type_id).expect("type should exist in archetype"))
                             };
@@ -230,7 +251,7 @@ macro_rules! impl_run_query {
 
                             let maybe_index = if query_type.is_option() {
                                 // Don't panic since Option doesn't have to be present
-                                archetype.get_component_index(type_id)
+                                archetype.try_component_index(type_id)
                             } else {
                                 Some(archetype.get_component_index(type_id).expect("type should exist in archetype"))
                             };
@@ -238,7 +259,7 @@ macro_rules! impl_run_query {
                             if let Some(index) = maybe_index {
                                 Some(archetype.get_components_data_mut(index))
                             } else {
-                                None 
+                                None
                             }
                         };
                     )+
@@ -278,7 +299,7 @@ macro_rules! impl_run_query {
             //         )+
             //
             //         for i in 0..archetype.len() {
-            //             result.push(($(unsafe { 
+            //             result.push(($(unsafe {
             //                 (&*$types)[i]
             //                     .downcast_ref::<$types>()
             //                     .expect("variable $type[i] should downcast into $type")
