@@ -1,8 +1,15 @@
-use std::{any::TypeId, collections::HashMap, hash::{DefaultHasher, Hash, Hasher}};
+use std::{
+    any::TypeId,
+    collections::HashMap,
+    hash::{DefaultHasher, Hash, Hasher},
+};
 
 use crate::{ecs::ptr::OwnedPtr, prelude::Tick, query::filter::Filters};
 
-use super::{components::{ComponentInfoPtr, ComponentsData}, EntityId, QueryComponentType};
+use super::{
+    components::{ComponentInfoPtr, ComponentsData},
+    EntityId, QueryComponentType,
+};
 
 /// Unique identifier for an archetype, based on hash of its component types.
 /// Received from [`Archetype::hash_types`].
@@ -26,10 +33,14 @@ impl Archetype {
         let original_len = infos.len();
         let sorted_types = Self::sort_types(infos);
 
-        let components = sorted_types.iter()
-            .map(|t| ComponentsData::new(*t)).collect();
+        let components = sorted_types
+            .iter()
+            .map(|t| ComponentsData::new(*t))
+            .collect();
 
-        let types = sorted_types.into_iter().enumerate()
+        let types = sorted_types
+            .into_iter()
+            .enumerate()
             .map(|(i, v)| (v.as_ref().type_id, (i, v)))
             .collect::<HashMap<_, _>>();
 
@@ -43,11 +54,21 @@ impl Archetype {
     }
 
     /// Insert new entity
-    pub(super) fn insert_entity(&mut self, entity_id: EntityId, components: Vec<(ComponentInfoPtr, OwnedPtr, Tick, Tick)>) {
+    pub(super) fn insert_entity(
+        &mut self,
+        entity_id: EntityId,
+        components: Vec<(ComponentInfoPtr, OwnedPtr, Tick, Tick)>,
+    ) {
         self.entity_ids.push(entity_id);
 
-        let component_types = components.iter().map(|(t, ..)| t.as_ref().type_id).collect::<Vec<_>>();
-        assert!(self.has_types_all(&component_types), "Component types mismatch with archetype types");
+        let component_types = components
+            .iter()
+            .map(|(t, ..)| t.as_ref().type_id)
+            .collect::<Vec<_>>();
+        assert!(
+            self.has_types_all(&component_types),
+            "Component types mismatch with archetype types"
+        );
 
         for (info, component, changed_at, added_at) in components {
             let component_index = self.types[&info.as_ref().type_id].0;
@@ -55,7 +76,9 @@ impl Archetype {
         }
 
         debug_assert!(
-            self.components.iter().all(|row| row.len() == self.entity_ids.len()), 
+            self.components
+                .iter()
+                .all(|row| row.len() == self.entity_ids.len()),
             "Specific components length mismatch with entity IDs length"
         );
         debug_assert!(
@@ -65,7 +88,10 @@ impl Archetype {
     }
 
     /// Remove entity, returns removed components with `(changed_at, added_at)` ticks or None if entity_id doesn't exist
-    pub(super) fn remove_entity(&mut self, entity_id: EntityId) -> Option<Vec<(ComponentInfoPtr, OwnedPtr<'_>, Tick, Tick)>> {
+    pub(super) fn remove_entity(
+        &mut self,
+        entity_id: EntityId,
+    ) -> Option<Vec<(ComponentInfoPtr, OwnedPtr<'_>, Tick, Tick)>> {
         if let Some(index) = self.entity_ids.iter().position(|id| *id == entity_id) {
             self.entity_ids.swap_remove(index);
 
@@ -73,14 +99,9 @@ impl Archetype {
             for components_data in &mut self.components {
                 // TODO: create a self.types_vec copy so we dont have to use a hashmap here (if it
                 // helps the performance)
-                let info_ptr = self.types[&components_data.get_type_id()].1; 
+                let info_ptr = self.types[&components_data.get_type_id()].1;
                 let rem = components_data.remove(index);
-                removed.push((
-                    info_ptr,
-                    rem.0,
-                    rem.1,
-                    rem.2,
-                ))
+                removed.push((info_ptr, rem.0, rem.1, rem.2))
             }
 
             return Some(removed);
@@ -90,7 +111,13 @@ impl Archetype {
     }
 
     /// Sets component to a new value, returns true if successful
-    pub(super) fn set_component(&mut self, entity_id: EntityId, component: OwnedPtr, type_id: TypeId, current_tick: Tick) -> bool {
+    pub(super) fn set_component(
+        &mut self,
+        entity_id: EntityId,
+        component: OwnedPtr,
+        type_id: TypeId,
+        current_tick: Tick,
+    ) -> bool {
         if let Some(entity_index) = self.entity_ids.iter().position(|id| *id == entity_id) {
             let component_index = self.types[&type_id].0;
             self.components[component_index].set(entity_index, component, current_tick);
@@ -139,11 +166,9 @@ impl Archetype {
 
     /// Check if all [`QueryComponentType::Normal`] types exist in self
     pub(crate) fn has_query_types(&self, type_ids: &[QueryComponentType]) -> bool {
-        type_ids.iter().all(|type_id| {
-            match type_id {
-                QueryComponentType::Normal(type_id) => self.has_type(type_id),
-                QueryComponentType::Option(_) => true,
-            }
+        type_ids.iter().all(|type_id| match type_id {
+            QueryComponentType::Normal(type_id) => self.has_type(type_id),
+            QueryComponentType::Option(_) => true,
         })
     }
 
@@ -157,6 +182,12 @@ impl Archetype {
     #[inline]
     pub fn has_types_all(&self, type_ids: &[TypeId]) -> bool {
         self.types.len() == type_ids.len() && self.has_types(type_ids)
+    }
+
+    /// Check if any of `type_ids` exist in self
+    #[inline]
+    pub fn has_types_any(&self, type_ids: &[TypeId]) -> bool {
+        type_ids.iter().any(|type_id| self.has_type(type_id))
     }
 
     /// Check if archetype has `entity_id`
@@ -192,17 +223,27 @@ impl Archetype {
 }
 
 impl Archetype {
-    /// Evaluates filters against this archetype. 
+    /// Evaluates filters against this archetype.
     /// Does **NOT** check `changed` filters, only their type existence in the archetype.
     pub(crate) fn matches_filters(&self, filters: &mut Filters) -> bool {
         if filters.empty {
-            return true
+            return true;
         }
 
-        self.has_types(&filters.changed) &&
-        self.has_types(&filters.with) &&
-        filters.without.iter().all(|type_id| !self.has_type(type_id)) && 
-        filters.or.iter_mut().all(|filters| self.matches_filters_any(filters))
+        // Changed
+        self.has_types(&filters.changed)
+            // With
+            && self.has_types(&filters.with)
+            // Without
+            && filters
+                .without
+                .iter()
+                .all(|type_id| !self.has_type(type_id))
+            // Or
+            && filters
+                .or
+                .iter_mut()
+                .all(|filters| self.matches_filters_any(filters))
     }
 
     /// Returns true if any of the filters evaluate to true
@@ -210,15 +251,19 @@ impl Archetype {
         assert!(filters.or.is_empty(), "Nested OR filters are not supported");
 
         if filters.empty {
-            return true
+            return true;
         }
 
-        filters.matches_existence =
-            filters.with.iter().any(|type_id| self.has_type(type_id)) ||
-            filters.without.iter().any(|type_id| !self.has_type(type_id));
+        // Any existence filters
+        filters.matches_existence = self.has_types_any(&filters.with)
+            || filters
+                .without
+                .iter()
+                .any(|type_id| !self.has_type(type_id));
 
-        filters.matches_existence ||
-        filters.changed.iter().any(|type_id| self.has_type(type_id))
+        // For matching we include existence of changed, but we do not store it, because further
+        // `changed` checks are required, so we can't skip them later.
+        filters.matches_existence || self.has_types_any(&filters.changed)
     }
 
     /// Returns indices of requested changed fields in this archetype, where first vec is from
@@ -227,28 +272,36 @@ impl Archetype {
     /// # Panics
     /// Panics if type_id in `filters.changed` is not found in archetype
     pub(crate) fn get_changed_filter_indices(&self, filters: &Filters) -> Vec<Vec<usize>> {
-        let mut result = Vec::with_capacity(1); 
+        let mut result = Vec::with_capacity(1);
 
-        let base = filters.changed.iter().map(|component_id|
-            self.get_component_index(component_id).expect("Component from filters.changed not found in archetype")
-        ).collect::<Vec<_>>();
+        let base = filters
+            .changed
+            .iter()
+            .map(|component_id| {
+                self.get_component_index(component_id)
+                    .expect("Component from filters.changed not found in archetype")
+            })
+            .collect::<Vec<_>>();
         result.push(base);
 
         for or_filters in &filters.or {
+            // Existence filters already matched, so we can skip Or<Changed<T>> checks
             if or_filters.matches_existence {
-                continue
+                continue;
             }
 
-            let or_indices = or_filters.changed.iter().filter_map(|component_id|
-                self.get_component_index(component_id)
-            ).collect::<Vec<_>>();
+            let or_indices = or_filters
+                .changed
+                .iter()
+                .filter_map(|component_id| self.get_component_index(component_id))
+                .collect::<Vec<_>>();
 
             if or_indices.is_empty() {
                 if or_filters.with.len() + or_filters.without.len() == 0 {
                     panic!("Or<T> filter only contains changed filters, but none of the types are found in archetype");
                 } else {
                     panic!("Or<T> filter doesn't match existence filters, and none of the Changed<T> types are found in archetype");
-                } 
+                }
             }
 
             result.push(or_indices);
@@ -261,17 +314,25 @@ impl Archetype {
     ///
     /// # Note
     /// To get the correct indices call `archetype.get_changed_filter_indices(filters)`
-    pub fn check_changed_fields(&self, at: usize, indices: &[Vec<usize>], system_last_run: Tick) -> bool {
+    pub fn check_changed_fields(
+        &self,
+        at: usize,
+        indices: &[Vec<usize>],
+        system_last_run: Tick,
+    ) -> bool {
         if indices.len() == 1 && indices[0].is_empty() {
-            return true
+            return true;
         }
 
         // base filter
-        indices[0].iter().all(|&index| self.components[index].changed_since(at, system_last_run))
-
-        // optional Or<T>
-        && indices.iter().skip(1).all(|or_indices| 
-            or_indices.iter().any(|&index| self.components[index].changed_since(at, system_last_run))
-        )
+        indices[0]
+            .iter()
+            .all(|&index| self.components[index].changed_since(at, system_last_run))
+            // optional Or<T>
+            && indices.iter().skip(1).all(|or_indices| {
+                or_indices
+                    .iter()
+                    .any(|&index| self.components[index].changed_since(at, system_last_run))
+            })
     }
 }
