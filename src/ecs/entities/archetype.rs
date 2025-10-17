@@ -4,14 +4,15 @@ use crate::{ecs::ptr::OwnedPtr, prelude::Tick, query::filter::Filters};
 
 use super::{components::{ComponentInfoPtr, ComponentsData}, EntityId, QueryComponentType};
 
+/// Unique identifier for an archetype, based on hash of its component types.
+/// Received from [`Archetype::hash_types`].
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub(super) struct ArchetypeId(u64);
+pub struct ArchetypeId(u64);
 
 #[derive(Debug)]
 pub struct Archetype {
     /// Stores component type ids and their index in `self.components`
     types: HashMap<TypeId, (usize, ComponentInfoPtr)>,
-    current_tick: *const Tick,
     /// Entity ids in this archetype, `self.entity_ids[entity]` has components at
     /// `self.components[N][entity]` `
     entity_ids: Vec<EntityId>,
@@ -21,9 +22,7 @@ pub struct Archetype {
 
 impl Archetype {
     /// Create new archetype with `types`.
-    pub fn new(infos: Vec<ComponentInfoPtr>, current_tick: *const Tick) -> Self {
-        assert!(!current_tick.is_null(), "Cannot create archetype, current_tick pointer is null");
-
+    pub fn new(infos: Vec<ComponentInfoPtr>) -> Self {
         let original_len = infos.len();
         let sorted_types = Self::sort_types(infos);
 
@@ -39,7 +38,6 @@ impl Archetype {
         Self {
             entity_ids: Vec::new(),
             types,
-            current_tick,
             components,
         }
     }
@@ -92,8 +90,7 @@ impl Archetype {
     }
 
     /// Sets component to a new value, returns true if successful
-    pub(super) fn set_component(&mut self, entity_id: EntityId, component: OwnedPtr, type_id: TypeId) -> bool {
-        let current_tick = self.current_tick();
+    pub(super) fn set_component(&mut self, entity_id: EntityId, component: OwnedPtr, type_id: TypeId, current_tick: Tick) -> bool {
         if let Some(entity_index) = self.entity_ids.iter().position(|id| *id == entity_id) {
             let component_index = self.types[&type_id].0;
             self.components[component_index].set(entity_index, component, current_tick);
@@ -102,11 +99,6 @@ impl Archetype {
             self.types[&type_id].1.drop(component);
             false
         }
-    }
-
-    #[inline]
-    fn current_tick(&self) -> Tick {
-        unsafe { *self.current_tick }
     }
 
     /// Amount of entities in this archetype

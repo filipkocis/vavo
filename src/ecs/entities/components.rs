@@ -290,7 +290,7 @@ impl ComponentsData {
         DataPtrMut::new(ptr, self.get_ticks_mut(index, current_tick, last_run))
     }
 
-    /// Removes component at `index` and returns `(component, changed_at, added_at)` tuple.
+    /// Swap-Removes component at `index` and returns `(component, changed_at, added_at)` tuple.
     ///
     /// # Panics
     /// Panics if `index` is out of bounds.

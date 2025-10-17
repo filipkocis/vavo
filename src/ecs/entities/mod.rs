@@ -1,12 +1,14 @@
 pub mod archetype;
 pub mod components;
 pub mod relation;
+pub mod tracking;
 
 pub use components::Component;
 use components::ComponentInfoPtr;
 
 use std::{any::TypeId, collections::HashMap, hash::Hash, mem::ManuallyDrop};
 
+use crate::ecs::entities::tracking::EntityTracking;
 use crate::macros::{Component, Reflect};
 use crate::query::{filter::Filters, QueryComponentType};
 
@@ -62,26 +64,17 @@ impl EntityId {
     }
 }
 
-#[derive(Debug)]
 /// Entity store, manages archetypes and all their entities (components) in the `world`
+#[derive(Debug, Default)]
 pub struct Entities {
-    next_entity_id: EntityId,
+    /// Not public since entity creation and despawning is done via commands, which if not applied
+    /// by the user would lead to tracked entities which do not exist
+    pub(crate) tracking: EntityTracking,
     archetypes: HashMap<ArchetypeId, Archetype>, // Map archetype ID to its storage
     current_tick: *const Tick,
 }
 
 // TODO: Implement the correct removal and transfer of ticks, not just components
-
-impl Default for Entities {
-    /// Create new `Entities` manager with uninitialized tick pointer
-    fn default() -> Self {
-        Self {
-            next_entity_id: EntityId::new(0, 0),
-            archetypes: HashMap::new(),
-            current_tick: std::ptr::null(),
-        }
-    }
-}
 
 impl Entities {
     /// Create new `Entities` manager with uninitialized tick pointer
@@ -89,8 +82,8 @@ impl Entities {
         Self::default()
     }
 
-    #[inline]
     /// Returns current tick
+    #[inline]
     pub fn tick(&self) -> Tick {
         debug_assert!(
             !self.current_tick.is_null(),
@@ -100,22 +93,24 @@ impl Entities {
     }
 
     /// Exposes archetyeps
+    #[inline]
     pub fn archetypes(&self) -> impl Iterator<Item = &Archetype> {
         self.archetypes.values()
     }
 
     /// Initialize tick pointer, necessary for entity creation. Done in
     /// [`World`](crate::prelude::World) initialization.
+    #[inline]
     pub fn initialize_tick(&mut self, current_tick: *const Tick) {
         self.current_tick = current_tick
     }
 
-    /// Step next entity ID counter
-    /// Returns new entity ID
-    fn step_entity_id(&mut self) -> EntityId {
-        self.next_entity_id.index += 1;
-        self.next_entity_id
-    }
+    ///// Step next entity ID counter
+    ///// Returns new entity ID
+    //fn step_entity_id(&mut self) -> EntityId {
+    //    self.next_entity_id.index += 1;
+    //    self.next_entity_id
+    //}
 
     /// Returns archetypes with matching [`query types`](QueryComponentType) and filters, and component indices for
     /// `changed` filters acquired from [`Archetype::get_changed_filter_indices`]
@@ -134,10 +129,10 @@ impl Entities {
         })
     }
 
-    /// Exposes next entity ID
-    pub fn next_entity_id(&self) -> EntityId {
-        self.next_entity_id
-    }
+    ///// Exposes next entity ID
+    //pub fn next_entity_id(&self) -> EntityId {
+    //    self.next_entity_id
+    //}
 
     /// Spawn new entity with components
     ///
@@ -173,18 +168,13 @@ impl Entities {
             .collect::<Vec<_>>();
         let archetype_id = Archetype::hash_types(infos.clone());
 
-        assert!(
-            self.next_entity_id == entity_id,
-            "Entity ID mismatch with next entity ID (id {:?} != next {:?})",
-            entity_id,
-            self.next_entity_id
-        );
-        self.step_entity_id();
-
-        self.archetypes
+        let location = self
+            .archetypes
             .entry(archetype_id)
-            .or_insert_with(|| Archetype::new(infos, self.current_tick))
+            .or_insert_with(|| Archetype::new(infos))
             .insert_entity(entity_id, components);
+
+        self.tracking.set_location(entity_id, location);
     }
 
     /// Despawn entity and break all relations
@@ -258,7 +248,12 @@ impl Entities {
             if archetype.has_type(&type_id) {
                 if replace {
                     assert!(
-                        archetype.set_component(entity_id, component, info.as_ref().type_id),
+                        archetype.set_component(
+                            entity_id,
+                            component,
+                            info.as_ref().type_id,
+                            current_tick,
+                        ),
                         "Failed to set component"
                     );
                 } else {
@@ -284,7 +279,7 @@ impl Entities {
             // which is safe here because the reference is from `remove_entity`
             unsafe { &mut *archetypes_ptr }
                 .entry(archetype_id)
-                .or_insert_with(|| Archetype::new(infos, self.current_tick))
+                .or_insert_with(|| Archetype::new(infos))
                 .insert_entity(entity_id, old_components);
         } else {
             info.drop(component);
@@ -335,7 +330,7 @@ impl Entities {
             // which is safe here because the reference is from `remove_entity`
             unsafe { &mut *archetypes_ptr }
                 .entry(archetype_id)
-                .or_insert_with(|| Archetype::new(types, self.current_tick))
+                .or_insert_with(|| Archetype::new(types))
                 .insert_entity(entity_id, old_components);
         }
 
