@@ -217,6 +217,12 @@ impl BlobVec {
     unsafe fn set_raw(&mut self, value: NonNull<u8>, i: usize) {
         debug_assert!(i < self.len, "Index out of bounds");
         let dst = self.get_raw_unchecked(i);
+
+        // drop existing value
+        if let Some(drop) = self.drop {
+            drop(dst);
+        }
+
         // Safety: dst and value are non-overlapping and valid
         self.copy_nonoverlapping(value, dst);
     }

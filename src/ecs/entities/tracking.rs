@@ -87,24 +87,24 @@ impl EntityTracking {
             entity
         );
 
-        debug_assert!(
-            !self.debug_locations.contains(&location),
-            "Entity location {:?} is already assigned to another entity",
-            location
-        );
         #[cfg(debug_assertions)]
         {
+            debug_assert!(
+                !self.debug_locations.contains(&location),
+                "Entity location {:?} is already assigned to another entity",
+                location
+            );
             self.debug_locations.insert(location);
             if let Some(previous) = &self.locations[index] {
                 self.debug_locations.remove(previous);
             }
-        }
 
-        debug_assert!(
-            !self.debug_free_ids.contains(&entity),
-            "Trying to set location for freed entity id {:?}",
-            entity
-        );
+            debug_assert!(
+                !self.debug_free_ids.contains(&entity),
+                "Trying to set location for freed entity id {:?}",
+                entity
+            );
+        }
 
         self.locations[index] = Some(location);
     }
