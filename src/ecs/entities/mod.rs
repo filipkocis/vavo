@@ -8,9 +8,7 @@ use components::ComponentInfoPtr;
 
 use std::{any::TypeId, collections::HashMap, hash::Hash, mem::ManuallyDrop};
 
-use crate::ecs::entities::{
-    archetype::TypedComponentData, components::UntypedComponentData, tracking::EntityTracking,
-};
+use crate::ecs::entities::{archetype::TypedComponentData, tracking::EntityTracking};
 use crate::macros::{Component, Reflect};
 use crate::query::{filter::Filters, QueryComponentType};
 
@@ -71,8 +69,9 @@ impl EntityId {
 pub struct Entities {
     /// Not public since entity creation and despawning is done via commands, which if not applied
     /// by the user would lead to tracked entities which do not exist
-    pub(crate) tracking: EntityTracking,
-    archetypes: HashMap<ArchetypeId, Archetype>, // Map archetype ID to its storage
+    pub tracking: EntityTracking,
+    /// Holds all archetypes in the world by their unique id
+    pub(crate) archetypes: HashMap<ArchetypeId, Archetype>,
     /// Pointer to current tick in the world, used for component change tracking
     current_tick: *const Tick,
     /// Info pointer for EntityId component insertion
@@ -139,13 +138,10 @@ impl Entities {
         type_ids: &'a [QueryComponentType],
         filters: &'a mut Filters,
     ) -> impl Iterator<Item = (&'a mut Archetype, Vec<Vec<usize>>)> {
-        self.archetypes.values_mut().filter_map(|a| {
-            if a.has_query_types(type_ids) && a.matches_filters(filters) {
-                let indices = a.get_changed_filter_indices(filters);
-                Some((a, indices))
-            } else {
-                None
-            }
+        self.archetypes.values_mut().filter_map(|archetype| {
+            archetype
+                .filtered(type_ids, filters)
+                .map(|indices| (archetype, indices))
         })
     }
 
@@ -181,7 +177,7 @@ impl Entities {
             OwnedPtr::new_ref(&mut entity_id_cpy)
         };
         components.push(TypedComponentData::from_parts(
-            self.entity_info,
+            self.entity_info(),
             entity_id_ptr,
             tick,
             tick,
@@ -204,31 +200,42 @@ impl Entities {
 
     /// Despawn entity and break all relations
     pub(crate) fn despawn_entity(&mut self, entity_id: EntityId) {
-        // Remove relations
+        // Remove link to parent
         if let Some(parent) = self.get_component::<Parent>(entity_id) {
             self.remove_child(parent.id, entity_id);
         }
-
-        // Remove entity
-        let mut emptied_archetype = None;
-        if let Some((id, archetype)) = self
-            .archetypes
-            .iter_mut()
-            .find(|(_, a)| a.has_entity(&entity_id))
-        {
-            if let Some(removed) = archetype.remove_entity(entity_id) {
-                for component in removed {
-                    component.drop();
-                }
-            }
-
-            if archetype.is_empty() {
-                emptied_archetype = Some(*id);
+        // Remove links to children
+        if let Some(children) = self.get_component::<Children>(entity_id) {
+            for child_id in children.ids.clone() {
+                self.remove_child(entity_id, child_id);
             }
         }
 
+        // Get entity location
+        let Some(location) = self.tracking.get_location(entity_id) else {
+            return;
+        };
+
+        let id = location.archetype_id();
+        let archetype = self
+            .archetypes
+            .get_mut(&id)
+            .expect("archetype should exist");
+
+        // Remove entity
+        let removed = archetype.remove_entity(entity_id, location);
+        for component in removed.components {
+            component.drop();
+        }
+        self.tracking.remove_entity(entity_id);
+
+        // Update swapped entity location
+        if let Some(swapped) = removed.swapped {
+            self.tracking.set_location(swapped, location);
+        }
+
         // Remove archetype if empty
-        if let Some(id) = emptied_archetype {
+        if archetype.is_empty() {
             self.archetypes.remove(&id);
         }
     }
@@ -255,7 +262,7 @@ impl Entities {
         info: ComponentInfoPtr,
         replace: bool,
     ) {
-        let current_tick = self.tick();
+        let tick = self.tick();
         let type_id = info.as_ref().type_id;
         let archetypes_ptr = &mut self.archetypes as *mut HashMap<_, _>;
         assert_ne!(
@@ -264,59 +271,60 @@ impl Entities {
             "Cannot insert EntityId as a component"
         );
 
-        let mut emptied_archetype = None;
-        if let Some((id, archetype)) = self
-            .archetypes
-            .iter_mut()
-            .find(|(_, a)| a.has_entity(&entity_id))
-        {
-            if archetype.has_type(&type_id) {
-                if replace {
-                    assert!(
-                        archetype.set_component(
-                            entity_id,
-                            component,
-                            info.as_ref().type_id,
-                            current_tick,
-                        ),
-                        "Failed to set component"
-                    );
-                } else {
-                    info.drop(component);
-                }
-                return;
-            }
-
-            if archetype.len() == 1 {
-                emptied_archetype = Some(*id);
-            }
-
-            let mut infos = archetype.types_vec();
-            infos.push(info);
-
-            let mut old_components = archetype
-                .remove_entity(entity_id)
-                .expect("entity_id should exist in archetype");
-
-            old_components.push(TypedComponentData::from_parts(
-                info,
-                component,
-                current_tick,
-                current_tick,
-            ));
-
-            let archetype_id = Archetype::hash_types(infos.clone());
-            // Safety: since old_components reference archetype, we need to do another mut borrow
-            // which is safe here because the reference is from `remove_entity`
-            unsafe { &mut *archetypes_ptr }
-                .entry(archetype_id)
-                .or_insert_with(|| Archetype::new(archetype_id, infos))
-                .insert_entity(entity_id, old_components);
-        } else {
+        // Get entity location
+        let Some(location) = self.tracking.get_location(entity_id) else {
             info.drop(component);
+            return;
+        };
+
+        let id = location.archetype_id();
+        let archetype = self
+            .archetypes
+            .get_mut(&id)
+            .expect("archetype should exist");
+
+        // If component type already exists, replace it or drop the new one
+        if archetype.has_type(&type_id) {
+            if replace {
+                let component = TypedComponentData::from_parts(info, component, tick, tick);
+                archetype.set_component(entity_id, location, component);
+            } else {
+                info.drop(component);
+            }
+            return;
         }
 
-        if let Some(id) = emptied_archetype {
+        // Build new types with added component
+        let mut infos = archetype.types_vec();
+        infos.push(info);
+
+        // Remove entity from archetype and add new component
+        let mut removed = archetype.remove_entity(entity_id, location);
+        let new_component = TypedComponentData::from_parts(info, component, tick, tick);
+        removed.components.push(new_component);
+
+        // Update swapped entity location
+        if let Some(swapped) = removed.swapped {
+            self.tracking.set_location(swapped, location);
+        }
+
+        let new_id = Archetype::hash_types(infos.clone());
+        let archetypes = unsafe {
+            // Safety: since `removed` references archetype, we need to do another mut borrow
+            // which is safe here because we are accessing a different archetype
+            &mut *archetypes_ptr
+        };
+
+        // Insert entity into new archetype
+        let location = archetypes
+            .entry(new_id)
+            .or_insert_with(|| Archetype::new(new_id, infos))
+            .insert_entity(entity_id, removed.components);
+
+        self.tracking.set_location(entity_id, location);
+
+        // Remove archetype if empty
+        if archetype.is_empty() {
             self.archetypes.remove(&id);
         }
     }
@@ -333,98 +341,114 @@ impl Entities {
             "Cannot remove builtin EntityId component"
         );
 
-        let mut emptied_archetype = None;
-        if let Some((id, archetype)) = self
+        // Get entity location
+        let Some(location) = self.tracking.get_location(entity_id) else {
+            return;
+        };
+
+        let id = location.archetype_id();
+        let archetype = self
             .archetypes
-            .iter_mut()
-            .find(|(_, a)| a.has_entity(&entity_id))
-        {
-            let Some(component_index) = archetype.get_component_index(&type_id) else {
-                return;
-            };
+            .get_mut(&id)
+            .expect("archetype should exist");
 
-            if archetype.len() == 1 {
-                emptied_archetype = Some(*id);
-            }
+        // Get component type index
+        let component_index = archetype.component_index(&type_id);
 
-            let mut types = archetype.types_vec();
-            types.remove(component_index);
+        // Build new types without removed component
+        let mut infos = archetype.types_vec();
+        infos.remove(component_index);
 
-            let mut old_components = archetype
-                .remove_entity(entity_id)
-                .expect("entity_id should exist in archetype");
-            let removed = old_components.remove(component_index);
-            removed.drop();
+        // Remove entity from archetype and remove component
+        let mut removed = archetype.remove_entity(entity_id, location);
+        let removed_data = removed.components.remove(component_index);
+        removed_data.drop();
 
-            let archetype_id = Archetype::hash_types(types.clone());
-            // Safety: since old_components reference archetype, we need to do another mut borrow
-            // which is safe here because the reference is from `remove_entity`
-            unsafe { &mut *archetypes_ptr }
-                .entry(archetype_id)
-                .or_insert_with(|| Archetype::new(archetype_id, types))
-                .insert_entity(entity_id, old_components);
+        // Update swapped entity location
+        if let Some(swapped) = removed.swapped {
+            self.tracking.set_location(swapped, location);
         }
 
-        if let Some(id) = emptied_archetype {
+        let new_id = Archetype::hash_types(infos.clone());
+        let archetypes = unsafe {
+            // Safety: since `removed` references archetype, we need to do another mut borrow
+            // which is safe here because we are accessing a different archetype
+            &mut *archetypes_ptr
+        };
+
+        // Insert entity into new archetype
+        let location = archetypes
+            .entry(new_id)
+            .or_insert_with(|| Archetype::new(new_id, infos))
+            .insert_entity(entity_id, removed.components);
+
+        self.tracking.set_location(entity_id, location);
+
+        // Remove archetype if empty
+        if archetype.is_empty() {
             self.archetypes.remove(&id);
         }
     }
 
-    /// Get component mutably
+    /// Get component mutably if it exists, marking it as changed
     pub(crate) fn get_component_mut<C: Component>(
         &mut self,
         entity_id: EntityId,
     ) -> Option<&mut C> {
         let current_tick = self.tick();
-        let type_id = TypeId::of::<C>();
-        for archetype in self.archetypes.values_mut() {
-            let entity_index = match archetype.get_entity_index(entity_id) {
-                Some(index) => index,
-                None => continue,
-            };
 
-            if let Some(component_index) = archetype.get_component_index(&type_id) {
-                let comp = &mut archetype.components[component_index];
-                comp.set_changed_at(entity_index, current_tick);
-                let comp = unsafe {
-                    comp.get_untyped_lt(entity_index)
-                        .as_ptr()
-                        .cast::<C>()
-                        .as_mut()
-                };
-                return Some(comp);
-            } else {
-                return None;
-            }
-        }
+        // Get entity location
+        let location = self.tracking.get_location(entity_id)?;
+        let entity_index = location.index();
+        let id = location.archetype_id();
+        let archetype = self
+            .archetypes
+            .get_mut(&id)
+            .expect("archetype should exist");
 
-        None
+        // Get components by type index
+        let component_index = archetype.try_component_index(&TypeId::of::<C>())?;
+        let components = &mut archetype.components[component_index];
+
+        // Mark component as changed
+        components.set_changed_at(entity_index, current_tick);
+
+        // Get component mutable reference
+        let component = unsafe {
+            // Safety: entity existence is guaranteed by tracking
+            components
+                .get_untyped_lt(entity_index)
+                .as_ptr()
+                .cast::<C>()
+                .as_mut()
+        };
+
+        Some(component)
     }
 
-    /// Get component
+    /// Get component if it exists
     pub(crate) fn get_component<C: Component>(&self, entity_id: EntityId) -> Option<&C> {
-        let type_id = TypeId::of::<C>();
-        for archetype in self.archetypes.values() {
-            let entity_index = match archetype.get_entity_index(entity_id) {
-                Some(index) => index,
-                None => continue,
-            };
+        // Get entity location
+        let location = self.tracking.get_location(entity_id)?;
+        let entity_index = location.index();
+        let id = location.archetype_id();
+        let archetype = self.archetypes.get(&id).expect("archetype should exist");
 
-            if let Some(component_index) = archetype.get_component_index(&type_id) {
-                let comp = &archetype.components[component_index];
-                let comp = unsafe {
-                    comp.get_untyped_lt(entity_index)
-                        .as_ptr()
-                        .cast::<C>()
-                        .as_ref()
-                };
-                return Some(comp);
-            } else {
-                return None;
-            }
-        }
+        // Get components by type index
+        let component_index = archetype.try_component_index(&TypeId::of::<C>())?;
+        let components = &archetype.components[component_index];
 
-        None
+        // Get component reference
+        let component = unsafe {
+            // Safety: entity existence is guaranteed by tracking
+            components
+                .get_untyped_lt(entity_index)
+                .as_ptr()
+                .cast::<C>()
+                .as_ref()
+        };
+
+        Some(component)
     }
 
     /// Add child to parent's Children component, and add Parent component to child
@@ -443,11 +467,11 @@ impl Entities {
             "Parent and child cannot be the same entity"
         );
         assert!(
-            self.archetypes.values().any(|a| a.has_entity(&parent_id)),
+            self.tracking.get_location(parent_id).is_some(),
             "Parent entity does not exist"
         );
         assert!(
-            self.archetypes.values().any(|a| a.has_entity(&child_id)),
+            self.tracking.get_location(child_id).is_some(),
             "Child entity does not exist"
         );
 
@@ -468,7 +492,8 @@ impl Entities {
         self.insert_component(child_id, ptr, parent_info, true);
     }
 
-    /// Remove child from parent's Children component, and remove Parent component from child
+    /// Breaks the relation link between parent and child.
+    /// Remove child from parent's Children component, and remove Parent component from child.
     pub(crate) fn remove_child(&mut self, parent_id: EntityId, child_id: EntityId) {
         if let Some(children) = self.get_component_mut::<Children>(parent_id) {
             if children.ids.contains(&child_id) {
