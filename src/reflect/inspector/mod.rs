@@ -103,9 +103,7 @@ fn create_inspector(
     let registry = &app.type_registry;
     println!("PRINTING");
     for archetype in app.world.entities.archetypes() {
-        let id_idx = archetype
-            .get_component_index(&TypeId::of::<EntityId>())
-            .expect("EntityId not found in archetype");
+        let id_idx = archetype.component_index(&TypeId::of::<EntityId>());
 
         for entity in 0..archetype.len() {
             let mut entity_id = None;

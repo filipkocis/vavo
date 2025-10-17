@@ -177,9 +177,11 @@ macro_rules! impl_run_query {
 
                 let requested_types = [$($types::get_type_id()),+];
                 let mut result = Vec::new();
-                let current_tick = unsafe { &*self.entities }.tick();
+                let entities = unsafe { &mut *self.entities };
+                let current_tick = entities.tick();
 
-                for (archetype, changed_filter_indices) in unsafe { &mut *self.entities }.archetypes_filtered(&requested_types, &mut filters) {
+                // Iterate over archetypes that match the query
+                for (archetype, changed_filter_indices) in entities.archetypes_filtered(&requested_types, &mut filters) {
                     let mut type_index = 0;
                     // Extract specific component vecs and their indices into a $type variable
                     $(
@@ -195,7 +197,7 @@ macro_rules! impl_run_query {
                                 // Don't panic since Option doesn't have to be present
                                 archetype.try_component_index(type_id)
                             } else {
-                                Some(archetype.get_component_index(type_id).expect("type should exist in archetype"))
+                                Some(archetype.component_index(type_id))
                             };
 
                             if let Some(index) = maybe_index {
@@ -231,14 +233,20 @@ macro_rules! impl_run_query {
                 $(filters.add::<$filter>();)*
 
                 let requested_types = [$($types::get_type_id()),+];
-                let current_tick = unsafe { &*self.entities }.tick();
+                let entities = unsafe { &mut *self.entities };
+                let current_tick = entities.tick();
 
-                for (archetype, changed_filter_indices) in unsafe { &mut *self.entities }.archetypes_filtered(&requested_types, &mut filters) {
-                    let entity_index = match archetype.get_entity_index(entity_id) {
-                        Some(index) => index,
-                        None => continue,
-                    };
+                // Get the entity location
+                let Some(location) = entities.tracking.get_location(entity_id) else {
+                    return None;
+                };
 
+                let entity_index = location.index();
+                let id = location.archetype_id();
+                let archetype = entities.archetypes.get_mut(&id).expect("archetype should exist");
+
+                // Check if the archetype matches the query
+                if let Some(changed_filter_indices) = archetype.filtered(&requested_types, &mut filters) {
                     let mut type_index = 0;
                     // Extract specific component vecs and their indices into a $type variable
                     $(
@@ -253,7 +261,7 @@ macro_rules! impl_run_query {
                                 // Don't panic since Option doesn't have to be present
                                 archetype.try_component_index(type_id)
                             } else {
-                                Some(archetype.get_component_index(type_id).expect("type should exist in archetype"))
+                                Some(archetype.component_index(type_id))
                             };
 
                             if let Some(index) = maybe_index {
