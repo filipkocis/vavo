@@ -12,8 +12,8 @@ use crate::{
 
 use super::Commands;
 
-pub struct SystemsContext<'a, 'b> {
-    pub commands: Commands,
+pub struct SystemsContext<'a, 'b, 'c> {
+    pub commands: Commands<'c, 'c>,
     pub resources: &'a mut Resources,
     pub event_writer: EventWriter<'a>,
     pub event_reader: EventReader<'a>,
@@ -29,10 +29,10 @@ pub struct SystemsContext<'a, 'b> {
     pub graph: *mut RenderGraph,
 }
 
-impl<'a, 'b> SystemsContext<'a, 'b> {
+impl<'a, 'b, 'c> SystemsContext<'a, 'b, 'c> {
     #[inline]
     pub fn new(
-        commands: Commands,
+        commands: Commands<'c, 'c>,
         resources: &'a mut Resources,
         events: &'a mut Events,
         renderer: Renderer<'b>,
@@ -66,7 +66,11 @@ impl<'a, 'b> SystemsContext<'a, 'b> {
 
     /// Flushes stored commands and applies them to the world. Commands get flushed automatically
     /// after each system stage has finished, this can be used to flush them manually.
-    pub fn flush_internal_commands(&mut self) {
+    ///
+    /// # Safety
+    /// This function mutably borrows the App's world, so the caller must ensure that no other
+    /// mutable references exist to the world.
+    pub unsafe fn flush_internal_commands(&mut self) {
         let app = unsafe { &mut *self.app };
         self.commands.apply(&mut app.world)
     }

@@ -1,6 +1,6 @@
 mod app;
 mod query;
-mod system;
+pub mod system;
 pub mod assets;
 pub mod window;
 pub mod renderer;

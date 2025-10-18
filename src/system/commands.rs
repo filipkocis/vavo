@@ -25,27 +25,33 @@ enum Command {
     RemoveChild(EntityId, EntityId),
 }
 
+/// Internal queue of [commands](Commands).
+#[derive(Default)]
+pub struct CommandQueue {
+    internal: Vec<Command>,
+}
+
 /// Queue of commands to be applied to the world.
-pub struct Commands {
-    tracking: *mut EntityTracking,
-    commands: Vec<Command>,
+pub struct Commands<'t, 'q> {
+    tracking: &'t mut EntityTracking,
+    queue: &'q mut CommandQueue,
 }
 
 /// Commands for a specific entity.
-pub struct EntityCommands<'a> {
+pub struct EntityCommands<'a, 't, 'q> {
     entity_id: EntityId,
-    commands: &'a mut Commands,
+    commands: &'a mut Commands<'t, 'q>,
 }
 
 /// Commands for creating child entities under a parent.
-pub struct ParentCommands<'a> {
+pub struct ParentCommands<'a, 't, 'q> {
     parent_id: EntityId,
-    commands: &'a mut Commands,
+    commands: &'a mut Commands<'t, 'q>,
 }
 
-impl<'a> ParentCommands<'a> {
+impl<'a, 't, 'q> ParentCommands<'a, 't, 'q> {
     /// Creates new parent commands
-    fn new(parent_id: EntityId, commands: &'a mut Commands) -> Self {
+    fn new(parent_id: EntityId, commands: &'a mut Commands<'t, 'q>) -> Self {
         Self {
             parent_id,
             commands,
@@ -53,21 +59,20 @@ impl<'a> ParentCommands<'a> {
     }
 
     /// Spawns a new empty child entity under the parent and returns its [`EntityCommands`].
-    pub fn spawn_empty(&mut self) -> EntityCommands<'_> {
-        let child_id = self.commands.spawn_empty().entity_id;
+    pub fn spawn_empty(&mut self) -> EntityCommands<'_, 't, 'q> {
+        let child_id = { self.commands.spawn_empty().entity_id };
 
         self.commands
-            .commands
-            .push(Command::AddChild(self.parent_id, child_id));
+            .queue(Command::AddChild(self.parent_id, child_id));
 
         EntityCommands::new(self.commands, child_id)
     }
 }
 
-impl<'a> EntityCommands<'a> {
+impl<'a, 't, 'q> EntityCommands<'a, 't, 'q> {
     /// Creates new entity commands
     #[inline]
-    fn new(commands: &'a mut Commands, entity_id: EntityId) -> Self {
+    fn new(commands: &'a mut Commands<'t, 'q>, entity_id: EntityId) -> Self {
         Self {
             entity_id,
             commands,
@@ -82,16 +87,13 @@ impl<'a> EntityCommands<'a> {
 
     /// Despawn the entity and break its parent-child relationship.
     pub fn despawn(self) {
-        self.commands
-            .commands
-            .push(Command::DespawnEntity(self.entity_id));
+        self.commands.queue(Command::DespawnEntity(self.entity_id));
     }
 
     /// Despawns the entity and all its children recursively.
     pub fn despawn_recursive(self) {
         self.commands
-            .commands
-            .push(Command::DespawnEntityRecursive(self.entity_id));
+            .queue(Command::DespawnEntityRecursive(self.entity_id));
     }
 
     /// Inserts new component to the entity.
@@ -133,8 +135,7 @@ impl<'a> EntityCommands<'a> {
     /// Removes a component from the entity.
     pub fn remove<C: Component>(self) -> Self {
         self.commands
-            .commands
-            .push(Command::RemoveComponent(self.entity_id, TypeId::of::<C>()));
+            .queue(Command::RemoveComponent(self.entity_id, TypeId::of::<C>()));
         self
     }
 
@@ -149,8 +150,7 @@ impl<'a> EntityCommands<'a> {
     pub fn remove_children(self, children: Vec<EntityId>) -> Self {
         for child_id in children {
             self.commands
-                .commands
-                .push(Command::RemoveChild(self.entity_id, child_id));
+                .queue(Command::RemoveChild(self.entity_id, child_id));
         }
         self
     }
@@ -159,8 +159,7 @@ impl<'a> EntityCommands<'a> {
     pub fn insert_children(self, children: Vec<EntityId>) -> Self {
         for child_id in children {
             self.commands
-                .commands
-                .push(Command::AddChild(self.entity_id, child_id));
+                .queue(Command::AddChild(self.entity_id, child_id));
         }
         self
     }
@@ -168,8 +167,7 @@ impl<'a> EntityCommands<'a> {
     /// Inserts an already existing child to the entity.
     pub fn insert_child(self, child: EntityId) -> Self {
         self.commands
-            .commands
-            .push(Command::AddChild(self.entity_id, child));
+            .queue(Command::AddChild(self.entity_id, child));
         self
     }
 
@@ -190,8 +188,7 @@ impl<'a> EntityCommands<'a> {
         };
 
         self.commands
-            .commands
-            .push(Command::InsertComponent(Box::new(insert_closure)))
+            .queue(Command::InsertComponent(Box::new(insert_closure)))
     }
 
     /// Checks and handles special cases of the component being inserted
@@ -214,16 +211,11 @@ impl<'a> EntityCommands<'a> {
     }
 }
 
-impl Commands {
-    /// Creates new command queue.
-    /// Provide `next_entity_id` from [`Entities::next_entity_id`](crate::prelude::Entities::next_entity_id)
-    /// Safety: `tracking` must live as long as the `Commands` instance and must not be aliased
-    /// while `Commands` exists.
-    pub fn build(tracking: &mut EntityTracking) -> Self {
-        Self {
-            tracking,
-            commands: Vec::new(),
-        }
+impl<'t, 'q> Commands<'t, 'q> {
+    /// Creates new commands manager from a command queue and entity tracking storage.
+    #[inline]
+    pub fn new(tracking: &'t mut EntityTracking, queue: &'q mut CommandQueue) -> Self {
+        Self { tracking, queue }
     }
 
     /// Inserts or replaces a resource of type `R` in the world.
@@ -231,35 +223,53 @@ impl Commands {
         let resource_data = ResourceData::new(resource, Tick::default());
         let resource_type_id = TypeId::of::<R>();
 
-        self.commands
-            .push(Command::InsertResource(resource_type_id, resource_data));
+        self.queue(Command::InsertResource(resource_type_id, resource_data));
         self
     }
 
     /// Removes a resource of type `R` from the world.
     pub fn remove_resource<R: Resource>(&mut self) -> &mut Self {
-        self.commands
-            .push(Command::RemoveResource(TypeId::of::<R>()));
+        self.queue(Command::RemoveResource(TypeId::of::<R>()));
         self
     }
 
     /// Spawns a new empty entity and returns its [`EntityCommands`] to modify it.
-    pub fn spawn_empty(&mut self) -> EntityCommands<'_> {
-        let new_id = self.tracking().new_id();
-        self.commands.push(Command::SpawnEntity(new_id));
+    pub fn spawn_empty<'a>(&'a mut self) -> EntityCommands<'a, 't, 'q> {
+        let new_id = self.tracking.new_id();
+        self.queue(Command::SpawnEntity(new_id));
 
         EntityCommands::new(self, new_id)
     }
 
     /// Selects an entity and returns its [`EntityCommands`] to modify it.
     #[inline]
-    pub fn entity(&mut self, entity_id: EntityId) -> EntityCommands<'_> {
+    pub fn entity<'a>(&'a mut self, entity_id: EntityId) -> EntityCommands<'a, 't, 'q> {
         EntityCommands::new(self, entity_id)
+    }
+
+    /// Queues a command to be executed on the world.
+    #[inline]
+    fn queue(&mut self, command: Command) {
+        self.queue.internal.push(command);
+    }
+
+    /// Applies all queued commands to the world.
+    #[inline]
+    pub(crate) fn apply(&mut self, world: &mut World) {
+        self.queue.apply(world);
+    }
+}
+
+impl CommandQueue {
+    /// Creates new empty command queue.
+    #[inline]
+    pub fn new() -> Self {
+        Self::default()
     }
 
     /// Applies all queued commands to the world.
     pub fn apply(&mut self, world: &mut World) {
-        for command in self.commands.drain(..) {
+        for command in self.internal.drain(..) {
             match command {
                 Command::InsertResource(type_id, mut resource_data) => {
                     resource_data.set_tick(*world.tick);
@@ -295,11 +305,5 @@ impl Commands {
                 }
             }
         }
-    }
-
-    /// Returns a mutable reference to the entity tracking system.
-    #[inline]
-    fn tracking(&mut self) -> &mut EntityTracking {
-        unsafe { &mut *self.tracking }
     }
 }

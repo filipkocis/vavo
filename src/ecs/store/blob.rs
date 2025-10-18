@@ -105,7 +105,7 @@ impl BlobVec {
         self.layout
     }
 
-    /// Ensure that the blob has enough space for `additional` elements.
+    /// Ensure that the blob has enough space for at least `additional` elements.
     ///
     /// # Panic
     /// Panics if the new capacity overflows `isize::MAX`

@@ -7,6 +7,7 @@ use winit::event::ElementState;
 use crate::core::graph::RenderGraph;
 use crate::prelude::{FixedTime, Resource};
 use crate::reflect::{Reflect, registry::ReflectTypeRegistry};
+use crate::system::commands::CommandQueue;
 use crate::system::{Commands, IntoSystem, SystemHandler, SystemStage, SystemsContext};
 use crate::window::{AppHandler, AppState, RenderContext, Renderer};
 
@@ -120,14 +121,20 @@ impl App {
         self
     }
 
-    fn run_systems(&mut self, stage: SystemStage, renderer: Renderer) {
+    fn run_systems(&mut self, stage: SystemStage, renderer: Renderer, queue: &mut CommandQueue) {
         let self_ptr = self as *mut App;
         let systems = self.system_handler.get_systems(stage);
         if systems.is_empty() {
             return;
         }
 
-        let commands = Commands::build(&mut self.world.entities.tracking);
+        let tracking = unsafe {
+            // Safety: Tracking is not accessible from system contexts
+            &mut (*(&mut self.world.entities.tracking as *mut _))
+        };
+        // let mut queue = CommandQueue::default();
+        let commands = Commands::new(tracking, queue);
+
         let mut ctx = SystemsContext::new(commands, &mut self.world.resources, &mut self.events, renderer, self_ptr, &mut self.render_graph);
 
         let iterations = if stage.has_fixed_time() {
@@ -147,8 +154,13 @@ impl App {
         ctx.commands.apply(&mut self.world);
     }
 
-    fn execute_render_graph(&mut self, renderer: Renderer) {
-        let commands = Commands::build(&mut self.world.entities.tracking);
+    fn execute_render_graph(&mut self, renderer: Renderer, queue: &mut CommandQueue) {
+        let tracking = unsafe {
+            // Safety: Tracking is not accessible from system contexts
+            &mut (*(&mut self.world.entities.tracking as *mut _))
+        };
+        let commands = Commands::new(tracking, queue);
+
         let self_ptr = self as *mut App;
         let mut ctx = SystemsContext::new(commands, &mut self.world.resources, &mut self.events, renderer, self_ptr, &mut self.render_graph);
 
@@ -160,9 +172,10 @@ impl App {
     /// Initialize the app and run all startup systems
     pub(crate) fn startup(&mut self, state: &mut AppState) {
         let mut context = RenderContext::new_update_context(state);
+        let mut queue = CommandQueue::default();
 
-        self.run_systems(SystemStage::PreStartup, context.as_renderer());
-        self.run_systems(SystemStage::Startup, context.as_renderer());
+        self.run_systems(SystemStage::PreStartup, context.as_renderer(), &mut queue);
+        self.run_systems(SystemStage::Startup, context.as_renderer(), &mut queue);
 
         self.system_handler.clear_systems(SystemStage::PreStartup);
         self.system_handler.clear_systems(SystemStage::Startup);
@@ -171,15 +184,16 @@ impl App {
     /// Update the app and run all update systems
     pub(crate) fn update(&mut self, state: &mut AppState) {
         let mut context = RenderContext::new_update_context(state);
+        let mut queue = CommandQueue::default();
 
         self.world.update();
 
-        self.run_systems(SystemStage::First, context.as_renderer());
-        self.run_systems(SystemStage::PreUpdate, context.as_renderer());
-        self.run_systems(SystemStage::FixedUpdate, context.as_renderer());
-        self.run_systems(SystemStage::Update, context.as_renderer());
-        self.run_systems(SystemStage::PostUpdate, context.as_renderer());
-        self.run_systems(SystemStage::Last, context.as_renderer());
+        self.run_systems(SystemStage::First, context.as_renderer(), &mut queue);
+        self.run_systems(SystemStage::PreUpdate, context.as_renderer(), &mut queue);
+        self.run_systems(SystemStage::FixedUpdate, context.as_renderer(), &mut queue);
+        self.run_systems(SystemStage::Update, context.as_renderer(), &mut queue);
+        self.run_systems(SystemStage::PostUpdate, context.as_renderer(), &mut queue);
+        self.run_systems(SystemStage::Last, context.as_renderer(), &mut queue);
     } 
 
     /// Resize the app
@@ -200,12 +214,13 @@ impl App {
     /// Render the app and run all render systems, and execute the render graph
     pub(crate) fn render(&mut self, state: &mut AppState) -> Result<(), wgpu::SurfaceError> {
         let mut context = RenderContext::new_render_context(state)?;
+        let mut queue = CommandQueue::default();
 
-        self.run_systems(SystemStage::PreRender, context.as_renderer());
-        self.run_systems(SystemStage::Render, context.as_renderer());
-        self.execute_render_graph(context.as_renderer());
-        self.run_systems(SystemStage::PostRender, context.as_renderer());
-        self.run_systems(SystemStage::FrameEnd, context.as_renderer());
+        self.run_systems(SystemStage::PreRender, context.as_renderer(), &mut queue);
+        self.run_systems(SystemStage::Render, context.as_renderer(), &mut queue);
+        self.execute_render_graph(context.as_renderer(), &mut queue);
+        self.run_systems(SystemStage::PostRender, context.as_renderer(), &mut queue);
+        self.run_systems(SystemStage::FrameEnd, context.as_renderer(), &mut queue);
 
         self.events.apply();
 
