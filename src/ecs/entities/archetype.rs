@@ -274,7 +274,7 @@ impl Archetype {
     /// Returns sorted types
     fn sort_types(mut types: Vec<ComponentInfoPtr>) -> Vec<ComponentInfoPtr> {
         types.sort_by(|a, b| a.as_ref().type_id.cmp(&b.as_ref().type_id));
-        types.to_vec()
+        types
     }
 
     /// Exposes `self.types` as a sorted vector
