@@ -237,9 +237,7 @@ macro_rules! impl_run_query {
                 let current_tick = entities.tick();
 
                 // Get the entity location
-                let Some(location) = entities.tracking.get_location(entity_id) else {
-                    return None;
-                };
+                let location = entities.tracking.get_location(entity_id)?;
 
                 let entity_index = location.index();
                 let id = location.archetype_id();

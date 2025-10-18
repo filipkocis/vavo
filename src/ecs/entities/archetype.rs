@@ -86,9 +86,8 @@ pub struct Archetype {
     /// Unique id of this archetype computed from its types
     id: ArchetypeId,
     /// Stores component type ids and their index in `self.components`
-    /// TODO: consider adding Vec copy
     /// TODO: use ComponentLocation here ?
-    types: HashMap<TypeId, (usize, ComponentInfoPtr)>,
+    types: Vec<(TypeId, usize, ComponentInfoPtr)>,
     /// Entity ids in this archetype, `self.entity_ids[entity]` has components at
     /// `self.components[N][entity]` `
     entity_ids: Vec<EntityId>,
@@ -110,8 +109,8 @@ impl Archetype {
         let types = sorted_types
             .into_iter()
             .enumerate()
-            .map(|(i, v)| (v.as_ref().type_id, (i, v)))
-            .collect::<HashMap<_, _>>();
+            .map(|(i, v)| (v.as_ref().type_id, i, v))
+            .collect::<Vec<_>>();
 
         assert!(types.len() == original_len, "Duplicate types in archetype");
 
@@ -174,17 +173,16 @@ impl Archetype {
         entity_location: EntityLocation,
     ) -> RemovedEntity<'_> {
         self.validate_entity(entity_id, entity_location);
-        let index = entity_location.index();
+        let entity_index = entity_location.index();
 
-        self.entity_ids.swap_remove(index);
-        let swapped = self.entity_ids.get(index).copied();
+        self.entity_ids.swap_remove(entity_index);
+        let swapped = self.entity_ids.get(entity_index).copied();
         let mut removed = RemovedEntity::new(swapped, self.components.len());
 
-        for components_data in &mut self.components {
-            // TODO: create a self.types_vec copy so we dont have to use a hashmap here (if it
-            // helps the performance)
-            let info_ptr = self.types[&components_data.get_type_id()].1;
-            let removed_data = components_data.remove(index);
+        for (i, components_data) in self.components.iter_mut().enumerate() {
+            let info_ptr = self.types[i].2;
+            let removed_data = components_data.remove(entity_index);
+
             removed
                 .components
                 .push(TypedComponentData::new(info_ptr, removed_data))
@@ -220,7 +218,6 @@ impl Archetype {
         }
 
         self.components[component_index].set(index, component.data);
-        // self.types[&type_id].1.drop(component);
     }
 
     /// Debug assert that entity is valid in this archetype
@@ -262,6 +259,12 @@ impl Archetype {
         self.entity_ids.is_empty()
     }
 
+    /// Returns archetype id
+    #[inline]
+    pub fn id(&self) -> ArchetypeId {
+        self.id
+    }
+
     /// Returns a pointer to the [`ComponentsData`] at `index`
     #[inline]
     pub(crate) fn get_components_data_mut(&mut self, index: usize) -> *mut ComponentsData {
@@ -276,14 +279,14 @@ impl Archetype {
 
     /// Exposes `self.types` as a sorted vector
     pub fn types_vec(&self) -> Vec<ComponentInfoPtr> {
-        let types: Vec<_> = self.types.iter().map(|(_, (_, v))| *v).collect();
+        let types: Vec<_> = self.types.iter().map(|(_, _, v)| *v).collect();
         Self::sort_types(types)
     }
 
     /// Check if `type_id` exists in self
     #[inline]
     pub fn has_type(&self, type_id: &TypeId) -> bool {
-        self.types.contains_key(type_id)
+        self.try_component_index(type_id).is_some()
     }
 
     /// Check if all [`QueryComponentType::Normal`] types exist in self
@@ -332,13 +335,16 @@ impl Archetype {
     /// Panics if component type does not exist in this archetype
     #[inline]
     pub fn component_index(&self, component_id: &TypeId) -> usize {
-        self.types[component_id].0
+        self.try_component_index(component_id)
+            .expect("Component type not found in archetype")
     }
 
     /// Get component index in `types` if it exists
     #[inline]
     pub fn try_component_index(&self, component_id: &TypeId) -> Option<usize> {
-        self.types.get(component_id).map(|(index, _)| *index)
+        self.types
+            .iter()
+            .find_map(|(id, i, _)| if id == component_id { Some(*i) } else { None })
     }
 
     /// Returns hash of sorted types as [`ArchetypeId`]
