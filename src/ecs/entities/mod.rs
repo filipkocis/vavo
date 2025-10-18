@@ -69,7 +69,7 @@ impl EntityId {
 pub struct Entities {
     /// Not public since entity creation and despawning is done via commands, which if not applied
     /// by the user would lead to tracked entities which do not exist
-    pub tracking: EntityTracking,
+    pub(crate) tracking: EntityTracking,
     /// Holds all archetypes in the world by their unique id
     pub(crate) archetypes: HashMap<ArchetypeId, Archetype>,
     /// Pointer to current tick in the world, used for component change tracking
