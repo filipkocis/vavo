@@ -145,7 +145,7 @@ impl Archetype {
         self.entity_ids.push(entity_id);
 
         for component in components {
-            let component_index = self.types[&component.info.as_ref().type_id].0;
+            let component_index = self.component_index(&component.info.as_ref().type_id);
             self.components[component_index].insert(component.data);
         }
 
@@ -207,7 +207,7 @@ impl Archetype {
         self.validate_entity(entity_id, location);
 
         let type_id = component.info.as_ref().type_id;
-        let component_index = self.types[&type_id].0;
+        let component_index = self.component_index(&type_id);
         let index = location.index();
 
         if index >= self.len() {
