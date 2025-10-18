@@ -233,11 +233,6 @@ impl Entities {
         if let Some(swapped) = removed.swapped {
             self.tracking.set_location(swapped, location);
         }
-
-        // Remove archetype if empty
-        if archetype.is_empty() {
-            self.archetypes.remove(&id);
-        }
     }
 
     /// Despawn entity and all its children recursively
@@ -322,11 +317,6 @@ impl Entities {
             .insert_entity(entity_id, removed.components);
 
         self.tracking.set_location(entity_id, location);
-
-        // Remove archetype if empty
-        if archetype.is_empty() {
-            self.archetypes.remove(&id);
-        }
     }
 
     /// Remove component
@@ -383,11 +373,6 @@ impl Entities {
             .insert_entity(entity_id, removed.components);
 
         self.tracking.set_location(entity_id, location);
-
-        // Remove archetype if empty
-        if archetype.is_empty() {
-            self.archetypes.remove(&id);
-        }
     }
 
     /// Get component mutably if it exists, marking it as changed
