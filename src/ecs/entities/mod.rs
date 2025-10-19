@@ -8,6 +8,7 @@ use components::ComponentInfoPtr;
 
 use std::{any::TypeId, collections::HashMap, hash::Hash, mem::ManuallyDrop};
 
+use crate::ecs::entities::archetype::TickFilterIndices;
 use crate::ecs::entities::{archetype::TypedComponentData, tracking::EntityTracking};
 use crate::macros::{Component, Reflect};
 use crate::query::{filter::Filters, QueryComponentType};
@@ -137,7 +138,7 @@ impl Entities {
         &'a mut self,
         type_ids: &'a [QueryComponentType],
         filters: &'a mut Filters,
-    ) -> impl Iterator<Item = (&'a mut Archetype, Vec<Vec<usize>>)> {
+    ) -> impl Iterator<Item = (&'a mut Archetype, TickFilterIndices)> {
         self.archetypes.values_mut().filter_map(|archetype| {
             archetype
                 .filtered(type_ids, filters)

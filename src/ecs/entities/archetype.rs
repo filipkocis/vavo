@@ -372,6 +372,23 @@ impl Archetype {
     }
 }
 
+pub(crate) struct TickFilterIndices {
+    changed: Vec<Vec<usize>>,
+    added: Vec<Vec<usize>>,
+}
+
+impl TickFilterIndices {
+    #[inline]
+    fn changed_empty(&self) -> bool {
+        self.changed.len() == 1 && self.changed[0].is_empty()
+    }
+
+    #[inline]
+    fn added_empty(&self) -> bool {
+        self.added.len() == 1 && self.added[0].is_empty()
+    }
+}
+
 impl Archetype {
     /// Returns archetypes with matching [`query types`](QueryComponentType) and filters, and component indices for
     /// `changed` filters acquired from [`Archetype::get_changed_filter_indices`]
@@ -379,25 +396,26 @@ impl Archetype {
         &mut self,
         type_ids: &[QueryComponentType],
         filters: &mut Filters,
-    ) -> Option<Vec<Vec<usize>>> {
-        if self.has_query_types(type_ids) && self.matches_filters(filters) {
-            // Safety: we have alreayd checked that all changed filters exist in archetype
-            let indices = self.get_changed_filter_indices(filters);
-            Some(indices)
+    ) -> Option<TickFilterIndices> {
+        if self.has_query_types(type_ids) && self.passes_type_filters(filters) {
+            // Safety: we have already checked that all changed filters exist in archetype
+            Some(self.get_changed_filter_indices(filters))
         } else {
             None
         }
     }
 
-    /// Evaluates filters against this archetype.
-    /// Does **NOT** check `changed` filters, only their type existence in the archetype.
-    fn matches_filters(&self, filters: &mut Filters) -> bool {
+    /// Evaluates type filters against this archetype.
+    /// Does **NOT** check `tick` filters, only their type existence in the archetype.
+    fn passes_type_filters(&self, filters: &mut Filters) -> bool {
         if filters.empty {
             return true;
         }
 
         // Changed
         self.has_types(&filters.changed)
+            // Added
+            && self.has_types(&filters.added)
             // With
             && self.has_types(&filters.with)
             // Without
@@ -409,11 +427,11 @@ impl Archetype {
             && filters
                 .or
                 .iter_mut()
-                .all(|filters| self.matches_filters_any(filters))
+                .all(|filters| self.passes_type_filters_any(filters))
     }
 
-    /// Returns true if any of the filters evaluate to true
-    fn matches_filters_any(&self, filters: &mut Filters) -> bool {
+    /// Returns true if any of the type filters evaluate to true
+    fn passes_type_filters_any(&self, filters: &mut Filters) -> bool {
         assert!(filters.or.is_empty(), "Nested OR filters are not supported");
 
         if filters.empty {
@@ -427,75 +445,117 @@ impl Archetype {
                 .iter()
                 .any(|type_id| !self.has_type(type_id));
 
-        // For matching we include existence of changed, but we do not store it, because further
-        // `changed` checks are required, so we can't skip them later.
-        filters.matches_existence || self.has_types_any(&filters.changed)
+        // For matching we include existence of tick filters, but we do not store it,
+        // because further `tick` checks are required, so we can't skip them later.
+        filters.matches_existence
+            || self.has_types_any(&filters.changed)
+            || self.has_types_any(&filters.added)
     }
 
-    /// Returns indices of requested changed fields in this archetype, where first vec is from
-    /// `filters.changed` and the rest (optional) are from `filters.or[n].changed`.
+    /// Returns indices of requested `tick` fields in this archetype, where first vec is from
+    /// `filters.tick_based` and the rest (optional) are from `filters.or[n].tick_based`.
+    ///
+    /// # Note
+    /// Tick filters are either `Changed<T>` or `Added<T>`.
     ///
     /// # Panics
-    /// Panics if type_id in `filters.changed` is not found in archetype
-    fn get_changed_filter_indices(&self, filters: &Filters) -> Vec<Vec<usize>> {
-        let mut result = Vec::with_capacity(1);
+    /// Panics if type_id in `filters.tick_based` is not found in archetype
+    fn get_changed_filter_indices(&self, filters: &Filters) -> TickFilterIndices {
+        let mut changed = Vec::with_capacity(1);
+        let mut added = Vec::with_capacity(1);
 
-        let base = filters
+        let changed_base = filters
             .changed
             .iter()
             .map(|component_id| self.component_index(component_id))
             .collect::<Vec<_>>();
-        result.push(base);
+        changed.push(changed_base);
+
+        let added_base = filters
+            .added
+            .iter()
+            .map(|component_id| self.component_index(component_id))
+            .collect::<Vec<_>>();
+        added.push(added_base);
 
         for or_filters in &filters.or {
-            // Existence filters already matched, so we can skip Or<Changed<T>> checks
+            // Existence filters already matched, so we can skip tick based `Or` checks
             if or_filters.matches_existence {
                 continue;
             }
 
-            let or_indices = or_filters
+            let changed_or_indices = or_filters
                 .changed
                 .iter()
                 .filter_map(|component_id| self.try_component_index(component_id))
                 .collect::<Vec<_>>();
 
-            if or_indices.is_empty() {
+            let added_or_indices = or_filters
+                .added
+                .iter()
+                .filter_map(|component_id| self.try_component_index(component_id))
+                .collect::<Vec<_>>();
+
+            // Tick filters validation
+            if changed_or_indices.is_empty() && added_or_indices.is_empty() {
                 if or_filters.with.len() + or_filters.without.len() == 0 {
-                    panic!("Or<T> filter only contains changed filters, but none of the types are found in archetype");
+                    panic!("Or<T> filter only contains `tick_based` filters, but none of the types are found in archetype");
                 } else {
-                    panic!("Or<T> filter doesn't match existence filters, and none of the Changed<T> types are found in archetype");
+                    panic!("Or<T> filter doesn't match existence filters, and none of the Changed<T> | Added<T> types are found in archetype");
                 }
             }
 
-            result.push(or_indices);
+            changed.push(changed_or_indices);
+            added.push(added_or_indices);
         }
 
-        result
+        TickFilterIndices { changed, added }
     }
 
     /// Checks if requested fields (indices) are marked as changed in entities[at]
     ///
     /// # Note
     /// To get the correct indices call `archetype.get_changed_filter_indices(filters)`
-    pub fn check_changed_fields(
+    pub(crate) fn check_changed_fields(
         &self,
         at: usize,
-        indices: &[Vec<usize>],
+        indices: &TickFilterIndices,
         system_last_run: Tick,
     ) -> bool {
-        if indices.len() == 1 && indices[0].is_empty() {
-            return true;
+        let changed_check = if indices.changed_empty() {
+            true
+        } else {
+            // base filter
+            indices.changed[0]
+                .iter()
+                .all(|&index| self.components[index].changed_since(at, system_last_run))
+                // optional Or<T>
+                && indices.changed.iter().skip(1).all(|or_indices| {
+                    or_indices
+                        .iter()
+                        .any(|&index| self.components[index].changed_since(at, system_last_run))
+                })
+        };
+
+        if !changed_check {
+            return false;
         }
 
-        // base filter
-        indices[0]
-            .iter()
-            .all(|&index| self.components[index].changed_since(at, system_last_run))
-            // optional Or<T>
-            && indices.iter().skip(1).all(|or_indices| {
-                or_indices
-                    .iter()
-                    .any(|&index| self.components[index].changed_since(at, system_last_run))
-            })
+        let added_check = if indices.added_empty() {
+            true
+        } else {
+            // base filter
+            indices.added[0]
+                .iter()
+                .all(|&index| self.components[index].added_since(at, system_last_run))
+                // optional Or<T>
+                && indices.added.iter().skip(1).all(|or_indices| {
+                    or_indices
+                        .iter()
+                        .any(|&index| self.components[index].added_since(at, system_last_run))
+                })
+        };
+
+        added_check
     }
 }

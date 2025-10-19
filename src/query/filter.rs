@@ -12,6 +12,9 @@ pub struct With<C: Component>(PhantomData<C>);
 /// A filter that checks if a component is **not** present.
 pub struct Without<C: Component>(PhantomData<C>);
 
+/// A filter that checks if a component was added since the last tick the system ran.
+pub struct Added<C: Component>(PhantomData<C>);
+
 /// A special filter that checks if any of the [filters](QueryFilter) evaluate to true.
 /// Nested Ors are not supported.
 #[allow(private_bounds)]
@@ -41,6 +44,13 @@ impl<C: Component> QueryFilter for Without<C> {
     #[inline]
     fn into_filters(filters: &mut Filters) {
         filters.without.push(C::get_type_id())
+    }
+}
+
+impl<C: Component> QueryFilter for Added<C> {
+    #[inline]
+    fn into_filters(filters: &mut Filters) {
+        filters.added.push(C::get_type_id())
     }
 }
 
@@ -84,6 +94,7 @@ impl_query_filter!(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P);
 #[derive(Debug)]
 pub(crate) struct Filters {
     pub changed: Vec<TypeId>,
+    pub added: Vec<TypeId>,
     pub with: Vec<TypeId>,
     pub without: Vec<TypeId>,
     pub or: Vec<Filters>,
@@ -98,6 +109,7 @@ impl Filters {
     pub fn new() -> Self {
         Self {
             changed: Vec::new(),
+            added: Vec::new(),
             with: Vec::new(),
             without: Vec::new(),
             or: Vec::new(),
