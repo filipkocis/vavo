@@ -154,28 +154,25 @@ impl Entities {
         entity_id: EntityId,
         components: Vec<(ComponentInfoPtr, OwnedPtr)>,
     ) {
-        // TODO: make this debug only
-        {
-            let entity_id_type = TypeId::of::<EntityId>();
-            assert!(
-                !components
-                    .iter()
-                    .any(|(info, _)| info.as_ref().type_id == entity_id_type),
-                "Cannot insert EntityId as a component"
-            );
-        }
+        assert!(
+            !components
+                .iter()
+                .any(|(info, _)| info.as_ref().type_id == TypeId::of::<EntityId>()),
+            "Cannot insert EntityId as a component"
+        );
 
         let tick = self.tick();
+
+        // Build typed components
         let mut components = components
             .into_iter()
             .map(|(info, data)| TypedComponentData::from_parts(info, data, tick, tick))
             .collect::<Vec<_>>();
 
+        // Insert builtin EntityId component
         let mut entity_id_cpy = ManuallyDrop::new(entity_id);
-        let entity_id_ptr = unsafe {
-            // Safety: entity is copied because its just on the stack
-            OwnedPtr::new_ref(&mut entity_id_cpy)
-        };
+        // Safety: entity is copied because its just on the stack
+        let entity_id_ptr = unsafe { OwnedPtr::new_ref(&mut entity_id_cpy) };
         components.push(TypedComponentData::from_parts(
             self.entity_info(),
             entity_id_ptr,
@@ -183,18 +180,22 @@ impl Entities {
             tick,
         ));
 
-        let infos = components
-            .iter()
-            .map(|component| component.info)
-            .collect::<Vec<_>>();
-        let archetype_id = Archetype::hash_types(infos.clone());
+        // Sort components by type id
+        components.sort_by_key(|component| component.info.as_ref().type_id);
 
-        let location = self
-            .archetypes
-            .entry(archetype_id)
-            .or_insert_with(|| Archetype::new(archetype_id, infos))
-            .insert_entity(entity_id, components);
+        // Safety: componetns are correct and sorted
+        let archetype_id = unsafe { Archetype::hash_sorted_components(&mut components) };
 
+        // Get or create archetype
+        let archetype = self.archetypes.entry(archetype_id).or_insert_with(|| {
+            let infos = components.iter().map(|component| component.info).collect();
+            Archetype::new(archetype_id, infos)
+        });
+
+        // Safety: components are correct and sorted
+        let location = unsafe { archetype.insert_entity(entity_id, components) };
+
+        // Track entity location
         self.tracking.set_location(entity_id, location);
     }
 
@@ -272,6 +273,7 @@ impl Entities {
             return;
         };
 
+        // Get current archetype
         let id = location.archetype_id();
         let archetype = self
             .archetypes
@@ -289,34 +291,43 @@ impl Entities {
             return;
         }
 
-        // Build new types with added component
-        let mut infos = archetype.types_vec();
-        infos.push(info);
-
         // Remove entity from archetype and add new component
         let mut removed = archetype.remove_entity(entity_id, location);
         let new_component = TypedComponentData::from_parts(info, component, tick, tick);
         removed.components.push(new_component);
+
+        // Sort components by type id
+        removed
+            .components
+            .sort_by_key(|component| component.info.as_ref().type_id);
 
         // Update swapped entity location
         if let Some(swapped) = removed.swapped {
             self.tracking.set_location(swapped, location);
         }
 
-        let new_id = Archetype::hash_types(infos.clone());
-        let archetypes = unsafe {
-            // Safety: since `removed` references archetype, we need to do another mut borrow
-            // which is safe here because we are accessing a different archetype
-            &mut *archetypes_ptr
-        };
+        // Safety: components are correct and sorted
+        let new_id = unsafe { Archetype::hash_sorted_components(&mut removed.components) };
+
+        // Safety: since `removed` references archetype, we need to do another mut borrow
+        // which is safe here because we are accessing a different archetype
+        let archetypes = unsafe { &mut *archetypes_ptr };
 
         // Insert entity into new archetype
-        let location = archetypes
-            .entry(new_id)
-            .or_insert_with(|| Archetype::new(new_id, infos))
-            .insert_entity(entity_id, removed.components);
+        let new_archetype = archetypes.entry(new_id).or_insert_with(|| {
+            let infos = removed
+                .components
+                .iter()
+                .map(|component| component.info)
+                .collect();
+            Archetype::new(new_id, infos)
+        });
 
-        self.tracking.set_location(entity_id, location);
+        // Safety: components are correct and sorted
+        let new_location = unsafe { new_archetype.insert_entity(entity_id, removed.components) };
+
+        // Update entity location
+        self.tracking.set_location(entity_id, new_location);
     }
 
     /// Remove component
@@ -345,10 +356,6 @@ impl Entities {
         // Get component type index
         let component_index = archetype.component_index(&type_id);
 
-        // Build new types without removed component
-        let mut infos = archetype.types_vec();
-        infos.remove(component_index);
-
         // Remove entity from archetype and remove component
         let mut removed = archetype.remove_entity(entity_id, location);
         let removed_data = removed.components.remove(component_index);
@@ -359,20 +366,28 @@ impl Entities {
             self.tracking.set_location(swapped, location);
         }
 
-        let new_id = Archetype::hash_types(infos.clone());
-        let archetypes = unsafe {
-            // Safety: since `removed` references archetype, we need to do another mut borrow
-            // which is safe here because we are accessing a different archetype
-            &mut *archetypes_ptr
-        };
+        // Safety: components are correct and sorted because removal preserves order
+        let new_id = unsafe { Archetype::hash_sorted_components(&mut removed.components) };
+
+        // Safety: since `removed` references archetype, we need to do another mut borrow
+        // which is safe here because we are accessing a different archetype
+        let archetypes = unsafe { &mut *archetypes_ptr };
 
         // Insert entity into new archetype
-        let location = archetypes
-            .entry(new_id)
-            .or_insert_with(|| Archetype::new(new_id, infos))
-            .insert_entity(entity_id, removed.components);
+        let new_archetype = archetypes.entry(new_id).or_insert_with(|| {
+            let infos = removed
+                .components
+                .iter()
+                .map(|component| component.info)
+                .collect();
+            Archetype::new(new_id, infos)
+        });
 
-        self.tracking.set_location(entity_id, location);
+        // Safety: components are correct and sorted
+        let new_location = unsafe { new_archetype.insert_entity(entity_id, removed.components) };
+
+        // Update entity location
+        self.tracking.set_location(entity_id, new_location);
     }
 
     /// Get component mutably if it exists, marking it as changed

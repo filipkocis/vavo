@@ -1,6 +1,5 @@
 use std::{
     any::TypeId,
-    collections::HashMap,
     hash::{DefaultHasher, Hash, Hasher},
 };
 
@@ -97,22 +96,21 @@ pub struct Archetype {
 
 impl Archetype {
     /// Create new archetype with `types`.
-    pub fn new(id: ArchetypeId, infos: Vec<ComponentInfoPtr>) -> Self {
-        let original_len = infos.len();
-        let sorted_types = Self::sort_types(infos);
+    pub fn new(id: ArchetypeId, mut infos: Vec<ComponentInfoPtr>) -> Self {
+        Self::sort_infos(&mut infos);
 
-        let components = sorted_types
-            .iter()
-            .map(|t| ComponentsData::new(*t))
-            .collect();
+        let components = infos.iter().map(|t| ComponentsData::new(*t)).collect();
 
-        let types = sorted_types
+        let types = infos
             .into_iter()
             .enumerate()
             .map(|(i, v)| (v.as_ref().type_id, i, v))
             .collect::<Vec<_>>();
 
-        assert!(types.len() == original_len, "Duplicate types in archetype");
+        assert!(
+            types.windows(2).any(|w| w[0].0 == w[1].0),
+            "Duplicate types in archetype"
+        );
 
         Self {
             id,
@@ -123,29 +121,29 @@ impl Archetype {
     }
 
     /// Insert new entity with components matching this archetype, returns its location
+    ///
+    /// # Safety
+    /// Caller must ensure that `components` match this archetype's types, both in type and amount.
+    /// Components will be inserted in order so they must be **sorted by type id**.
     #[must_use]
-    pub(super) fn insert_entity(
+    pub(super) unsafe fn insert_entity(
         &mut self,
         entity_id: EntityId,
         components: Vec<TypedComponentData>,
     ) -> EntityLocation {
-        #[cfg(debug_assertions)]
-        {
-            let component_types = components
-                .iter()
-                .map(|c| c.info.as_ref().type_id)
-                .collect::<Vec<_>>();
-            debug_assert!(
-                self.has_types_all(&component_types),
-                "Component types mismatch with archetype types"
-            );
-        }
+        debug_assert!(
+            self.types.len() == components.len()
+                && components
+                    .iter()
+                    .zip(self.types.iter())
+                    .all(|(comp, (type_id, ..))| comp.info.as_ref().type_id == *type_id),
+            "Component types mismatch with archetype types"
+        );
 
         self.entity_ids.push(entity_id);
 
-        for component in components {
-            let component_index = self.component_index(&component.info.as_ref().type_id);
-            self.components[component_index].insert(component.data);
+        for (i, component) in components.into_iter().enumerate() {
+            self.components[i].insert(component.data);
         }
 
         debug_assert!(
@@ -271,16 +269,16 @@ impl Archetype {
         &mut self.components[index]
     }
 
-    /// Returns sorted types
-    fn sort_types(mut types: Vec<ComponentInfoPtr>) -> Vec<ComponentInfoPtr> {
-        types.sort_by(|a, b| a.as_ref().type_id.cmp(&b.as_ref().type_id));
-        types
+    /// Returns sorted infos
+    #[inline]
+    fn sort_infos(types: &mut [ComponentInfoPtr]) {
+        types.sort_by_key(|info| info.as_ref().type_id);
     }
 
-    /// Exposes `self.types` as a sorted vector
-    pub fn types_vec(&self) -> Vec<ComponentInfoPtr> {
-        let types: Vec<_> = self.types.iter().map(|(_, _, v)| *v).collect();
-        Self::sort_types(types)
+    /// Returns sorted component infos of this archetype
+    #[inline]
+    pub fn infos(&self) -> Vec<ComponentInfoPtr> {
+        self.types.iter().map(|(_, _, v)| *v).collect()
     }
 
     /// Check if `type_id` exists in self
@@ -348,12 +346,25 @@ impl Archetype {
     }
 
     /// Returns hash of sorted types as [`ArchetypeId`]
-    pub(super) fn hash_types(types: Vec<ComponentInfoPtr>) -> ArchetypeId {
-        let mut hasher = DefaultHasher::new();
-        let types = Self::sort_types(types);
+    ///
+    /// # Safety
+    /// Caller must ensure that `components` contains no duplicates, is not epmty, and is **sorted
+    /// by component type id** or the resulting hash will be invalid.
+    pub(super) unsafe fn hash_sorted_components(
+        components: &mut [TypedComponentData],
+    ) -> ArchetypeId {
+        debug_assert!(!components.is_empty(), "Cannot hash empty component types");
+        debug_assert!(
+            components
+                .windows(2)
+                .all(|w| w[0].info.as_ref().type_id < w[1].info.as_ref().type_id),
+            "Archetype types are not sorted by type id"
+        );
 
-        for comp_info in types {
-            comp_info.as_ref().type_id.hash(&mut hasher);
+        let mut hasher = DefaultHasher::new();
+        for component in components {
+            let type_id = component.info.as_ref().type_id;
+            type_id.hash(&mut hasher);
         }
 
         let hash = hasher.finish();
