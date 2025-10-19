@@ -90,11 +90,11 @@ impl EntityTracking {
         #[cfg(debug_assertions)]
         {
             debug_assert!(
-                !self.debug_locations.contains(&location),
+                self.debug_locations.insert(location),
                 "Entity location {:?} is already assigned to another entity",
-                location
+                location,
             );
-            self.debug_locations.insert(location);
+
             if let Some(previous) = &self.locations[index] {
                 self.debug_locations.remove(previous);
             }
@@ -134,6 +134,23 @@ impl EntityTracking {
                 if let Some(loc) = location {
                     self.debug_locations.remove(&loc);
                 }
+            }
+            location
+        } else {
+            None
+        }
+    }
+
+    /// Removes the location tracking for an entity, without freeing its id. And returns the
+    /// previous location of the entity, if any.
+    #[inline]
+    pub fn remove_location(&mut self, entity: EntityId) -> Option<EntityLocation> {
+        let index = entity.index() as usize;
+        if index < self.locations.len() {
+            let location = self.locations[index].take();
+            #[cfg(debug_assertions)]
+            if let Some(loc) = location {
+                self.debug_locations.remove(&loc);
             }
             location
         } else {

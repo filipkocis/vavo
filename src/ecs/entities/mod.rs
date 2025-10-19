@@ -301,6 +301,9 @@ impl Entities {
             .components
             .sort_by_key(|component| component.info.as_ref().type_id);
 
+        // Remove entity from tracking
+        self.tracking.remove_location(entity_id);
+
         // Update swapped entity location
         if let Some(swapped) = removed.swapped {
             self.tracking.set_location(swapped, location);
@@ -360,6 +363,9 @@ impl Entities {
         let mut removed = archetype.remove_entity(entity_id, location);
         let removed_data = removed.components.remove(component_index);
         removed_data.drop();
+
+        // Remove entity from tracking
+        self.tracking.remove_location(entity_id);
 
         // Update swapped entity location
         if let Some(swapped) = removed.swapped {
