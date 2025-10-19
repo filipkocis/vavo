@@ -108,7 +108,7 @@ impl Archetype {
             .collect::<Vec<_>>();
 
         assert!(
-            types.windows(2).any(|w| w[0].0 == w[1].0),
+            !types.windows(2).any(|w| w[0].0 == w[1].0),
             "Duplicate types in archetype"
         );
 
