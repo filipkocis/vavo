@@ -522,40 +522,54 @@ impl Archetype {
         indices: &TickFilterIndices,
         system_last_run: Tick,
     ) -> bool {
-        let changed_check = if indices.changed_empty() {
+        // Changed<T> base filter
+        let changed_base = if indices.changed_empty() {
             true
         } else {
-            // base filter
             indices.changed[0]
                 .iter()
                 .all(|&index| self.components[index].changed_since(at, system_last_run))
-                // optional Or<T>
-                && indices.changed.iter().skip(1).all(|or_indices| {
-                    or_indices
-                        .iter()
-                        .any(|&index| self.components[index].changed_since(at, system_last_run))
-                })
         };
 
-        if !changed_check {
+        if !changed_base {
+            // short circuit
             return false;
         }
 
-        let added_check = if indices.added_empty() {
+        // Added<T> base filter
+        let added_base = if indices.added_empty() {
             true
         } else {
-            // base filter
             indices.added[0]
                 .iter()
                 .all(|&index| self.components[index].added_since(at, system_last_run))
-                // optional Or<T>
-                && indices.added.iter().skip(1).all(|or_indices| {
-                    or_indices
-                        .iter()
-                        .any(|&index| self.components[index].added_since(at, system_last_run))
-                })
         };
 
-        added_check
+        if !added_base {
+            // short circuit
+            return false;
+        }
+
+        // Or<T> filters
+        let changed_or = indices.changed.iter().skip(1);
+        let added_or = indices.added.iter().skip(1);
+        let or = changed_or
+            .zip(added_or)
+            .all(|(changed_or_indices, added_or_indices)| {
+                let changed = changed_or_indices
+                    .iter()
+                    .any(|&index| self.components[index].changed_since(at, system_last_run));
+                if changed {
+                    // short circuit
+                    return true;
+                }
+
+                let added = added_or_indices
+                    .iter()
+                    .any(|&index| self.components[index].added_since(at, system_last_run));
+                changed || added
+            });
+
+        or
     }
 }
