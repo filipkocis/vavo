@@ -70,7 +70,7 @@ impl AppState {
     fn create_adapter(instance: wgpu::Instance, surface: &wgpu::Surface) -> wgpu::Adapter {
         let adapter_options = wgpu::RequestAdapterOptions {
             power_preference: wgpu::PowerPreference::default(),
-            compatible_surface: Some(&surface),
+            compatible_surface: Some(surface),
             force_fallback_adapter: false,
         };
 

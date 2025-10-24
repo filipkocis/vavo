@@ -770,22 +770,22 @@ impl TempNode<'_> {
         }
 
         for child in &mut self.children {
-            if !self.node.is_flex_row() {
-                if let Val::Percent(val) = child.node.width {
-                    let new_width = self.computed.width.content * val / 100.0;
-                    let diff = new_width - child.computed.width.total;
-                    child.computed.width.add(diff); 
-                    child.constrain_to_width();
-                }
+            if !self.node.is_flex_row()
+                && let Val::Percent(val) = child.node.width
+            {
+                let new_width = self.computed.width.content * val / 100.0;
+                let diff = new_width - child.computed.width.total;
+                child.computed.width.add(diff);
+                child.constrain_to_width();
             }
 
-            if !self.node.is_flex_column() {
-                if let Val::Percent(val) = child.node.height {
-                    let new_height = self.computed.height.content * val / 100.0;
-                    let diff = new_height - child.computed.height.total;
-                    child.computed.height.add(diff); 
-                    child.constrain_to_height();
-                }
+            if !self.node.is_flex_column()
+                && let Val::Percent(val) = child.node.height
+            {
+                let new_height = self.computed.height.content * val / 100.0;
+                let diff = new_height - child.computed.height.total;
+                child.computed.height.add(diff);
+                child.constrain_to_height();
             }
 
             child.recalculate_percent_size();

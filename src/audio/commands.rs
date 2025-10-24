@@ -32,12 +32,12 @@ impl AudioCommand {
     }
 
     /// Returns the tween command or panics
-    pub(crate) fn tween_command(&mut self) -> TweenCommand {
+    pub(crate) fn tween_command(&mut self) -> TweenCommand<'_> {
         TweenCommand(self.tween_mut())
     }
 
     /// Returns the play command for [`Self::Play`] or panics
-    pub(crate) fn play_command(&mut self) -> PlayCommand {
+    pub(crate) fn play_command(&mut self) -> PlayCommand<'_> {
         match self {
             Self::Play(_, commands) => PlayCommand(commands),
             _ => panic!("Expected a play command"),
@@ -86,32 +86,32 @@ impl PlayCommand<'_> {
     }
 
     /// Stops this sound
-    pub fn stop(&mut self) -> TweenCommand {
+    pub fn stop(&mut self) -> TweenCommand<'_> {
         self.push(AudioCommand::Stop(Default::default())).tween_command()
     }
 
     /// Pauses this sound
-    pub fn pause(&mut self) -> TweenCommand {
+    pub fn pause(&mut self) -> TweenCommand<'_> {
         self.push(AudioCommand::Pause(Default::default())).tween_command()
     }
 
     /// Resumes this sound
-    pub fn resume(&mut self) -> TweenCommand {
+    pub fn resume(&mut self) -> TweenCommand<'_> {
         self.push(AudioCommand::Resume(Default::default())).tween_command()
     }
 
     /// Sets the volume in decibels
-    pub fn set_volume(&mut self, volume: f32) -> TweenCommand {
+    pub fn set_volume(&mut self, volume: f32) -> TweenCommand<'_> {
         self.push(AudioCommand::SetVolume(volume, Default::default())).tween_command()
     }
 
     /// Sets the panning
-    pub fn set_panning(&mut self, panning: f32) -> TweenCommand {
+    pub fn set_panning(&mut self, panning: f32) -> TweenCommand<'_> {
         self.push(AudioCommand::SetPanning(panning, Default::default())).tween_command()
     }
 
     /// Sets the playback rate
-    pub fn set_playback_rate(&mut self, rate: f64) -> TweenCommand {
+    pub fn set_playback_rate(&mut self, rate: f64) -> TweenCommand<'_> {
         self.push(AudioCommand::SetPlaybackRate(rate, Default::default())).tween_command()
     }
 

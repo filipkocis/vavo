@@ -47,37 +47,37 @@ impl SpatialEmitter {
     }
 
     /// Spatially plays an audio asset
-    pub fn play(&mut self, source: Handle<AudioSource>) -> PlayCommand {
+    pub fn play(&mut self, source: Handle<AudioSource>) -> PlayCommand<'_> {
         self.push(AudioCommand::Play(source, Default::default())).play_command()
     }
 
     /// Stops all spatial sounds
-    pub fn stop(&mut self) -> TweenCommand {
+    pub fn stop(&mut self) -> TweenCommand<'_> {
         self.push(AudioCommand::Stop(Default::default())).tween_command()
     }
 
     /// Pauses all spatial sounds
-    pub fn pause(&mut self) -> TweenCommand {
+    pub fn pause(&mut self) -> TweenCommand<'_> {
         self.push(AudioCommand::Pause(Default::default())).tween_command()
     }
 
     /// Resumes all spatial sounds
-    pub fn resume(&mut self) -> TweenCommand {
+    pub fn resume(&mut self) -> TweenCommand<'_> {
         self.push(AudioCommand::Resume(Default::default())).tween_command()
     }
 
     /// Sets the volume of all spatial sounds in decibels
-    pub fn set_volume(&mut self, volume: f32) -> TweenCommand {
+    pub fn set_volume(&mut self, volume: f32) -> TweenCommand<'_> {
         self.push(AudioCommand::SetVolume(volume, Default::default())).tween_command()
     }
 
     /// Sets the panning of all spatial sounds
-    pub fn set_panning(&mut self, panning: f32) -> TweenCommand {
+    pub fn set_panning(&mut self, panning: f32) -> TweenCommand<'_> {
         self.push(AudioCommand::SetPanning(panning, Default::default())).tween_command()
     }
 
     /// Sets the playback rate of all spatial sounds
-    pub fn set_playback_rate(&mut self, rate: f64) -> TweenCommand {
+    pub fn set_playback_rate(&mut self, rate: f64) -> TweenCommand<'_> {
         self.push(AudioCommand::SetPlaybackRate(rate, Default::default())).tween_command()
     }
 

@@ -39,10 +39,10 @@ fn insert_ui_text_resources(ctx: &mut SystemsContext, _: Query<()>) {
 
     let font_system = FontSystem::new();
     let swash_cache = SwashCache::new();
-    let cache = Cache::new(&device);
-    let viewport = Viewport::new(&device, &cache);
-    let mut atlas = TextAtlas::new(&device, &queue, &cache, swapchain_format);
-    let text_renderer = TextRenderer::new(&mut atlas, &device, wgpu::MultisampleState::default(), Some(wgpu::DepthStencilState {
+    let cache = Cache::new(device);
+    let viewport = Viewport::new(device, &cache);
+    let mut atlas = TextAtlas::new(device, queue, &cache, swapchain_format);
+    let text_renderer = TextRenderer::new(&mut atlas, device, wgpu::MultisampleState::default(), Some(wgpu::DepthStencilState {
         format: wgpu::TextureFormat::Depth32Float,
         depth_write_enabled: true,
         depth_compare: wgpu::CompareFunction::Less,

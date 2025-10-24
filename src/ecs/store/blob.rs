@@ -18,7 +18,7 @@ pub(crate) fn new_option_drop_fn<T>() -> Option<DropFn> {
 /// [`DropFn`] Drop function for a type
 unsafe fn new_drop_fn<T>(ptr: NonNull<u8>) {
     let ptr = ptr.cast::<T>().as_ptr();
-    drop_in_place(ptr);
+    unsafe { drop_in_place(ptr) };
 }
 
 #[derive(Debug)]
@@ -132,14 +132,14 @@ impl BlobVec {
             layout_repeat(&self.layout, new_capacity).expect("Failed to repeat layout");
         let new_data = if self.capacity == 0 {
             // Safety: this function isn't called for ZSTs
-            alloc::alloc(new_layout)
+            unsafe { alloc::alloc(new_layout) }
         } else {
             let old_layout =
                 layout_repeat(&self.layout, self.capacity).expect("Failed to repeat layout");
 
             // Safety: ptr was allocated with the same allocator and layout_repeat
             // caller ensures new_size is not 0
-            alloc::realloc(self.data.as_ptr(), old_layout, new_layout.size())
+            unsafe { alloc::realloc(self.data.as_ptr(), old_layout, new_layout.size()) }
         };
 
         self.data = NonNull::new(new_data).unwrap_or_else(|| alloc::handle_alloc_error(new_layout));
@@ -169,14 +169,14 @@ impl BlobVec {
     /// Wrapper for [`core::ptr::copy_nonoverlapping`]
     /// Caller must ensure valid non-overlapping pointers
     unsafe fn copy_nonoverlapping(&self, src: NonNull<u8>, dst: NonNull<u8>) {
-        core::ptr::copy_nonoverlapping(src.as_ptr(), dst.as_ptr(), self.layout.size());
+        unsafe { core::ptr::copy_nonoverlapping(src.as_ptr(), dst.as_ptr(), self.layout.size()) };
     }
 
     #[inline]
     /// Wrapper for [`core::ptr::swap_nonoverlapping`]
     /// Caller must ensure valid non-overlapping pointers
     unsafe fn swap_nonoverlapping(&self, x: NonNull<u8>, y: NonNull<u8>) {
-        core::ptr::swap_nonoverlapping(x.as_ptr(), y.as_ptr(), self.layout.size());
+        unsafe { core::ptr::swap_nonoverlapping(x.as_ptr(), y.as_ptr(), self.layout.size()) };
     }
 
     #[inline]
@@ -184,7 +184,7 @@ impl BlobVec {
     /// Caller must ensure a valid index
     unsafe fn get_raw(&self, i: usize) -> NonNull<u8> {
         debug_assert!(i <= self.len, "Index out of bounds");
-        self.get_raw_unchecked(i)
+        unsafe { self.get_raw_unchecked(i) }
     }
 
     #[inline]
@@ -192,9 +192,9 @@ impl BlobVec {
     /// Caller must ensure the index is within bounds.
     unsafe fn get_raw_unchecked(&self, i: usize) -> NonNull<u8> {
         let offset = i * self.layout.size();
-        let ptr = self.data.as_ptr().add(offset);
+        let ptr = unsafe { self.data.as_ptr().add(offset) };
         // Safety: pointer is non-null since data is non-null
-        NonNull::new_unchecked(ptr)
+        unsafe { NonNull::new_unchecked(ptr) }
     }
 
     #[inline]
@@ -204,10 +204,10 @@ impl BlobVec {
     unsafe fn push_raw(&mut self, value: NonNull<u8>) {
         self.reserve(1);
         // Safety: self.len is now within bounds
-        let dst = self.get_raw_unchecked(self.len);
+        let dst = unsafe { self.get_raw(self.len) };
         self.len += 1;
         // Safety: dst and value are non-overlapping and valid
-        self.copy_nonoverlapping(value, dst);
+        unsafe { self.copy_nonoverlapping(value, dst) };
     }
 
     #[inline]
@@ -215,16 +215,15 @@ impl BlobVec {
     /// New capacity can be greater than `isize::MAX`
     /// Value must be valid and can't be pointing to the blob
     unsafe fn set_raw(&mut self, value: NonNull<u8>, i: usize) {
-        debug_assert!(i < self.len, "Index out of bounds");
-        let dst = self.get_raw_unchecked(i);
+        let dst = unsafe { self.get_raw(i) };
 
         // drop existing value
         if let Some(drop) = self.drop {
-            drop(dst);
+            unsafe { drop(dst) };
         }
 
         // Safety: dst and value are non-overlapping and valid
-        self.copy_nonoverlapping(value, dst);
+        unsafe { self.copy_nonoverlapping(value, dst) };
     }
 
     /// Swap remove the element at index `i`.
@@ -232,17 +231,17 @@ impl BlobVec {
     unsafe fn swap_remove_raw(&mut self, i: usize) -> OwnedPtr<'_> {
         debug_assert!(i <= self.len, "Index out of bounds");
         let last = self.len - 1;
-        let last_ptr = self.get_raw(last); // Safety: valid index
+        let last_ptr = unsafe { self.get_raw(last) }; // Safety: valid index
 
         if i != last {
-            let i_ptr = self.get_raw(i); // Safety: caller
-                                         // Safety: i != last, so they are non-overlapping
-            self.swap_nonoverlapping(last_ptr, i_ptr);
+            let i_ptr = unsafe { self.get_raw(i) }; // Safety: caller
+            // Safety: i != last, so they are non-overlapping
+            unsafe { self.swap_nonoverlapping(last_ptr, i_ptr) };
         }
 
         self.len -= 1;
         // Safety: ptr is exclusive, we lowered the length
-        OwnedPtr::from_raw(last_ptr)
+        unsafe { OwnedPtr::from_raw(last_ptr) }
     }
 
     #[inline]
@@ -251,8 +250,8 @@ impl BlobVec {
     unsafe fn get_slice_raw<T>(&self, start: usize, end: usize) -> &[T] {
         self.validate_slice_range(start, end);
 
-        let start_ptr = self.get_raw(start);
-        core::slice::from_raw_parts(start_ptr.as_ptr() as *mut T, end - start)
+        let start_ptr = unsafe { self.get_raw(start) };
+        unsafe { core::slice::from_raw_parts(start_ptr.as_ptr() as *mut T, end - start) }
     }
 
     #[inline]
@@ -261,8 +260,8 @@ impl BlobVec {
     unsafe fn get_slice_raw_mut<T>(&mut self, start: usize, end: usize) -> &mut [T] {
         self.validate_slice_range(start, end);
 
-        let start_ptr = self.get_raw(start);
-        core::slice::from_raw_parts_mut(start_ptr.as_ptr() as *mut T, end - start)
+        let start_ptr = unsafe { self.get_raw(start) };
+        unsafe { core::slice::from_raw_parts_mut(start_ptr.as_ptr() as *mut T, end - start) }
     }
 
     /// Validate a slice range
@@ -326,7 +325,7 @@ impl BlobVec {
     /// # Panic
     /// Panics if the new capacity overflows `isize::MAX`
     pub unsafe fn push(&mut self, value: OwnedPtr) {
-        self.push_raw(value.inner()); // Safety: caller
+        unsafe { self.push_raw(value.inner()) }; // Safety: caller
     }
 
     /// Set an element at index `i` to the given `value`.
@@ -337,7 +336,7 @@ impl BlobVec {
     /// # Panics
     /// Panics if the new capacity overflows `isize::MAX`
     pub unsafe fn set(&mut self, value: OwnedPtr, i: usize) {
-        self.set_raw(value.inner(), i);
+        unsafe { self.set_raw(value.inner(), i) };
     }
 
     /// Swap-Remove an element from the blob.
@@ -346,7 +345,7 @@ impl BlobVec {
     /// Caller must ensure correct index
     #[inline]
     pub unsafe fn remove(&mut self, i: usize) -> OwnedPtr<'_> {
-        self.swap_remove_raw(i) // Safety: caller
+        unsafe { self.swap_remove_raw(i) } // Safety: caller
     }
 
     /// Get a reference to an element
@@ -354,7 +353,7 @@ impl BlobVec {
     /// # Safety
     /// Caller must ensure correct index
     pub unsafe fn get(&self, i: usize) -> UntypedPtr {
-        let ptr = self.get_raw(i);
+        let ptr = unsafe { self.get_raw(i) };
         UntypedPtr::from_raw(ptr)
     }
 
@@ -363,7 +362,7 @@ impl BlobVec {
     /// # Safety
     /// Caller must ensure correct index
     pub unsafe fn get_mut(&mut self, i: usize) -> UntypedPtr {
-        let ptr = self.get_raw(i);
+        let ptr = unsafe { self.get_raw(i) };
         UntypedPtr::from_raw(ptr)
     }
 
@@ -372,7 +371,7 @@ impl BlobVec {
     /// # Safety
     /// Caller must ensure a correct type and index
     pub unsafe fn get_slice<T>(&self, start: usize, end: usize) -> &[T] {
-        self.get_slice_raw(start, end)
+        unsafe { self.get_slice_raw(start, end) }
     }
 
     /// Get a mutable slice of the blob
@@ -380,7 +379,7 @@ impl BlobVec {
     /// # Safety
     /// Caller must ensure a correct type and index
     pub unsafe fn get_slice_mut<T>(&mut self, start: usize, end: usize) -> &mut [T] {
-        self.get_slice_raw_mut(start, end)
+        unsafe { self.get_slice_raw_mut(start, end) }
     }
 
     /// Clear the blob
@@ -401,8 +400,8 @@ impl BlobVec {
         if let Some(drop_fn) = self.drop {
             for i in start..end {
                 // Safety: caller ensures the index is valid
-                let ptr = self.get_raw_unchecked(i);
-                drop_fn(ptr);
+                let ptr = unsafe { self.get_raw(i) };
+                unsafe { drop_fn(ptr) };
             }
         }
 
@@ -416,7 +415,7 @@ impl BlobVec {
 
         if layout.size() != 0 {
             // Safety: it was allocated with the same allocator and layout_repeat
-            alloc::dealloc(self.data.as_ptr(), layout);
+            unsafe { alloc::dealloc(self.data.as_ptr(), layout) };
             self.data = Self::dangling(self.layout);
             self.capacity = 0;
         }

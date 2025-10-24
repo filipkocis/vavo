@@ -68,13 +68,13 @@ pub fn ui_render_system(
     {
         let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("ui opaque render pass"),
-            color_attachments: &[color_attachment.clone()],
+            color_attachments: std::slice::from_ref(&color_attachment),
             depth_stencil_attachment: Some(depth_stencil.clone()), 
             occlusion_query_set: None,
             timestamp_writes: None,
         });
 
-        draw_ui_render_pass(&mut render_pass, &pipeline, ctx.renderer.size(), ui_transforms.bind_group(), &*camera_bind_group, &*ui_mesh);
+        draw_ui_render_pass(&mut render_pass, pipeline, ctx.renderer.size(), ui_transforms.bind_group(), &camera_bind_group, &ui_mesh);
     } // necessary to drop render_pass before second pass
 
     // dont store depth for transparent objects
@@ -92,7 +92,7 @@ pub fn ui_render_system(
         timestamp_writes: None,
     });
 
-    draw_ui_render_pass(&mut render_pass, &pipeline, ctx.renderer.size(), ui_transforms.bind_group(), &*camera_bind_group, &*ui_mesh_transparent);
+    draw_ui_render_pass(&mut render_pass, pipeline, ctx.renderer.size(), ui_transforms.bind_group(), &camera_bind_group, &ui_mesh_transparent);
 
     // render text
     text_renderer.render(&text_atlas, &viewport, &mut render_pass).unwrap();

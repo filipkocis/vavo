@@ -37,8 +37,8 @@ impl<'a> OwnedPtr<'a> {
     #[inline]
     pub unsafe fn new_ref<T>(ptr: &'a mut ManuallyDrop<T>) -> OwnedPtr<'a> {
         let raw = &**ptr as *const T as _;
-        let ptr = NonNull::new_unchecked(raw); // Safety: pointer is valid
-        Self::from_raw(ptr) // Safety:
+        let ptr = unsafe { NonNull::new_unchecked(raw) }; // Safety: pointer is valid
+        unsafe { Self::from_raw(ptr) } // Safety: pointer is valid for 'a and exclusively owned
     }
 
     /// Consumes self and returns the inner pointer
@@ -53,7 +53,7 @@ impl<'a> OwnedPtr<'a> {
     /// The pointer must be valid for `T`
     #[inline]
     pub unsafe fn read<T>(self) -> T {
-        self.inner().cast::<T>().read()
+        unsafe { self.inner().cast::<T>().read() }
     }
 }
 
