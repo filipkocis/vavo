@@ -7,7 +7,7 @@ edition = "2024"
 path = "./src/macros"
 
 [dependencies]
-bytemuck = { version = "1.21", features = ["derive"] }
+bytemuck = { version = "1.24", features = ["derive"] }
 glam = "0.30"
 glyphon = "0.8"
 image = { version = "0.25", features = ["png", "jpeg", "gif", "hdr"], default-features = false }
@@ -20,6 +20,6 @@ winit = "0.30"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 # used by tobj
-getrandom = { version = "0.2", features = ["js"] }
+getrandom = { version = "0.3", features = ["wasm_js"] }
 # unless atomics are enabled, this is a necessary feature and safe to use
 wgpu = { version = "24", features = ["fragile-send-sync-non-atomic-wasm"] }
