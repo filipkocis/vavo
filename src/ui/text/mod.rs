@@ -72,13 +72,7 @@ impl Text {
 
     /// Set text color
     pub fn color(&mut self, color: Color) -> &mut Self {
-        self.attrs = self.attrs.color(color.into());
-        self
-    }
-
-    /// Set text attributes
-    pub fn attrs(&mut self, attrs: Attrs<'static>) -> &mut Self {
-        self.attrs = attrs;
+        self.attrs.color_opt = Some(color.into());
         self
     }
 
@@ -103,7 +97,7 @@ impl IntoRenderAsset<TextBuffer> for Text {
         let mut borrowed_buffer = buffer.borrow_with(&mut font_system);
 
         borrowed_buffer.set_size(None, None);
-        borrowed_buffer.set_text(&self.content, self.attrs, self.shaping); 
+        borrowed_buffer.set_text(&self.content, &self.attrs, self.shaping); 
         borrowed_buffer.shape_until_scroll(true);
 
         // borrowed_buffer.set_wrap(Wrap::WordOrGlyph);

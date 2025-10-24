@@ -44,6 +44,7 @@ pub fn ui_render_system(
     // prepare attachments
     let color_attachment = Some(wgpu::RenderPassColorAttachment {
         view: unsafe { &*graph_ctx.color_target.expect("ui color target is None") },
+        depth_slice: None,
         resolve_target: None,
         ops: wgpu::Operations {
             load: wgpu::LoadOp::Load,

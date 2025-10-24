@@ -9,17 +9,19 @@ path = "./src/macros"
 [dependencies]
 bytemuck = { version = "1.24", features = ["derive"] }
 glam = "0.30"
-glyphon = "0.8"
+# glyphon = "0.8"
+# temporary git dependency with wgpu 27 support
+glyphon = { git = "https://github.com/grovesNL/glyphon.git", rev = "de4b5b8d4e52310be8df56d82a759593920acc04" }
 image = { version = "0.25", features = ["png", "jpeg", "gif", "hdr"], default-features = false }
 kira = "0.10"
 pollster = "0.4"
 tobj = "4.0"
 web-time = "1.1"
-wgpu = "24"
+wgpu = "27"
 winit = "0.30"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 # used by tobj
 getrandom = { version = "0.3", features = ["wasm_js"] }
 # unless atomics are enabled, this is a necessary feature and safe to use
-wgpu = { version = "24", features = ["fragile-send-sync-non-atomic-wasm"] }
+wgpu = { version = "27", features = ["fragile-send-sync-non-atomic-wasm"] }

@@ -117,6 +117,7 @@ impl RenderGraph {
 
         Some(wgpu::RenderPassColorAttachment {
             view,
+            depth_slice: None,
             resolve_target: None,
             ops: node.color_ops,
         })

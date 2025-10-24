@@ -79,16 +79,18 @@ impl AppState {
 
     fn create_device(adapter: &wgpu::Adapter) -> (wgpu::Device, wgpu::Queue) {
         let device_descriptor = wgpu::DeviceDescriptor {
+            label: None,
             required_features: wgpu::Features::PUSH_CONSTANTS,
             required_limits: wgpu::Limits {
                 max_push_constant_size: 128,
                 ..wgpu::Limits::default()
             },
-            label: None,
+            experimental_features: wgpu::ExperimentalFeatures::disabled(),
             memory_hints: Default::default(),
+            trace: wgpu::Trace::Off,
         };
 
-        adapter.request_device(&device_descriptor, None)
+        adapter.request_device(&device_descriptor)
             .block_on()
             .expect("Failed to create device")
     }

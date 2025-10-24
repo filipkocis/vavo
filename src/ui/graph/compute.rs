@@ -54,7 +54,7 @@ fn resolve_z_index(
 
     for node in nodes {
         if let Some(ref mut text) = node.text {
-            text.attrs(text.attrs.metadata(*layer + 1)); // +1 to fix LessEqual depthmap issues 
+            text.attrs.metadata = *layer + 1; // +1 to fix LessEqual depthmap issues 
             
             // simply remove the render asset, to recreate it with the new metadata, since buffer
             // does not have a `set_attrs` method, bufferlines do, but it gets reset

@@ -59,6 +59,7 @@ fn main_render_system(
         label: Some("main render pass"),
         color_attachments: &[Some(wgpu::RenderPassColorAttachment {
             view: unsafe { &*graph_ctx.color_target.expect("main color target is None") },
+            depth_slice: None,
             resolve_target: None,
             ops: wgpu::Operations {
                 load: wgpu::LoadOp::Clear(active_camera.clear_color.into()),
