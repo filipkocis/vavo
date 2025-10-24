@@ -101,7 +101,7 @@ impl RenderGraph {
                 match &node.color_target {
                     NodeColorTarget::None => return None,
                     NodeColorTarget::Surface => ctx.renderer.view(),
-                    NodeColorTarget::Node(ref name) => {
+                    NodeColorTarget::Node(name) => {
                         let graph = self as *const RenderGraph;
                         let graph = unsafe { &*graph };
 
@@ -135,7 +135,7 @@ impl RenderGraph {
             None => {
                 match &node.depth_target {
                     NodeDepthTarget::None => return None,
-                    NodeDepthTarget::Node(ref name) => {
+                    NodeDepthTarget::Node(name) => {
                         let graph = self as *const RenderGraph;
                         let graph = unsafe { &*graph };
 
