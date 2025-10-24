@@ -9,7 +9,7 @@ pub(crate) fn update_spatial_listeners(
     ctx: &mut SystemsContext,
     mut query: Query<(&GlobalTransform, &mut SpatialListener), (With<Camera>, Changed<GlobalTransform>)>
 ) {
-    let mut manager = ctx.resources.get_mut::<AudioManager>().unwrap();
+    let mut manager = ctx.resources.get_mut::<AudioManager>();
 
     for (transform, listener) in query.iter_mut() {
         let position = transform.translation();
@@ -27,7 +27,7 @@ pub(crate) fn update_spatial_listeners(
 /// System which applies all queued audio track commands and updates the audio tracks
 pub(crate) fn update_audio_tracks(ctx: &mut SystemsContext, _: Query<()>) {
     // TODO: currently only the main track is supported
-    let mut audio = ctx.resources.get_mut::<AudioTrack>().expect("AudioTrack resource not found"); 
+    let mut audio = ctx.resources.get_mut::<AudioTrack>(); 
     audio.apply(ctx.resources);
 }
 
@@ -44,7 +44,7 @@ pub(crate) fn update_spatial_audio_tracks(ctx: &mut SystemsContext, mut query: Q
     };
 
     // main audio track
-    let mut audio = ctx.resources.get_mut::<AudioTrack>().expect("AudioTrack resource not found");
+    let mut audio = ctx.resources.get_mut::<AudioTrack>();
 
     // Update spatial track positions based on emitter's transform
     let mut moved_emitter_query = query.cast::<(EntityId, &GlobalTransform), (With<SpatialEmitter> ,Changed<GlobalTransform>)>();
@@ -89,7 +89,7 @@ pub(crate) fn update_spatial_audio_tracks(ctx: &mut SystemsContext, mut query: Q
 /// sounds playing.
 pub(crate) fn cleanup_audio_tracks(ctx: &mut SystemsContext, mut check_emitter_query: Query<&SpatialEmitter>) {
     // TODO: currently only the main track is supported
-    let mut audio = ctx.resources.get_mut::<AudioTrack>().expect("AudioTrack resource not found"); 
+    let mut audio = ctx.resources.get_mut::<AudioTrack>(); 
 
     // Remove stopped sounds from audio track
     audio.sounds.retain(|sound| !sound.is_stopped());

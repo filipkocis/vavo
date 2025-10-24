@@ -4,8 +4,8 @@ use winit::keyboard::KeyCode;
 use crate::prelude::*;
 
 pub fn movement_system(ctx: &mut SystemsContext, mut query: Query<(&mut Transform, &mut Projection, &Camera), With<Camera3D>>) {
-    let time = ctx.resources.get::<Time>().unwrap(); 
-    let key_input = ctx.resources.get::<Input<KeyCode>>().unwrap(); 
+    let time = ctx.resources.get::<Time>(); 
+    let key_input = ctx.resources.get::<Input<KeyCode>>(); 
     let mouse_motion = ctx.event_reader.read::<MouseMotion>();
 
     // Camera translation

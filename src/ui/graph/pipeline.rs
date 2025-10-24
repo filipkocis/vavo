@@ -42,7 +42,7 @@ pub fn create_ui_pipeline_builder(ctx: &mut SystemsContext) -> PipelineBuilder {
     });
 
     // Load shader modules
-    ctx.resources.get_mut::<ShaderLoader>().expect("ShaderLoader resource not found")
+    ctx.resources.get_mut::<ShaderLoader>()
         .load("ui", include_str!("../../shaders/ui.wgsl"), device);
 
     // Create pipeline builder

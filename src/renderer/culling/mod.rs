@@ -79,7 +79,7 @@ pub fn frustum_visibility_update_system(
     mut query: Query<(&WorldBoundingVolume, &mut Visibility)>,
 ) {
     // early exit based on settings
-    let settings = ctx.resources.get::<FrustumCullingSettings>().unwrap();
+    let settings = ctx.resources.get::<FrustumCullingSettings>();
     if !settings.enabled {
         return;
     }
@@ -124,7 +124,7 @@ pub fn update_camera_frustum_system(
     >,
 ) {
     // early exit based on settings
-    let settings = ctx.resources.get::<FrustumCullingSettings>().unwrap();
+    let settings = ctx.resources.get::<FrustumCullingSettings>();
     if !settings.enabled {
         return;
     }
@@ -163,12 +163,12 @@ pub fn add_local_bounding_volume_system(
     >,
 ) {
     // early exit based on settings
-    let settings = ctx.resources.get::<FrustumCullingSettings>().unwrap();
+    let settings = ctx.resources.get::<FrustumCullingSettings>();
     if !settings.enabled {
         return;
     }
 
-    let mesh_assets = ctx.resources.get::<Assets<Mesh>>().unwrap();
+    let mesh_assets = ctx.resources.get::<Assets<Mesh>>();
     for (id, mesh_handle) in query.iter_mut() {
         // get the mesh
         let mesh = mesh_assets.get(mesh_handle).unwrap();
@@ -198,7 +198,7 @@ pub fn visibility_update_system(
     >,
 ) {
     // early exit based on settings
-    let settings = ctx.resources.get::<FrustumCullingSettings>().unwrap();
+    let settings = ctx.resources.get::<FrustumCullingSettings>();
     if !settings.enabled {
         return;
     }

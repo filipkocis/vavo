@@ -38,12 +38,9 @@ fn setup_inspector(ctx: &mut SystemsContext, _: Query<()>) {}
 
 /// Handles the input for the Inspector menu
 fn handle_inspector(ctx: &mut SystemsContext, _: Query<()>) {
-    let input = ctx.resources.get::<Input<KeyCode>>().unwrap();
-    let state = ctx.resources.get::<State<InspectorState>>().unwrap();
-    let mut next_state = ctx
-        .resources
-        .get_mut::<NextState<InspectorState>>()
-        .unwrap();
+    let input = ctx.resources.get::<Input<KeyCode>>();
+    let state = ctx.resources.get::<State<InspectorState>>();
+    let mut next_state = ctx.resources.get_mut::<NextState<InspectorState>>();
 
     if input.just_pressed(KeyCode::Backquote) {
         match state.get() {

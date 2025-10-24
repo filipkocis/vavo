@@ -128,7 +128,7 @@ impl IntoRenderAsset<BindGroup> for Transform {
     ) -> BindGroup {
         let id = entity_id.expect("EntityId should be provided for Transform BindGroup");
 
-        let mut buffers = ctx.resources.get_mut::<RenderAssets<Buffer>>().unwrap();
+        let mut buffers = ctx.resources.get_mut::<RenderAssets<Buffer>>();
         let buffer = buffers.get_by_entity(id, self, ctx);
         let uniform_buffer = buffer.uniform.as_ref().expect("Transform buffer should be uniform");
 

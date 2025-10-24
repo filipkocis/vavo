@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use crate::prelude::*;
 
 /// Creates a [Condition](IntoSystemCondition) which evaluates to true if the current state is
@@ -33,7 +31,7 @@ pub fn on_transition<S: States + 'static>(ctx: &mut SystemsContext, _: Query<(),
 pub fn in_state<S: States + 'static>(state: S) -> impl IntoSystemCondition<(), ()> {
     move |ctx: &mut SystemsContext, _| {
         ctx.resources
-            .get::<State<S>>()
+            .try_get::<State<S>>()
             .map_or(false, |s| s.get() == state)
     }
 }
@@ -42,7 +40,7 @@ pub fn in_state<S: States + 'static>(state: S) -> impl IntoSystemCondition<(), (
 pub fn not_in_state<S: States + 'static>(state: S) -> impl IntoSystemCondition<(), ()> {
     move |ctx: &mut SystemsContext, _| {
         ctx.resources
-            .get::<State<S>>()
+            .try_get::<State<S>>()
             .map_or(true, |s| s.get() != state)
     }
 }
@@ -63,16 +61,20 @@ pub fn on_event<E: 'static>(ctx: &mut SystemsContext, _: Query<(), ()>) -> bool 
 /// [Condition](IntoSystemCondition) which evaluates to true if resource `R` has changed, or false
 /// if it doesn't exist
 pub fn resource_changed<R: Resource>(ctx: &mut SystemsContext, _: Query<(), ()>) -> bool {
-    ctx.resources.get::<R>().map_or(false, |r| r.has_changed())
+    ctx.resources
+        .try_get::<R>()
+        .map_or(false, |r| r.has_changed())
 }
 
 /// [Condition](IntoSystemCondition) which evaluates to true if a resource `R` has been inserted,
 /// or false if it doesn't exist
 pub fn resource_added<R: Resource>(ctx: &mut SystemsContext, _: Query<(), ()>) -> bool {
-    ctx.resources.get::<R>().map_or(false, |r| r.was_added())
+    ctx.resources
+        .try_get::<R>()
+        .map_or(false, |r| r.was_added())
 }
 
 /// [Condition](IntoSystemCondition) which evaluates to true if resource `R` exists
 pub fn resource_exists<R: Resource>(ctx: &mut SystemsContext, _: Query<(), ()>) -> bool {
-    ctx.resources.get::<R>().is_some()
+    ctx.resources.contains::<R>()
 }

@@ -219,7 +219,7 @@ impl PipelineBuilder {
     /// Finish building the pipeline
     pub fn finish(&self, ctx: &SystemsContext) -> Pipeline {
         let device = ctx.renderer.device();
-        let shader_loader = ctx.resources.get::<ShaderLoader>().expect("ShaderLoader resource not found");
+        let shader_loader = ctx.resources.get::<ShaderLoader>();
 
         // shader modules
         let (vertex_module, vertex_entry) = self.load_shader(&self.vertex_shader, &shader_loader);

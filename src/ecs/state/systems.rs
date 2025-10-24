@@ -4,8 +4,8 @@ use super::event::StateTransitionEvent;
 
 /// State transitioning system, one per state type. Used in the FrameEnd system stage.
 pub fn apply_state_transition<S: States + 'static>(ctx: &mut SystemsContext, _: Query<()>) {
-    let current_state = ctx.resources.get_mut::<State<S>>();     
-    let next_state = ctx.resources.get_mut::<NextState<S>>();
+    let current_state = ctx.resources.try_get_mut::<State<S>>();     
+    let next_state = ctx.resources.try_get_mut::<NextState<S>>();
 
     // resource option
     let Some(mut next_state) = next_state else { 

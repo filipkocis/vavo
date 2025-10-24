@@ -77,7 +77,7 @@ impl App {
 
     /// Add new resource with a default value to the app if it doesn't exist
     pub fn init_resource<R: Resource + Default>(&mut self) -> &mut Self {
-        if self.world.resources.get::<R>().is_none() {
+        if !self.world.resources.contains::<R>() {
             self.world.resources.insert(R::default());
         }
         self
@@ -138,8 +138,7 @@ impl App {
         let mut ctx = SystemsContext::new(commands, &mut self.world.resources, &mut self.events, renderer, self_ptr, &mut self.render_graph);
 
         let iterations = if stage.has_fixed_time() {
-            let mut fixed_time = ctx.resources.get_mut::<FixedTime>()
-                .expect("FixedTime resource not found");
+            let mut fixed_time = ctx.resources.get_mut::<FixedTime>();
             fixed_time.iter()
         } else {
             1
@@ -239,7 +238,7 @@ impl App {
             state: event.state,
         };
 
-        let mut input = self.world.resources.get_mut::<Input<KeyCode>>().expect("Input<KeyCode> resource not found");
+        let mut input = self.world.resources.get_mut::<Input<KeyCode>>();
         if event.state == ElementState::Pressed {
             input.press(event.code);
         } else {
@@ -255,7 +254,7 @@ impl App {
             button, state
         };
 
-        let mut input = self.world.resources.get_mut::<Input<MouseButton>>().expect("Input<MouseButton> resource not found");
+        let mut input = self.world.resources.get_mut::<Input<MouseButton>>();
         if event.state == ElementState::Pressed {
             input.press(event.button);
         } else {

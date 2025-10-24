@@ -34,7 +34,7 @@ impl<'a> AppHandler<'a> {
 
 impl<'a> ApplicationHandler for AppHandler<'a> {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        let window_config = self.app.world.resources.get::<WindowConfig>();
+        let window_config = self.app.world.resources.try_get::<WindowConfig>();
 
         let window_attrs = match window_config {
             Some(ref config) => config.get_window_attributes(),

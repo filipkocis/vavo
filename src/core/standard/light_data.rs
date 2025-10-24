@@ -59,11 +59,11 @@ impl PreparedLightData {
         }
 
         // ambient light
-        if let Some(light) = ctx.resources.get::<AmbientLight>() {
+        if let Some(light) = ctx.resources.try_get::<AmbientLight>() {
             lights.push(light.as_light(Mat4::IDENTITY))
         };
 
-        let mut light_manager = ctx.resources.get_mut::<LightAndShadowManager>().unwrap();
+        let mut light_manager = ctx.resources.get_mut::<LightAndShadowManager>();
         light_manager.update(&mut lights, ctx);
 
         Self { lights }

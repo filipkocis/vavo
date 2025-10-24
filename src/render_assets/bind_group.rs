@@ -68,7 +68,7 @@ impl<'a> BindGroupBuilder<'a> {
 
     pub fn add_texture(mut self, texture: &Option<Handle<Image>>, ctx: &mut SystemsContext, default_color: Color, sample_type: Option<wgpu::TextureSampleType>, sampler_bind: Option<wgpu::SamplerBindingType>) -> Self {
         if let Some(texture) = texture {
-            let mut render_images = ctx.resources.get_mut::<RenderAssets<Texture>>().unwrap();
+            let mut render_images = ctx.resources.get_mut::<RenderAssets<Texture>>();
             let texture = render_images.get_by_handle(texture, ctx);
             self.textures.push((self.binding, texture, sample_type, sampler_bind));
         } else {

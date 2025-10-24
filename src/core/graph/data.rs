@@ -39,7 +39,7 @@ impl NodeData {
                 self.color_target = None;
             },
             NodeColorTarget::Image(image) => {
-                let mut textures = ctx.resources.get_mut::<RenderAssets<Texture>>().expect("RenderAssets<Texture> not found");
+                let mut textures = ctx.resources.get_mut::<RenderAssets<Texture>>();
                 let texture = textures.get_by_handle(image, ctx);
                 self.color_target = Some(ColorTargetData::RAE(texture));
             },
@@ -60,7 +60,7 @@ impl NodeData {
                 self.depth_target = None;
             },
             NodeDepthTarget::Image(image) => {
-                let mut textures = ctx.resources.get_mut::<RenderAssets<Texture>>().expect("RenderAssets<Texture> not found");
+                let mut textures = ctx.resources.get_mut::<RenderAssets<Texture>>();
                 let texture = textures.get_by_handle(image, ctx);
                 self.depth_target = Some(DepthTargetData::RAE(texture));
             },

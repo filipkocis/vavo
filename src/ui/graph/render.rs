@@ -16,21 +16,21 @@ pub fn ui_render_system(
     mut query: Query<()>,
 ) {
     // resources
-    let mut buffers = ctx.resources.get_mut::<RenderAssets<Buffer>>().unwrap();
-    let mut bind_groups = ctx.resources.get_mut::<RenderAssets<BindGroup>>().unwrap();
+    let mut buffers = ctx.resources.get_mut::<RenderAssets<Buffer>>();
+    let mut bind_groups = ctx.resources.get_mut::<RenderAssets<BindGroup>>();
     // text resources
-    let text_renderer = ctx.resources.get::<TextRenderer>().expect("TextRenderer resource not found");
-    let text_atlas = ctx.resources.get::<TextAtlas>().expect("TextAtlas resource not found");
-    let viewport = ctx.resources.get::<Viewport>().expect("Viewport resource not found");
+    let text_renderer = ctx.resources.get::<TextRenderer>();
+    let text_atlas = ctx.resources.get::<TextAtlas>();
+    let viewport = ctx.resources.get::<Viewport>();
 
     // holds the ui mesh - vertices and indices for every ui node
-    let ui_mesh = ctx.resources.get::<UiMesh>().expect("UiMesh resource not found");  
-    let ui_mesh_transparent = ctx.resources.get::<UiMeshTransparent>().expect("UiMeshTransparent resource not found");  
+    let ui_mesh = ctx.resources.get::<UiMesh>();  
+    let ui_mesh_transparent = ctx.resources.get::<UiMeshTransparent>();  
     let ui_mesh = buffers.get_by_resource(&ui_mesh, ctx, true);
     let ui_mesh_transparent = buffers.get_by_resource(&ui_mesh_transparent, ctx, true);
 
     // holds the transform of every ui node
-    let ui_transforms = ctx.resources.get::<UiTransformStorage>().expect("UiTransformStorage resource not found");
+    let ui_transforms = ctx.resources.get::<UiTransformStorage>();
 
     let mut camera_query = query.cast::<(EntityId, &Camera), (With<Transform>, With<Projection>, With<Camera3D>)>(); 
     let active_camera = camera_query.iter_mut().into_iter().filter(|(_, c)| c.active).take(1).next();

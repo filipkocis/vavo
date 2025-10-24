@@ -65,7 +65,7 @@ fn get_interactions(
         Vec<(EntityId, Interaction)>, // new
         Vec<EntityId>, // keep
     )> {
-    let mouse_inputs = ctx.resources.get::<Input<MouseButton>>().expect("MouseInput resource not found");
+    let mouse_inputs = ctx.resources.get::<Input<MouseButton>>();
 
     let input_events = ctx.event_reader.read::<MouseInput>();
     let move_events = ctx.event_reader.read::<CursorMoved>();

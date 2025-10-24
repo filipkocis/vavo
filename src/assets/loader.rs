@@ -25,7 +25,7 @@ impl AssetLoader {
         }
 
         let asset = A::load(self, resources, path);
-        let mut assets = resources.get_mut::<Assets<A>>()
+        let mut assets = resources.try_get_mut::<Assets<A>>()
             .unwrap_or_else(|| panic!("Could not find Assets<A> in resources when loading '{}'", path));
 
         let handle = assets.add(asset);

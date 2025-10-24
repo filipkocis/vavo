@@ -14,7 +14,7 @@ use crate::ui::{
 /// System to update the glyphon text viewport resolution. 
 /// Runs only if the window size has changed.
 pub fn update_glyphon_viewport(ctx: &mut SystemsContext, _: Query<()>) {
-    let mut viewport = ctx.resources.get_mut::<Viewport>().expect("Viewport resource not found");
+    let mut viewport = ctx.resources.get_mut::<Viewport>();
     let queue = ctx.renderer.queue();
     let size = ctx.renderer.size();
 
@@ -33,11 +33,11 @@ pub fn has_resized(ctx: &SystemsContext) -> bool {
 
 /// Clear glyphon's text_renderer. Used when all nodes are removed.
 fn clear_text_renderer(ctx: &mut SystemsContext) {
-    let mut text_renderer = ctx.resources.get_mut::<TextRenderer>().expect("TextRenderer resource not found");     
-    let mut font_system = ctx.resources.get_mut::<FontSystem>().expect("FontSystem resource not found");
-    let mut text_atlas = ctx.resources.get_mut::<TextAtlas>().expect("TextAtlas resource not found");
-    let viewport = ctx.resources.get::<Viewport>().expect("Viewport resource not found");
-    let mut swash_cache = ctx.resources.get_mut::<SwashCache>().expect("SwashCache resource not found");
+    let mut text_renderer = ctx.resources.get_mut::<TextRenderer>();     
+    let mut font_system = ctx.resources.get_mut::<FontSystem>();
+    let mut text_atlas = ctx.resources.get_mut::<TextAtlas>();
+    let viewport = ctx.resources.get::<Viewport>();
+    let mut swash_cache = ctx.resources.get_mut::<SwashCache>();
     
     text_renderer.prepare(
         ctx.renderer.device(), 
@@ -64,10 +64,10 @@ fn clear_text_renderer(ctx: &mut SystemsContext) {
 /// Applies z-index to the z component of the global transfrom pushed to the transform storage.
 pub fn update_ui_mesh_and_transforms(ctx: &mut SystemsContext, mut query: Query<()>) {
     // resources
-    let mut ui_transform_storage = ctx.resources.get_mut::<UiTransformStorage>().expect("UiTransformStorage resource not found");
-    let mut ui_mesh = ctx.resources.get_mut::<UiMesh>().expect("UiMesh resource not found");
-    let mut ui_mesh_transparent = ctx.resources.get_mut::<UiMeshTransparent>().expect("UiMeshTransparent resource not found");
-    let mut ui_mesh_images = ctx.resources.get_mut::<UiMeshImages>().expect("UiMeshImages resource not found");
+    let mut ui_transform_storage = ctx.resources.get_mut::<UiTransformStorage>();
+    let mut ui_mesh = ctx.resources.get_mut::<UiMesh>();
+    let mut ui_mesh_transparent = ctx.resources.get_mut::<UiMeshTransparent>();
+    let mut ui_mesh_images = ctx.resources.get_mut::<UiMeshImages>();
 
     // get the amount of changed nodes
     let mut changed_query = query.cast::<EntityId, (
@@ -99,12 +99,12 @@ pub fn update_ui_mesh_and_transforms(ctx: &mut SystemsContext, mut query: Query<
     ui_mesh_images.clear();
 
     // text resources
-    let mut text_buffers = ctx.resources.get_mut::<RenderAssets<TextBuffer>>().expect("TextBuffer render assets not found");
-    let mut text_renderer = ctx.resources.get_mut::<TextRenderer>().expect("TextRenderer resource not found");
-    let mut font_system = ctx.resources.get_mut::<FontSystem>().expect("FontSystem resource not found");
-    let mut text_atlas = ctx.resources.get_mut::<TextAtlas>().expect("TextAtlas resource not found");
-    let viewport = ctx.resources.get::<Viewport>().expect("Viewport resource not found");
-    let mut swash_cache = ctx.resources.get_mut::<SwashCache>().expect("SwashCache resource not found");
+    let mut text_buffers = ctx.resources.get_mut::<RenderAssets<TextBuffer>>();
+    let mut text_renderer = ctx.resources.get_mut::<TextRenderer>();
+    let mut font_system = ctx.resources.get_mut::<FontSystem>();
+    let mut text_atlas = ctx.resources.get_mut::<TextAtlas>();
+    let viewport = ctx.resources.get::<Viewport>();
+    let mut swash_cache = ctx.resources.get_mut::<SwashCache>();
 
     // intermediate storage for text buffer raes
     let mut intermediate_text_rae = Vec::new();

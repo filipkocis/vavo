@@ -32,10 +32,10 @@ impl SingleColorTexture {
             view_descriptor: None,
         };
 
-        let mut images = ctx.resources.get_mut::<Assets<Image>>().unwrap();
+        let mut images = ctx.resources.get_mut::<Assets<Image>>();
         let image = images.add(image);
 
-        let mut textures = ctx.resources.get_mut::<RenderAssets<Texture>>().unwrap();
+        let mut textures = ctx.resources.get_mut::<RenderAssets<Texture>>();
         let texture = textures.get_by_handle(&image, ctx);
 
         // TODO add optimization to not create a new texture if similar texture already exists

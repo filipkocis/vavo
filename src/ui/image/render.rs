@@ -13,9 +13,9 @@ pub fn ui_image_render_system(
     mut query: Query<&UiImage, With<Node>>
 ) {
     // resources
-    let mut buffers = ctx.resources.get_mut::<RenderAssets<Buffer>>().unwrap();
-    let mut bind_groups = ctx.resources.get_mut::<RenderAssets<BindGroup>>().unwrap();
-    let ui_mesh_images = ctx.resources.get::<UiMeshImages>().expect("UiMeshImages resource not found");  
+    let mut buffers = ctx.resources.get_mut::<RenderAssets<Buffer>>();
+    let mut bind_groups = ctx.resources.get_mut::<RenderAssets<BindGroup>>();
+    let ui_mesh_images = ctx.resources.get::<UiMeshImages>();  
     let ui_mesh_images_buffer = buffers.get_by_resource(&ui_mesh_images, ctx, true);
     
     if ui_mesh_images_buffer.num_vertices == 0 {
@@ -23,7 +23,7 @@ pub fn ui_image_render_system(
     }
 
     // holds the transform of every ui node
-    let ui_transforms = ctx.resources.get::<UiTransformStorage>().expect("UiTransformStorage resource not found");
+    let ui_transforms = ctx.resources.get::<UiTransformStorage>();
 
     // find active camera
     let mut camera_query = query.cast::<(EntityId, &Camera), (With<Transform>, With<Projection>, With<Camera3D>)>(); 

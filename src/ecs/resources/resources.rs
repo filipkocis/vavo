@@ -151,6 +151,12 @@ impl Resources {
         self.resources.insert(type_id, resource_data);
     }
 
+    /// Check if a resource of type R exists in the world.
+    #[inline]
+    pub fn contains<R: Resource>(&self) -> bool {
+        self.resources.contains_key(&TypeId::of::<R>())
+    }
+
     /// Insert new resource into the world.
     pub fn insert<R: Resource>(&mut self, resource: R) {
         self.resources
@@ -162,8 +168,8 @@ impl Resources {
         self.resources.remove(&type_id);
     }
 
-    /// Get a resource by type.
-    pub fn get<R: Resource>(&self) -> Option<Res<R>> {
+    /// Get a resource by type, or `None` if it doesn't exist.
+    pub fn try_get<R: Resource>(&self) -> Option<Res<R>> {
         self.resources.get(&TypeId::of::<R>()).map(|r| {
             let data = DataPtr::new(
                 // Safety: type is correct and index is always valid
@@ -174,8 +180,8 @@ impl Resources {
         })
     }
 
-    /// Get a mutable resource by type.
-    pub fn get_mut<R: Resource>(&mut self) -> Option<ResMut<R>> {
+    /// Get a mutable resource by type, or `None` if it doesn't exist.
+    pub fn try_get_mut<R: Resource>(&mut self) -> Option<ResMut<R>> {
         let current_tick = self.tick();
         self.resources.get_mut(&TypeId::of::<R>()).map(|r| {
             let data = DataPtrMut::new(
@@ -185,6 +191,30 @@ impl Resources {
             );
             ResMut(data, PhantomData)
         })
+    }
+
+    /// Get a resource by type. **Panics** if the resource doesn't exist.
+    #[inline]
+    pub fn get<R: Resource>(&self) -> Res<R> {
+        match self.try_get::<R>() {
+            Some(res) => res,
+            None => panic!(
+                "Cannot get resource {:?} because it does not exist",
+                std::any::type_name::<R>()
+            ),
+        }
+    }
+
+    /// Get a mutable resource by type. **Panics** if the resource doesn't exist.
+    #[inline]
+    pub fn get_mut<R: Resource>(&mut self) -> ResMut<R> {
+        match self.try_get_mut::<R>() {
+            Some(res) => res,
+            None => panic!(
+                "Cannot get mutable resource {:?} because it does not exist",
+                std::any::type_name::<R>()
+            ),
+        }
     }
 
     /// Initialize self with default resources
@@ -207,7 +237,7 @@ impl Resources {
 
     /// Update some builtin resources
     pub(crate) fn update(&mut self) {
-        self.get_mut::<Time>().unwrap().update();
-        self.get_mut::<FixedTime>().unwrap().update();
+        self.get_mut::<Time>().update();
+        self.get_mut::<FixedTime>().update();
     }
 }

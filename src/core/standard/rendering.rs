@@ -37,13 +37,13 @@ fn main_render_system(
     mut query: Query<()>
 ) {
     // Render assets
-    let mut buffers = ctx.resources.get_mut::<RenderAssets<Buffer>>().unwrap();
-    let mut bind_groups = ctx.resources.get_mut::<RenderAssets<BindGroup>>().unwrap();
+    let mut buffers = ctx.resources.get_mut::<RenderAssets<Buffer>>();
+    let mut bind_groups = ctx.resources.get_mut::<RenderAssets<BindGroup>>();
 
     // Resources
-    let manager = ctx.resources.get::<LightAndShadowManager>().expect("LightAndShadowManager not found");
-    let grouped = ctx.resources.get::<GroupedInstances>().expect("GroupedInstances resource not found");
-    let transforms_storage = ctx.resources.get::<TransformStorage>().expect("TransformStorage resource not found");
+    let manager = ctx.resources.get::<LightAndShadowManager>();
+    let grouped = ctx.resources.get::<GroupedInstances>();
+    let transforms_storage = ctx.resources.get::<TransformStorage>();
 
     // Camera
     let mut camera_query = query.cast::<(EntityId, &Camera), (With<Transform>, With<Projection>, With<Camera3D>)>(); 
@@ -283,7 +283,7 @@ fn create_main_pipeline_builder(ctx: &mut SystemsContext) -> PipelineBuilder {
     });
 
     // Load shader modules
-    ctx.resources.get_mut::<ShaderLoader>().expect("ShaderLoader resource not found")
+    ctx.resources.get_mut::<ShaderLoader>()
         .load("main", include_str!("../../shaders/shader.wgsl"), device)
         .expect("Shader with label 'main' already exists");
 

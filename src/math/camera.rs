@@ -235,7 +235,7 @@ impl IntoRenderAsset<BindGroup> for Camera {
     ) -> BindGroup {
         let id = entity_id.expect("EntityId should be provided for Camera BindGroup");
 
-        let mut buffers = ctx.resources.get_mut::<RenderAssets<Buffer>>().unwrap();
+        let mut buffers = ctx.resources.get_mut::<RenderAssets<Buffer>>();
         let buffer = buffers.get_by_entity(id, self, ctx); 
         let uniform_buffer = buffer.uniform.as_ref().expect("Camera buffer should be uniform");
 

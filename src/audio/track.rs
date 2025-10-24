@@ -43,7 +43,7 @@ impl<R: Resource> AudioTrack<R> {
         while let Some(command) = self.commands.pop_front() {
             match command {
                 AudioCommand::Play(handle, commands) => {
-                    let assets = resources.get::<Assets<AudioSource>>().expect("Assets<AudioSource> not found"); 
+                    let assets = resources.get::<Assets<AudioSource>>(); 
                     let sound_data = assets.get(&handle).expect("Failed to get sound data from assets");
 
                     let sound = match self.track.play(sound_data.source.clone()) {
@@ -137,7 +137,7 @@ impl SpatialAudioTrack {
         while let Some(command) = commands.pop_front() {
             match command {
                 AudioCommand::Play(handle, commands) => {
-                    let assets = resources.get::<Assets<AudioSource>>().expect("Assets<AudioSource> not found"); 
+                    let assets = resources.get::<Assets<AudioSource>>(); 
                     let sound_data = assets.get(&handle).expect("Failed to get sound data from assets");
 
                     let sound = match self.track.play(sound_data.source.clone()) {

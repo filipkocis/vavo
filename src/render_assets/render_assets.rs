@@ -173,7 +173,7 @@ impl<RA: RenderAsset> RenderAssets<RA> {
 
     fn create_asset<A>(handle: &Handle<A>, ctx: &mut SystemsContext) -> RA
     where A: Asset + IntoRenderAsset<RA> {
-        let assets = ctx.resources.get::<Assets<A>>().expect("Assets<A> not found");
+        let assets = ctx.resources.get::<Assets<A>>();
         let asset = assets.get(handle).expect("Asset not found, invalid handle");
         asset.create_render_asset(ctx, None)
     }

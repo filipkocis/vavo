@@ -12,7 +12,7 @@ impl Plugin for DebugRenderGraphPlugin {
     fn build(&self, app: &mut crate::prelude::App) {
         app.register_system(
             |ctx: &mut SystemsContext, _: Query<()>| {
-                let time = ctx.resources.get::<Time>().unwrap();
+                let time = ctx.resources.get::<Time>();
                 if time.tick() == 1 {
                     print_render_graph_topology(ctx);
                 }

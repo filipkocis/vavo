@@ -70,8 +70,8 @@ impl<I: InputData> Input<I> {
 /// UI input clearing system for just pressed inputs.
 fn clear_just_pressed_inputs(ctx: &mut SystemsContext, _: Query<()>) {
     let resources = &mut ctx.resources;
-    resources.get_mut::<Input<KeyCode>>().unwrap().clear_just_pressed();
-    resources.get_mut::<Input<MouseButton>>().unwrap().clear_just_pressed();
+    resources.get_mut::<Input<KeyCode>>().clear_just_pressed();
+    resources.get_mut::<Input<MouseButton>>().clear_just_pressed();
 }
 
 /// Adds `Input<KeyCode>` and `Input<MouseButton>` resources to enable keyboard and mouse input

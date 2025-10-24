@@ -81,7 +81,7 @@ impl GroupedInstances {
         }
 
         // Set transforms storage
-        let mut transforms_storage = ctx.resources.get_mut::<TransformStorage>().unwrap();
+        let mut transforms_storage = ctx.resources.get_mut::<TransformStorage>();
         transforms_storage.update(&transforms, transforms.len(), ctx);
 
         Self { groups }

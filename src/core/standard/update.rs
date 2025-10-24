@@ -10,7 +10,7 @@ pub fn update_camera_buffers(
         (With<Camera3D>, Or<(Changed<Projection>, Changed<GlobalTransform>)>)
     >
 ) {
-    let mut buffers = ctx.resources.get_mut::<RenderAssets<Buffer>>().unwrap();
+    let mut buffers = ctx.resources.get_mut::<RenderAssets<Buffer>>();
     let resize_event = ctx.event_reader.read::<WindowEvent>()
         .into_iter().filter_map(|e| {
             if let WindowEvent::Resized(size) = e {

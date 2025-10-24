@@ -13,8 +13,8 @@ pub fn compute_nodes_and_transforms(ctx: &mut SystemsContext, mut q: Query<()>) 
         return;
     }
 
-    let mut font_system = ctx.resources.get_mut::<FontSystem>().expect("FontSystem resource not found");
-    let mut text_buffers = ctx.resources.get_mut::<RenderAssets<TextBuffer>>().expect("TextBuffer render assets not found");
+    let mut font_system = ctx.resources.get_mut::<FontSystem>();
+    let mut text_buffers = ctx.resources.get_mut::<RenderAssets<TextBuffer>>();
     resolve_z_index(ctx, &mut text_buffers, &mut root_temp_nodes, &mut 0);
 
     let screen_width = ctx.renderer.size().width as f32;
