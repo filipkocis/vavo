@@ -52,14 +52,12 @@ impl RenderGraph {
                 node.generate_data(ctx);
             }
 
-            // SAFETY: This is safe because it's only 'copied' to get the color and depth attachments
-            let ctx_copy = unsafe { &mut *(ctx as *mut SystemsContext) };
             // SAFETY: Since encoder is derived from ctx, we just bypass the borrow checker
             let encoder = unsafe { &mut *ctx.renderer.encoder().inner };
             
             let node_raw = node as *mut GraphNode;
             let color_attachment = self.get_color_attachment(node, ctx);
-            let depth_attachment = self.get_depth_attachment(node, ctx_copy);
+            let depth_attachment = self.get_depth_attachment(node);
 
             if node.custom_system.is_some() {
                 let graph_ctx = CustomRenderGraphContext {
@@ -105,9 +103,9 @@ impl RenderGraph {
                         let graph = self as *const RenderGraph;
                         let graph = unsafe { &*graph };
 
-                        let target_node = graph.get(name).expect(&format!("Node '{}' not found, but it is a color target for '{}'", name, node.name));
+                        let target_node = graph.get(name).unwrap_or_else(|| panic!("Node '{}' not found, but it is a color target for '{}'", name, node.name));
                         let mut color_attachment = self.get_color_attachment(target_node, ctx)
-                            .expect(&format!("Node '{}' has no color attachment, but it is a color target for '{}'", name, node.name));
+                            .unwrap_or_else(|| panic!("Node '{}' has no color attachment, but it is a color target for '{}'", name, node.name));
 
                         color_attachment.ops = node.color_ops;
                         return Some(color_attachment) 
@@ -124,7 +122,7 @@ impl RenderGraph {
         })
     }
 
-    fn get_depth_attachment<'a>(&self, node: &'a GraphNode, ctx: &'a mut SystemsContext) -> Option<wgpu::RenderPassDepthStencilAttachment<'a>> {
+    fn get_depth_attachment<'a>(&self, node: &'a GraphNode) -> Option<wgpu::RenderPassDepthStencilAttachment<'a>> {
         let view = match node.data.depth_target {
             Some(ref target_data) => {
                 match target_data {
@@ -139,9 +137,9 @@ impl RenderGraph {
                         let graph = self as *const RenderGraph;
                         let graph = unsafe { &*graph };
 
-                        let target_node = graph.get(name).expect(&format!("Node '{}' not found, but it is a color target for '{}'", name, node.name));
-                        let mut depth_attachment = self.get_depth_attachment(target_node, ctx)
-                            .expect(&format!("Node '{}' has no color attachment, but it is a color target for '{}'", name, node.name));
+                        let target_node = graph.get(name).unwrap_or_else(|| panic!("Node '{}' not found, but it is a color target for '{}'", name, node.name));
+                        let mut depth_attachment = self.get_depth_attachment(target_node)
+                            .unwrap_or_else(|| panic!("Node '{}' has no color attachment, but it is a color target for '{}'", name, node.name));
 
                         depth_attachment.depth_ops = node.depth_ops;
                         return Some(depth_attachment)
