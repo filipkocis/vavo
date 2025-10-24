@@ -20,13 +20,13 @@ impl AssetLoader {
     pub fn load<A: LoadableAsset>(&mut self, path: &str, resources: &mut Resources) -> Handle<A> {
         if let Some(handle) = self.cache.get(path) {
             return handle.downcast_ref::<Handle<A>>()
-                .expect(&format!("Could not downcast asset handle for '{}'", path))
+                .unwrap_or_else(|| panic!("Could not downcast asset handle for '{}'", path))
                 .clone();
         }
 
         let asset = A::load(self, resources, path);
         let mut assets = resources.get_mut::<Assets<A>>()
-            .expect(&format!("Could not find Assets<A> in resources when loading '{}'", path));
+            .unwrap_or_else(|| panic!("Could not find Assets<A> in resources when loading '{}'", path));
 
         let handle = assets.add(asset);
         self.cache.insert(path.to_string(), Box::new(handle.clone()));
@@ -43,9 +43,9 @@ pub trait LoadableAsset: Asset {
 impl LoadableAsset for Material {
     fn load<P: AsRef<Path> + Debug>(loader: &mut AssetLoader, resources: &mut Resources, path: P) -> Self {
         let (obj_materials, _) = tobj::load_mtl(path.as_ref())
-            .expect(&format!("Could not load mtl file at '{:?}'", path));
+            .unwrap_or_else(|_| panic!("Could not load mtl file at '{:?}'", path));
 
-        let mut full_path = std::fs::canonicalize(path.as_ref()).expect(&format!("Could not cannonicalize path '{:?}'", path));
+        let mut full_path = std::fs::canonicalize(path.as_ref()).unwrap_or_else(|_| panic!("Could not cannonicalize path '{:?}'", path));
 
         let mut get_path = |path: &str| {
             full_path.pop();
@@ -86,13 +86,13 @@ impl LoadableAsset for Mesh {
             single_index: true,
             triangulate: true,
             ..Default::default()
-        }).expect(&format!("Could not load obj file at '{:?}'", path));
+        }).unwrap_or_else(|_| panic!("Could not load obj file at '{:?}'", path));
  
         if models.len() > 1 {
             // TODO: handle multiple models in obj file
             unimplemented!("Multiple models in obj file at '{:?}'", path);
         }
-        let model = models.into_iter().next().expect(&format!("No models found in obj file at '{:?}'", path));
+        let model = models.into_iter().next().unwrap_or_else(|| panic!("No models found in obj file at '{:?}'", path));
         let model_mesh = model.mesh;
 
         let mut colors = Vec::new();
@@ -146,7 +146,7 @@ impl LoadableAsset for Mesh {
 impl LoadableAsset for Image {
     fn load<P: AsRef<Path> + Debug>(_: &mut AssetLoader, _: &mut Resources, path: P) -> Self {
         let image = image::open(path.as_ref())
-            .expect(&format!("Could not open image at '{:?}'", path))
+            .unwrap_or_else(|_| panic!("Could not open image at '{:?}'", path))
             .to_rgba8();
 
         let (width, height) = image.dimensions();

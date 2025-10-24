@@ -192,11 +192,11 @@ impl GraphNodeBuilder {
 
         GraphNode {
             name: self.name.clone(),
-            pipeline_builder: self.pipeline_builder.expect(&err("PipelineBuilder")),
-            system: self.system.expect(&err("System")),
+            pipeline_builder: self.pipeline_builder.unwrap_or_else(|| panic!("{}", err("PipelineBuilder"))),
+            system: self.system.unwrap_or_else(|| panic!("{}", err("System"))),
             custom_system: self.custom_system,
-            color_target: self.color_target.expect(&err("ColorTarget")),
-            depth_target: self.depth_target.expect(&err("DepthTarget")),
+            color_target: self.color_target.unwrap_or_else(|| panic!("{}", err("ColorTarget"))),
+            depth_target: self.depth_target.unwrap_or_else(|| panic!("{}", err("DepthTarget"))),
             color_ops: self.color_ops,
             depth_ops: self.depth_ops,
             after: self.after,

@@ -204,7 +204,7 @@ impl PipelineBuilder {
 
     fn load_shader<'a>(&self, label_entry: &Option<(String, String)>, shader_loader: &'a ShaderLoader) -> (&'a wgpu::ShaderModule, String) {
         self.load_shader_maybe(label_entry, shader_loader)
-            .expect(&format!("{} shader for {} not set", label_entry.as_ref().unwrap().0, self.label))
+            .unwrap_or_else(|| panic!("{} shader for {} not set", label_entry.as_ref().unwrap().0, self.label))
     }
 
     fn load_shader_maybe<'a>(&self, label_entry: &Option<(String, String)>, shader_loader: &'a ShaderLoader) -> Option<(&'a wgpu::ShaderModule, String)> {
@@ -239,7 +239,7 @@ impl PipelineBuilder {
             label: Some(&self.label),
             layout: layout.as_ref(),
             vertex: wgpu::VertexState {
-                module: &vertex_module,
+                module: vertex_module,
                 entry_point: Some(&vertex_entry),
                 buffers: self.vertex_buffer_layouts.as_ref(),
                 compilation_options: Default::default(),
