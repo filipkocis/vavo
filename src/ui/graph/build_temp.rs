@@ -77,7 +77,7 @@ pub fn nodes_to_temp_graph<'a>(ctx: &mut SystemsContext, q: &mut Query<()>) -> V
         // populate with children
         if let Some(children) = children {
             for child in &children.ids {
-                root.children.push(build_temp_node_for(ctx, *child, q))
+                root.children.push(build_temp_node_for(*child, q))
             }
         };
 
@@ -88,7 +88,7 @@ pub fn nodes_to_temp_graph<'a>(ctx: &mut SystemsContext, q: &mut Query<()>) -> V
 }
 
 /// Returns a TempNode<'a> for a given EntityId, fully populated with children recursively
-fn build_temp_node_for<'a>(ctx: &mut SystemsContext, id: EntityId, query: &mut Query<()>) -> TempNode<'a> {
+fn build_temp_node_for<'a>(id: EntityId, query: &mut Query<()>) -> TempNode<'a> {
     // root
     let mut node_query = query.cast::<(&Node, &mut ComputedNode, &mut Transform, Option<&Children>, Option<&mut Text>), ()>();
     let (node, computed, transform, children, text) = node_query.get(id).expect("Node not found");
@@ -99,7 +99,7 @@ fn build_temp_node_for<'a>(ctx: &mut SystemsContext, id: EntityId, query: &mut Q
     let mut built_children = Vec::new();
     if let Some(children) = children {
         for child in &children.ids {
-            built_children.push(build_temp_node_for(ctx, *child, query))
+            built_children.push(build_temp_node_for(*child, query))
         }
     }
 

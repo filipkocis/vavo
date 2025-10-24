@@ -124,26 +124,17 @@ pub enum FlexDirection {
 impl FlexDirection {
     /// True for `RowReverse` and `ColumnReverse`
     pub fn is_reverse(&self) -> bool {
-        match self {
-            Self::RowReverse | Self::ColumnReverse => true,
-            _ => false,
-        }
+        matches!(self, Self::RowReverse | Self::ColumnReverse)
     }
 
     /// True for `Row` and `RowReverse`
     pub fn is_row(&self) -> bool {
-        match self {
-            Self::Row | Self::RowReverse => true,
-            _ => false,
-        }
+        matches!(self, Self::Row | Self::RowReverse)
     }
 
     /// True for `Column` and `ColumnReverse`
     pub fn is_column(&self) -> bool {
-        match self {
-            Self::Column | Self::ColumnReverse => true,
-            _ => false,
-        }
+        matches!(self, Self::Column | Self::ColumnReverse)
     }
 }
 

@@ -28,10 +28,10 @@ pub fn compute_nodes_and_transforms(ctx: &mut SystemsContext, mut q: Query<()>) 
         
         node.apply_constraints(ctx, None);
         node.compute_gaps(ctx);
-        node.resolve_text_wrap(ctx, &mut font_system);
+        node.resolve_text_wrap(&mut font_system);
         node.fit_auto_size();
 
-        node.resolve_flex(ctx);
+        node.resolve_flex();
         node.recalculate_percent_size();
         // TODO: wrap text after percent width change and readjust auto heights
 
@@ -528,9 +528,9 @@ impl TempNode<'_> {
         } - content_size;
 
         match self.node.justify_content {
-            JustifyContent::FlexStart => return self.offsets_from(Vec3::ZERO),
-            JustifyContent::FlexEnd => return self.offsets_from(new_vec3(offset)),
-            JustifyContent::Center => return self.offsets_from(new_vec3(offset / 2.0)), 
+            JustifyContent::FlexStart => self.offsets_from(Vec3::ZERO),
+            JustifyContent::FlexEnd => self.offsets_from(new_vec3(offset)),
+            JustifyContent::Center => self.offsets_from(new_vec3(offset / 2.0)), 
             JustifyContent::SpaceBetween => {
                 let offset = offset.max(0.0);
                 let between_gap = offset / gaps_num;
@@ -585,7 +585,7 @@ impl TempNode<'_> {
 
     /// Resolves text wrapping and adjusts auto-sized elements
     /// Traversal: TOP DOWN
-    fn resolve_text_wrap(&mut self, ctx: &mut SystemsContext, font_system: &mut FontSystem) {
+    fn resolve_text_wrap(&mut self, font_system: &mut FontSystem) {
         if self.node.display == Display::None {
             return;
         }
@@ -633,7 +633,7 @@ impl TempNode<'_> {
                 child.constrain_to_width(); 
             }
 
-            child.resolve_text_wrap(ctx, font_system);
+            child.resolve_text_wrap(font_system);
         }
     }
 
@@ -735,7 +735,7 @@ impl TempNode<'_> {
 
     /// Resolves flex grow and shrink
     /// Traverse: TOP DOWN
-    fn resolve_flex(&mut self, ctx: &mut SystemsContext) {
+    fn resolve_flex(&mut self) {
         if self.node.display == Display::Grid {
             unimplemented!("Grid flex grow and shrink");
         }
@@ -758,7 +758,7 @@ impl TempNode<'_> {
                 child.constrain_to_height();
             }
 
-            child.resolve_flex(ctx);
+            child.resolve_flex();
         }
     }
 

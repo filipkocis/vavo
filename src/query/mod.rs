@@ -20,10 +20,7 @@ impl QueryComponentType {
     /// True if component was requested as an `Option<T>`.
     #[inline]
     pub fn is_option(&self) -> bool {
-        match self {
-            QueryComponentType::Option(_) => true,
-            _ => false,
-        }
+        matches!(self, QueryComponentType::Option(_))
     }
 
     /// Returns the underlying [`component`](crate::ecs::components::Component) type id.

@@ -27,11 +27,7 @@ pub fn update_glyphon_viewport(ctx: &mut SystemsContext, _: Query<()>) {
 /// Utility function to check for a window resize event.
 pub fn has_resized(ctx: &SystemsContext) -> bool {
     ctx.event_reader.read::<WindowEvent>().iter().any(|event| {
-        if let WindowEvent::Resized(_) = event {
-            true
-        } else {
-            false
-        }
+        matches!(event, WindowEvent::Resized(_))
     })
 }
 
@@ -87,7 +83,7 @@ pub fn update_ui_mesh_and_transforms(ctx: &mut SystemsContext, mut query: Query<
     let resized = has_resized(ctx);
     if changed_len == 0 && !resized {
         // cleanup if all nodes were removed
-        if ui_nodes.len() == 0 && ui_mesh.positions.len() > 0 {
+        if ui_nodes.is_empty() && !ui_mesh.positions.is_empty() {
             ui_mesh.clear();
             ui_mesh_transparent.clear();
             ui_mesh_images.clear();
@@ -225,7 +221,7 @@ pub fn update_ui_mesh_and_transforms(ctx: &mut SystemsContext, mut query: Query<
         |md| {
             // TODO: do a better way to match with UI shader, this is copypasting
             let mil = 1_000_000.0;
-            return (mil - md as f32 - 1.0) / mil;
+            (mil - md as f32 - 1.0) / mil
         }
     ).unwrap();
 
