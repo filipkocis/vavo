@@ -12,18 +12,26 @@ trait InputData: Eq + Hash + Copy + Send + Sync + 'static {}
 impl InputData for KeyCode {}
 impl InputData for MouseButton {}
 
-#[derive(crate::macros::Resource)]
+#[allow(private_bounds)]
+#[derive(Debug, crate::macros::Resource)]
 pub struct Input<I: InputData> {
     storage: HashSet<I>,
     just_pressed: HashSet<I>,
 }
 
-impl<I: InputData> Input<I> {
-    pub fn new() -> Self {
+impl<I: InputData> Default for Input<I> {
+    fn default() -> Self {
         Self {
             storage: HashSet::new(),
             just_pressed: HashSet::new(),
         }
+    }
+}
+
+#[allow(private_bounds)]
+impl<I: InputData> Input<I> {
+    pub fn new() -> Self {
+        Self::default()
     }
 
     pub(crate) fn press(&mut self, key: I) {

@@ -34,14 +34,17 @@ impl<'a> Drop for RenderContext<'a> {
             let encoder = unsafe { Box::from_raw(encoder_raw) };
             self.state.queue.submit(Some(encoder.finish()));
         }
-        self.target.take().map(|(st, _)| st.present());
+
+        if let Some((surface_texture, _)) = self.target.take() {
+            surface_texture.present();
+        }
     }
 }
 
 impl<'a> RenderContext<'a> {
     /// Creates a new render context with a render target and encoder, used in the render stage
     pub(crate) fn new_render_context(state: &'a mut AppState) -> Result<Self, wgpu::SurfaceError> {
-        let target = Some(Self::create_target(&state)?);
+        let target = Some(Self::create_target(state)?);
         let encoder = Some(Self::create_encoder(&state.device));
 
         Ok(Self {
@@ -118,7 +121,7 @@ impl DerefMut for CommandEncoder<'_> {
 
 #[allow(dead_code)]
 impl RenderContext<'_> {
-    pub(crate) fn surface(&self) -> &wgpu::Surface {
+    pub(crate) fn surface(&self) -> &wgpu::Surface<'_> {
         &self.state.surface
     }
 
@@ -132,7 +135,7 @@ impl RenderContext<'_> {
         &target.1
     }
 
-    pub fn encoder(&self) -> CommandEncoder {
+    pub fn encoder(&self) -> CommandEncoder<'_> {
         CommandEncoder::new(self.encoder.expect("no command encoder, system is probably in an update stage"))
     }
  

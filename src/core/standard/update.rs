@@ -18,7 +18,7 @@ pub fn update_camera_buffers(
             } else {
                 None
             }
-        }).last();
+        }).next_back();
 
     if let Some(size) = resize_event {
         let mut proj_query = query.cast::<&mut Projection, With<Camera>>();

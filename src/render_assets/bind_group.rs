@@ -118,7 +118,7 @@ impl<'a> BindGroupBuilder<'a> {
         self.binding += 1;
     }
 
-    fn texture_layout_entries(&self) -> (Vec<wgpu::BindGroupEntry>, Vec<wgpu::BindGroupLayoutEntry>) {
+    fn texture_layout_entries(&self) -> (Vec<wgpu::BindGroupEntry<'_>>, Vec<wgpu::BindGroupLayoutEntry>) {
         let mut layouts = Vec::new();
         let mut entries = Vec::new();
 
