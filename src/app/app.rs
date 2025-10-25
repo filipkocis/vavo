@@ -1,8 +1,8 @@
-use std::any::{type_name, TypeId};
+use std::any::{TypeId, type_name};
 
 use winit::dpi::PhysicalSize;
-use winit::keyboard::PhysicalKey;
 use winit::event::ElementState;
+use winit::keyboard::PhysicalKey;
 
 use crate::core::graph::RenderGraph;
 use crate::prelude::{FixedTime, Resource};
@@ -13,10 +13,13 @@ use crate::window::{AppHandler, AppState, RenderContext, Renderer};
 
 use crate::ecs::state::{NextState, State, States, systems::apply_state_transition};
 use crate::ecs::world::World;
-use crate::event::{Events, events::{KeyboardInput, MouseInput}};
+use crate::event::{
+    Events,
+    events::{KeyboardInput, MouseInput},
+};
 
-use super::input::{Input, KeyCode, MouseButton};
 use super::Plugin;
+use super::input::{Input, KeyCode, MouseButton};
 
 pub struct App {
     system_handler: SystemHandler,
@@ -97,19 +100,25 @@ impl App {
     /// Add a system to the startup stage
     pub fn add_startup_system<T, F>(&mut self, system: impl IntoSystem<T, F>) -> &mut Self {
         let system = system.system();
-        self.system_handler.register_system(system, SystemStage::Startup);
+        self.system_handler
+            .register_system(system, SystemStage::Startup);
         self
     }
 
     /// Add a system to the update stage
     pub fn add_system<T, F>(&mut self, system: impl IntoSystem<T, F>) -> &mut Self {
         let system = system.system();
-        self.system_handler.register_system(system, SystemStage::Update);
+        self.system_handler
+            .register_system(system, SystemStage::Update);
         self
     }
 
     /// Register a system to a specific stage
-    pub fn register_system<T, F>(&mut self, system: impl IntoSystem<T, F>, stage: SystemStage) -> &mut Self {
+    pub fn register_system<T, F>(
+        &mut self,
+        system: impl IntoSystem<T, F>,
+        stage: SystemStage,
+    ) -> &mut Self {
         let system = system.system();
         self.system_handler.register_system(system, stage);
         self
@@ -135,7 +144,14 @@ impl App {
         // let mut queue = CommandQueue::default();
         let commands = Commands::new(tracking, queue);
 
-        let mut ctx = SystemsContext::new(commands, &mut self.world.resources, &mut self.events, renderer, self_ptr, &mut self.render_graph);
+        let mut ctx = SystemsContext::new(
+            commands,
+            &mut self.world.resources,
+            &mut self.events,
+            renderer,
+            self_ptr,
+            &mut self.render_graph,
+        );
 
         let iterations = if stage.has_fixed_time() {
             let mut fixed_time = ctx.resources.get_mut::<FixedTime>();
@@ -161,9 +177,17 @@ impl App {
         let commands = Commands::new(tracking, queue);
 
         let self_ptr = self as *mut App;
-        let mut ctx = SystemsContext::new(commands, &mut self.world.resources, &mut self.events, renderer, self_ptr, &mut self.render_graph);
+        let mut ctx = SystemsContext::new(
+            commands,
+            &mut self.world.resources,
+            &mut self.events,
+            renderer,
+            self_ptr,
+            &mut self.render_graph,
+        );
 
-        self.render_graph.execute(&mut ctx, &mut self.world.entities);
+        self.render_graph
+            .execute(&mut ctx, &mut self.world.entities);
 
         ctx.commands.apply(&mut self.world);
     }
@@ -193,7 +217,7 @@ impl App {
         self.run_systems(SystemStage::Update, context.as_renderer(), &mut queue);
         self.run_systems(SystemStage::PostUpdate, context.as_renderer(), &mut queue);
         self.run_systems(SystemStage::Last, context.as_renderer(), &mut queue);
-    } 
+    }
 
     /// Resize the app
     pub(crate) fn resize(&mut self, size: PhysicalSize<u32>) {
@@ -249,10 +273,12 @@ impl App {
     }
 
     /// Handle mouse input
-    pub(crate) fn handle_mouse_input(&mut self, state: winit::event::ElementState, button: winit::event::MouseButton) {
-        let event = MouseInput {
-            button, state
-        };
+    pub(crate) fn handle_mouse_input(
+        &mut self,
+        state: winit::event::ElementState,
+        button: winit::event::MouseButton,
+    ) {
+        let event = MouseInput { button, state };
 
         let mut input = self.world.resources.get_mut::<Input<MouseButton>>();
         if event.state == ElementState::Pressed {
