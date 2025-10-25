@@ -62,6 +62,13 @@ impl<F: QueryFilter> QueryFilter for Or<F> {
     }
 }
 
+impl QueryFilter for () {
+    #[inline]
+    fn into_filters(_filters: &mut Filters) {
+        // No filters to add
+    }
+}
+
 macro_rules! impl_query_filter {
     ($($type:ident),+) => {
         impl<$($type: QueryFilter),+> QueryFilter for ($($type,)+) {
@@ -74,6 +81,7 @@ macro_rules! impl_query_filter {
     };
 }
 
+impl_query_filter!(A);
 impl_query_filter!(A, B);
 impl_query_filter!(A, B, C);
 impl_query_filter!(A, B, C, D);

@@ -1,11 +1,11 @@
 use crate::{
-    ecs::entities::{components::ComponentsData, Component, EntityId},
+    ecs::entities::{Component, EntityId, components::ComponentsData},
     prelude::{Mut, Ref, Tick},
 };
 
 use super::{
-    filter::{Filters, QueryFilter},
     Query, QueryComponentType,
+    filter::{Filters, QueryFilter},
 };
 
 pub trait RunQuery {
@@ -158,22 +158,19 @@ impl<'a, C: QueryGetDowncasted<'a>> QueryGetDowncasted<'a> for Option<C> {
 }
 
 macro_rules! impl_run_query {
-    ($($lt:lifetime $types:ident),+; $($filter:ident),*) => {
+    ($($lt:lifetime $types:ident),+) => {
         #[allow(unused_parens)]
-        impl<$($lt),+, $($types),+, $($filter),*> RunQuery for Query<($($types),+), ($($filter),*)>
+        impl<$($lt),+, $($types),+, QF> RunQuery for Query<($($types),+), QF>
         where
             $(
                 $types: QueryGetType + QueryGetDowncasted<$lt, Output = $types>
             ,)+
-            $(
-                $filter: QueryFilter
-            ),*
+            QF: QueryFilter,
         {
             type Output = ($($types),+);
 
             fn iter_mut(&mut self) -> Vec<($($types),+)> {
-                let mut filters = Filters::new();
-                $(filters.add::<$filter>();)*
+                let mut filters = Filters::from::<QF>();
 
                 let requested_types = [$($types::get_type_id()),+];
                 let mut result = Vec::new();
@@ -229,8 +226,7 @@ macro_rules! impl_run_query {
             }
 
             fn get(&mut self, entity_id: EntityId) -> Option<($($types),+)> {
-                let mut filters = Filters::new();
-                $(filters.add::<$filter>();)*
+                let mut filters = Filters::from::<QF>();
 
                 let requested_types = [$($types::get_type_id()),+];
                 let entities = unsafe { &mut *self.entities };
@@ -319,26 +315,22 @@ macro_rules! impl_run_query {
     };
 }
 
-impl_run_query!('a T; );
-impl_run_query!('a T; F);
-
-impl_run_query!('a T, 'b U; );
-impl_run_query!('a T, 'b U; F);
-
-impl_run_query!('a T, 'b U, 'c V; );
-impl_run_query!('a T, 'b U, 'c V; F);
-
-impl_run_query!('a T, 'b U, 'c V, 'd W; );
-impl_run_query!('a T, 'b U, 'c V, 'd W; F);
-
-impl_run_query!('a T, 'b U, 'c V, 'd W, 'e X; );
-impl_run_query!('a T, 'b U, 'c V, 'd W, 'e X; F);
-
-impl_run_query!('a T, 'b U, 'c V, 'd W, 'e X, 'f Y; );
-impl_run_query!('a T, 'b U, 'c V, 'd W, 'e X, 'f Y; F);
-
-impl_run_query!('a T, 'b U, 'c V, 'd W, 'e X, 'f Y, 'g Z; );
-impl_run_query!('a T, 'b U, 'c V, 'd W, 'e X, 'f Y, 'g Z; F);
+impl_run_query!('a A);
+impl_run_query!('a A, 'b B);
+impl_run_query!('a A, 'b B, 'c C);
+impl_run_query!('a A, 'b B, 'c C, 'd D);
+impl_run_query!('a A, 'b B, 'c C, 'd D, 'e E);
+impl_run_query!('a A, 'b B, 'c C, 'd D, 'e E, 'f F);
+impl_run_query!('a A, 'b B, 'c C, 'd D, 'e E, 'f F, 'g G);
+impl_run_query!('a A, 'b B, 'c C, 'd D, 'e E, 'f F, 'g G, 'h H);
+impl_run_query!('a A, 'b B, 'c C, 'd D, 'e E, 'f F, 'g G, 'h H, 'i I);
+impl_run_query!('a A, 'b B, 'c C, 'd D, 'e E, 'f F, 'g G, 'h H, 'i I, 'j J);
+impl_run_query!('a A, 'b B, 'c C, 'd D, 'e E, 'f F, 'g G, 'h H, 'i I, 'j J, 'k K);
+impl_run_query!('a A, 'b B, 'c C, 'd D, 'e E, 'f F, 'g G, 'h H, 'i I, 'j J, 'k K, 'l L);
+impl_run_query!('a A, 'b B, 'c C, 'd D, 'e E, 'f F, 'g G, 'h H, 'i I, 'j J, 'k K, 'l L, 'm M);
+impl_run_query!('a A, 'b B, 'c C, 'd D, 'e E, 'f F, 'g G, 'h H, 'i I, 'j J, 'k K, 'l L, 'm M, 'n N);
+impl_run_query!('a A, 'b B, 'c C, 'd D, 'e E, 'f F, 'g G, 'h H, 'i I, 'j J, 'k K, 'l L, 'm M, 'n N, 'o O);
+impl_run_query!('a A, 'b B, 'c C, 'd D, 'e E, 'f F, 'g G, 'h H, 'i I, 'j J, 'k K, 'l L, 'm M, 'n N, 'o O, 'p P);
 
 // impl<'a, 'b, T: 'static, U: 'static> RunQuery<(&'b mut T, &'b mut U)>
 // for Query<'a, (&'b mut T, &'b mut U)>
