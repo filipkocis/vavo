@@ -1,6 +1,6 @@
 use crate::{
-    prelude::{Res, ResMut, Resource, Tick, World},
-    query::Query,
+    prelude::{Component, Mut, Ref, Res, ResMut, Resource, Tick, World},
+    query::{Query, RunQuery, filter::QueryFilter},
 };
 use std::{
     any::{TypeId, type_name},
@@ -37,27 +37,39 @@ impl TypeInfo {
     }
 }
 
-/// Access information for system parameters
+/// Access information for system function parameters
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct AccessInfo(bool);
-impl AccessInfo {
-    /// Create new access information
+pub struct ParamInfo {
+    is_mutable: bool,
+    type_info: TypeInfo,
+}
+impl ParamInfo {
+    /// Create new parameter information
     #[inline]
-    pub fn new(is_mutable: bool) -> Self {
-        Self(is_mutable)
+    pub fn new(is_mutable: bool, type_info: TypeInfo) -> Self {
+        Self {
+            is_mutable,
+            type_info,
+        }
     }
 
     /// Returns `true` if the access is mutable
     #[inline]
     pub fn is_mutable(&self) -> bool {
-        self.0
+        self.is_mutable
+    }
+
+    /// Returns the parameter's type information
+    #[inline]
+    pub fn type_info(&self) -> TypeInfo {
+        self.type_info
     }
 }
 
 pub type SystemExecFn = dyn FnMut(&mut World) + Send + Sync + 'static;
 pub struct SystemExec {
-    /// Function parameters' type and access info
-    pub params_info: Vec<(AccessInfo, TypeInfo)>,
+    /// Function's parameters info
+    pub params_info: Vec<ParamInfo>,
     /// Function's type info
     pub exec_info: TypeInfo,
     /// System execution function
@@ -66,11 +78,7 @@ pub struct SystemExec {
 
 impl SystemExec {
     /// Create a new system execution from function `exec` and its type information
-    pub fn new(
-        params_info: Vec<(AccessInfo, TypeInfo)>,
-        exec_info: TypeInfo,
-        exec: Box<SystemExecFn>,
-    ) -> Self {
+    pub fn new(params_info: Vec<ParamInfo>, exec_info: TypeInfo, exec: Box<SystemExecFn>) -> Self {
         Self {
             params_info,
             exec_info,
@@ -198,22 +206,16 @@ impl IntoSystemCondition for SystemCondition {
 //      System FN impls        //
 // --------------------------- //
 
+pub trait IntoParamInfo {
+    /// Returns information about the parameter types and their access patterns.
+    fn params_info() -> Vec<ParamInfo>;
+}
+
 /// Any type that can be used as a system parameter (including tuples of parameters).
 /// Implemented for types which can be extracted from the world during system execution.
-pub trait SystemParam: 'static {
+pub trait SystemParam: IntoParamInfo {
     /// Extract the parameter from the world.
     fn extract(world: &mut World) -> Self;
-
-    /// Get the type IDs of sub-parameters (for tuples) or self (for single param).
-    #[inline]
-    fn params_type_info() -> Vec<(AccessInfo, TypeInfo)> {
-        let access_info = AccessInfo::new(Self::is_access_mutable());
-        let type_info = TypeInfo::new(type_name::<Self>(), TypeId::of::<Self>());
-        vec![(access_info, type_info)]
-    }
-
-    /// Returns `true` if the parameter is a mutable reference.
-    fn is_access_mutable() -> bool;
 }
 
 impl<R: Resource> SystemParam for Res<R> {
@@ -221,10 +223,12 @@ impl<R: Resource> SystemParam for Res<R> {
     fn extract(world: &mut World) -> Self {
         world.resources.get()
     }
-
-    #[inline]
-    fn is_access_mutable() -> bool {
-        false
+}
+impl<R: Resource> IntoParamInfo for Res<R> {
+    fn params_info() -> Vec<ParamInfo> {
+        let is_mutable = false;
+        let type_info = TypeInfo::new(type_name::<R>(), TypeId::of::<R>());
+        vec![ParamInfo::new(is_mutable, type_info)]
     }
 }
 
@@ -233,31 +237,81 @@ impl<R: Resource> SystemParam for ResMut<R> {
     fn extract(world: &mut World) -> Self {
         world.resources.get_mut()
     }
-
-    #[inline]
-    fn is_access_mutable() -> bool {
-        true
+}
+impl<R: Resource> IntoParamInfo for ResMut<R> {
+    fn params_info() -> Vec<ParamInfo> {
+        let is_mutable = true;
+        let type_info = TypeInfo::new(type_name::<R>(), TypeId::of::<R>());
+        vec![ParamInfo::new(is_mutable, type_info)]
     }
 }
 
 impl<T, F> SystemParam for Query<T, F>
 where
-    T: 'static,
-    F: 'static,
+    F: QueryFilter,
+    Query<T, F>: IntoParamInfo,
 {
     #[inline]
     fn extract(world: &mut World) -> Self {
         world.query_filtered::<T, F>()
     }
-
-    #[inline]
-    fn params_type_info() -> Vec<(AccessInfo, TypeInfo)> {
-        todo!()
+}
+impl<T, F> IntoParamInfo for Query<T, F>
+where
+    T: IntoParamInfo,
+    F: QueryFilter,
+{
+    fn params_info() -> Vec<ParamInfo> {
+        T::params_info()
     }
-
-    #[inline]
-    fn is_access_mutable() -> bool {
-        false // Queries themselves are not mutable
+}
+impl IntoParamInfo for EntityId {
+    fn params_info() -> Vec<ParamInfo> {
+        let is_mutable = false;
+        let type_info = TypeInfo::new(type_name::<EntityId>(), TypeId::of::<EntityId>());
+        vec![ParamInfo::new(is_mutable, type_info)]
+    }
+}
+impl<C: Component> IntoParamInfo for &mut C {
+    fn params_info() -> Vec<ParamInfo> {
+        let is_mutable = true;
+        let type_info = TypeInfo::new(type_name::<C>(), TypeId::of::<C>());
+        vec![ParamInfo::new(is_mutable, type_info)]
+    }
+}
+impl<C: Component> IntoParamInfo for &C {
+    fn params_info() -> Vec<ParamInfo> {
+        let is_mutable = false;
+        let type_info = TypeInfo::new(type_name::<C>(), TypeId::of::<C>());
+        vec![ParamInfo::new(is_mutable, type_info)]
+    }
+}
+impl<C: Component> IntoParamInfo for Mut<'_, C> {
+    fn params_info() -> Vec<ParamInfo> {
+        let is_mutable = true;
+        let type_info = TypeInfo::new(type_name::<C>(), TypeId::of::<C>());
+        vec![ParamInfo::new(is_mutable, type_info)]
+    }
+}
+impl<C: Component> IntoParamInfo for Ref<'_, C> {
+    fn params_info() -> Vec<ParamInfo> {
+        let is_mutable = false;
+        let type_info = TypeInfo::new(type_name::<C>(), TypeId::of::<C>());
+        vec![ParamInfo::new(is_mutable, type_info)]
+    }
+}
+impl<C: Component> IntoParamInfo for Option<&mut C> {
+    fn params_info() -> Vec<ParamInfo> {
+        let is_mutable = true;
+        let type_info = TypeInfo::new(type_name::<C>(), TypeId::of::<C>());
+        vec![ParamInfo::new(is_mutable, type_info)]
+    }
+}
+impl<C: Component> IntoParamInfo for Option<&C> {
+    fn params_info() -> Vec<ParamInfo> {
+        let is_mutable = false;
+        let type_info = TypeInfo::new(type_name::<C>(), TypeId::of::<C>());
+        vec![ParamInfo::new(is_mutable, type_info)]
     }
 }
 
@@ -278,20 +332,19 @@ macro_rules! impl_system_param_tuple {
                         )*
                     )
                 }
+            }
 
-                #[inline]
-                fn params_type_info() -> Vec<(AccessInfo, TypeInfo)> {
+            impl<$($param),*> IntoParamInfo for ($($param,)*)
+            where
+                $($param: IntoParamInfo,)*
+            {
+                fn params_info() -> Vec<ParamInfo> {
                     #[allow(unused_mut)]
                     let mut ids = Vec::new();
                     $(
-                        ids.extend($param::params_type_info());
+                        ids.extend($param::params_info());
                     )*
                     ids
-                }
-
-                #[inline]
-                fn is_access_mutable() -> bool {
-                    false // Tuples themselves are not mutable
                 }
             }
         )*
@@ -299,16 +352,19 @@ macro_rules! impl_system_param_tuple {
 }
 
 /// Check for borrow conflicts among system parameters, returning the first conflicting type.
-fn check_borrow_conflicts(type_infos: &[(AccessInfo, TypeInfo)]) -> Option<TypeInfo> {
-    let mut seen = HashMap::<TypeId, AccessInfo>::new();
+fn check_borrow_conflicts(params_info: &[ParamInfo]) -> Option<TypeInfo> {
+    let mut seen = HashMap::<TypeId, bool>::new();
 
-    for (access, info) in type_infos {
-        if let Some(existing_access) = seen.get(&info.type_id()) {
-            if access.is_mutable() || existing_access.is_mutable() {
-                return Some(*info);
+    for param_info in params_info {
+        let is_mutable = param_info.is_mutable();
+        let type_info = param_info.type_info();
+
+        if let Some(existing_access) = seen.get(&type_info.type_id()) {
+            if param_info.is_mutable() || *existing_access {
+                return Some(type_info);
             }
         } else {
-            seen.insert(info.type_id(), *access);
+            seen.insert(type_info.type_id(), is_mutable);
         }
     }
 
@@ -323,7 +379,7 @@ fn check_borrow_conflicts(type_infos: &[(AccessInfo, TypeInfo)]) -> Option<TypeI
 //     F: FnMut(P1, P2, P3) + Send + Sync + 'static,
 // {
 //     fn build(mut self) -> System {
-//         let params_info = <(P1, P2, P3)>::params_type_info();
+//         let params_info = <(P1, P2, P3)>::params_info();
 //         let exec_info = TypeInfo::new(type_name::<F>(), TypeId::of::<F>());
 //
 //         if let Some(conflict) = check_borrow_conflicts(&params_info) {
@@ -366,7 +422,7 @@ macro_rules! impl_into_system {
             {
                 #[inline]
                 fn build(mut self) -> System {
-                    let params_info = <( $($param,)* )>::params_type_info();
+                    let params_info = <( $($param,)* )>::params_info();
                     let exec_info = TypeInfo::new(type_name::<F>(), TypeId::of::<F>());
 
                     if let Some(conflict) = check_borrow_conflicts(&params_info) {
