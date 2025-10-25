@@ -4,7 +4,7 @@ use super::{Mesh, Meshable};
 
 impl Meshable for Cuboid {
     fn mesh(&self) -> Mesh {
-        let hw = self.width / 2.0; 
+        let hw = self.width / 2.0;
         let hh = self.height / 2.0;
         let hd = self.depth / 2.0;
 
@@ -71,7 +71,8 @@ impl Meshable for Cube {
             width: self.size,
             height: self.size,
             depth: self.size,
-        }.mesh()
+        }
+        .mesh()
     }
 }
 
@@ -80,7 +81,7 @@ impl Meshable for Sphere {
         let (positions, uvs, normals, indices) = match self.kind {
             SphereKind::Icosphere(subdivisions) => {
                 Self::generate_icosphere(self.radius, subdivisions)
-            },
+            }
             SphereKind::UVSphere(rings, sectors) => {
                 Self::generate_uv_sphere(self.radius, rings, sectors)
             }
@@ -121,29 +122,25 @@ impl Meshable for Plane {
             positions,
             Some(normals),
             Some(uvs),
-            Some(indices)
+            Some(indices),
         )
     }
 }
 
 impl Meshable for Triangle {
     fn mesh(&self) -> Mesh {
-        let positions = self.vertices.iter().map(|v| *v).collect(); 
+        let positions = self.vertices.to_vec();
         let normals = vec![[0.0, 0.0, 1.0]; 3];
-        let uvs = vec![
-            [0.5, 1.0],
-            [0.0, 0.0],
-            [1.0, 0.0],
-        ];
+        let uvs = vec![[0.5, 1.0], [0.0, 0.0], [1.0, 0.0]];
         let indices = vec![0, 1, 2];
-        
+
         Mesh::new(
             wgpu::PrimitiveTopology::TriangleList,
             None,
             positions,
             Some(normals),
             Some(uvs),
-            Some(indices)
+            Some(indices),
         )
     }
 }

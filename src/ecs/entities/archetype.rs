@@ -13,8 +13,8 @@ use crate::{
 };
 
 use super::{
-    components::{ComponentInfoPtr, ComponentsData},
     EntityId, QueryComponentType,
+    components::{ComponentInfoPtr, ComponentsData},
 };
 
 /// Holds owned component data with its type information. Either from removed
@@ -499,9 +499,13 @@ impl Archetype {
             // Tick filters validation
             if changed_or_indices.is_empty() && added_or_indices.is_empty() {
                 if or_filters.with.len() + or_filters.without.len() == 0 {
-                    panic!("Or<T> filter only contains `tick_based` filters, but none of the types are found in archetype");
+                    panic!(
+                        "Or<T> filter only contains `tick_based` filters, but none of the types are found in archetype"
+                    );
                 } else {
-                    panic!("Or<T> filter doesn't match existence filters, and none of the Changed<T> | Added<T> types are found in archetype");
+                    panic!(
+                        "Or<T> filter doesn't match existence filters, and none of the Changed<T> | Added<T> types are found in archetype"
+                    );
                 }
             }
 
@@ -553,23 +557,21 @@ impl Archetype {
         // Or<T> filters
         let changed_or = indices.changed.iter().skip(1);
         let added_or = indices.added.iter().skip(1);
-        let or = changed_or
-            .zip(added_or)
-            .all(|(changed_or_indices, added_or_indices)| {
-                let changed = changed_or_indices
-                    .iter()
-                    .any(|&index| self.components[index].changed_since(at, system_last_run));
-                if changed {
-                    // short circuit
-                    return true;
-                }
+        let mut zipped = changed_or.zip(added_or);
 
-                let added = added_or_indices
-                    .iter()
-                    .any(|&index| self.components[index].added_since(at, system_last_run));
-                changed || added
-            });
+        zipped.all(|(changed_or_indices, added_or_indices)| {
+            let changed = changed_or_indices
+                .iter()
+                .any(|&index| self.components[index].changed_since(at, system_last_run));
+            if changed {
+                // short circuit
+                return true;
+            }
 
-        or
+            let added = added_or_indices
+                .iter()
+                .any(|&index| self.components[index].added_since(at, system_last_run));
+            changed || added
+        })
     }
 }

@@ -4,6 +4,8 @@ use winit::dpi::PhysicalSize;
 
 use super::GraphNode;
 
+/// Directed acyclic graph of render passes and their dependencies
+#[derive(Default)]
 pub struct RenderGraph {
     pub(crate) nodes: HashMap<String, GraphNode>,
     /// Topological sort of `self.nodes`, updated on each node add/remove
@@ -12,10 +14,7 @@ pub struct RenderGraph {
 
 impl RenderGraph {
     pub fn new() -> Self {
-        Self {
-            nodes: HashMap::new(),
-            sorted: Vec::new(),
-        }
+        Self::default()
     }
 
     pub fn add(&mut self, node: GraphNode) {

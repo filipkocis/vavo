@@ -3,16 +3,19 @@ use winit::keyboard::KeyCode;
 
 use crate::prelude::*;
 
-pub fn movement_system(ctx: &mut SystemsContext, mut query: Query<(&mut Transform, &mut Projection, &Camera), With<Camera3D>>) {
-    let time = ctx.resources.get::<Time>(); 
-    let key_input = ctx.resources.get::<Input<KeyCode>>(); 
+pub fn movement_system(
+    ctx: &mut SystemsContext,
+    mut query: Query<(&mut Transform, &mut Projection, &Camera), With<Camera3D>>,
+) {
+    let time = ctx.resources.get::<Time>();
+    let key_input = ctx.resources.get::<Input<KeyCode>>();
     let mouse_motion = ctx.event_reader.read::<MouseMotion>();
 
     // Camera translation
     let mut pos_dx = 0.0;
     let mut pos_dy = 0.0;
     let mut pos_dz = 0.0;
-    
+
     if key_input.pressed(KeyCode::KeyW) {
         pos_dz -= 0.1;
     }
@@ -48,12 +51,11 @@ pub fn movement_system(ctx: &mut SystemsContext, mut query: Query<(&mut Transfor
         return;
     }
 
-    // return;
     for (transform, _projection, camera) in query.iter_mut() {
         if !camera.active {
-            return
+            continue;
         }
-        
+
         let rotation = transform.rotation;
         let forward = rotation * Vec3::Z;
         let right = rotation * Vec3::X;
@@ -72,13 +74,13 @@ pub fn movement_system(ctx: &mut SystemsContext, mut query: Query<(&mut Transfor
 
         // Apply the rotations
         transform.rotation = global_y_rotation * transform.rotation; // Rotate around global Y
-        transform.rotation = transform.rotation * local_x_rotation;  
+        transform.rotation *= local_x_rotation; // Rotate around local X
 
         // match projection {
         //     Projection::Perspective(proj) => {
         //         if key_input.pressed(KeyCode::KeyQ) {
         //             proj.fov -= 0.1;
-        //         } 
+        //         }
         //         if key_input.pressed(KeyCode::KeyE) {
         //             proj.fov += 0.1;
         //         }

@@ -20,27 +20,24 @@ pub enum SystemStage {
 impl SystemStage {
     /// True for any stage that has a fixed time schedule
     pub fn has_fixed_time(self) -> bool {
-        match self {
-            SystemStage::FixedUpdate => true,
-            _ => false,
-        }
+        matches!(self, SystemStage::FixedUpdate)
     }
 }
 
 /// System handler is responsible for storing and managing systems for each [stage](SystemStage)
 pub(crate) struct SystemHandler {
-    pre_startup: Vec<System>, 
-    startup: Vec<System>, 
-    first: Vec<System>, 
-    pre_update: Vec<System>, 
-    fixed_update: Vec<System>, 
-    update: Vec<System>, 
-    post_update: Vec<System>, 
-    last: Vec<System>, 
-    pre_render: Vec<System>, 
-    render: Vec<System>, 
-    post_render: Vec<System>, 
-    frame_end: Vec<System>, 
+    pre_startup: Vec<System>,
+    startup: Vec<System>,
+    first: Vec<System>,
+    pre_update: Vec<System>,
+    fixed_update: Vec<System>,
+    update: Vec<System>,
+    post_update: Vec<System>,
+    last: Vec<System>,
+    pre_render: Vec<System>,
+    render: Vec<System>,
+    post_render: Vec<System>,
+    frame_end: Vec<System>,
 }
 
 impl SystemHandler {
@@ -61,7 +58,7 @@ impl SystemHandler {
         }
     }
 
-    /// Register a system to a specific stage 
+    /// Register a system to a specific stage
     pub(crate) fn register_system(&mut self, system: System, stage: SystemStage) {
         match stage {
             SystemStage::PreStartup => self.pre_startup.push(system),

@@ -38,7 +38,7 @@ pub(crate) fn update_audio_tracks(ctx: &mut SystemsContext, _: Query<()>) {
 /// [`audio`](AudioTrack).
 pub(crate) fn update_spatial_audio_tracks(ctx: &mut SystemsContext, mut query: Query<()>) {
     let listener_query = query.cast::<&SpatialListener, ()>().iter_mut();
-    let Some(listener_id) = listener_query.get(0).map(|listener| listener.id()).flatten() else {
+    let Some(listener_id) = listener_query.first().and_then(|listener| listener.id()) else {
         // No listener found or listener not initialized
         return
     };

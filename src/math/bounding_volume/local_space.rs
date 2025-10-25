@@ -1,9 +1,9 @@
 use glam::{Mat4, Vec3};
 use vavo_macros::{Component, Reflect};
 
-use super::{Sphere, AABB, OBB};
+use super::{AABB, OBB, Sphere};
 
-#[derive(Reflect, Component, Clone, Debug)]
+#[derive(Default, Reflect, Component, Clone, Debug)]
 /// A bounding volume that represents a local space bounding volume. Changes only when the object's
 /// model changes. For world space bounding volumes, see
 /// [`WorldBoundingVolume`](super::WorldBoundingVolume).
@@ -11,6 +11,7 @@ pub enum LocalBoundingVolume {
     Sphere(Sphere),
     AABB(AABB),
     OBB(OBB),
+    #[default]
     None,
 }
 
@@ -19,7 +20,7 @@ pub enum LocalBoundingVolume {
 impl LocalBoundingVolume {
     /// Creates a new bounding volume of type None
     pub fn new() -> Self {
-        Self::None
+        Self::default()
     }
 
     pub fn new_sphere(center: Vec3, radius: f32) -> Self {
@@ -37,7 +38,7 @@ impl LocalBoundingVolume {
     pub fn to_none(&mut self) {
         *self = Self::None;
     }
-    
+
     /// Converts the bounding volume to a default sphere, if it is not already a sphere
     pub fn to_sphere(&mut self) {
         if let Self::Sphere(_) = self {

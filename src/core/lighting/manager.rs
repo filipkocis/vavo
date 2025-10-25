@@ -87,7 +87,7 @@ impl LightAndShadowManager {
         self.point_shadow_map.resize(ctx, point_lights);
         self.spot_shadow_map.resize(ctx, spot_lights);
         
-        self.storage.update(&lights, lights.len(), ctx);
+        self.storage.update(lights, lights.len(), ctx);
     }
 
     /// Create a texture view for the shadow map of a given light.

@@ -1,5 +1,5 @@
-use web_time::{Duration, Instant};
 use crate::macros::Resource;
+use web_time::{Duration, Instant};
 
 #[derive(Resource)]
 pub struct Time {
@@ -13,14 +13,23 @@ pub struct Time {
     delta: f32,
 }
 
-impl Time {
-    pub fn new() -> Self {
+impl Default for Time {
+    fn default() -> Self {
         let start = Instant::now();
         let last_frame = start;
-        let delta = 0.0;
-        let tick = 0;
 
-        Self { tick, start, last_frame, delta }
+        Self {
+            tick: 0,
+            start,
+            last_frame,
+            delta: 0.0,
+        }
+    }
+}
+
+impl Time {
+    pub fn new() -> Self {
+        Self::default()
     }
 
     /// Update the delta time and last frame time, increment tick
@@ -87,7 +96,7 @@ impl FixedTime {
     pub fn new(fixed_delta: f32) -> Self {
         let time = Time::new();
         let accumulator = 0.0;
-        
+
         Self {
             time,
             fixed_delta,
@@ -143,12 +152,12 @@ pub struct Timer {
 
 impl Timer {
     pub fn new(duration: Duration, variant: TimerVariant) -> Self {
-        Self { 
-            elapsed: 0.0, 
-            duration, 
-            variant, 
+        Self {
+            elapsed: 0.0,
+            duration,
+            variant,
             just_finished: false,
-        } 
+        }
     }
 
     /// Total elapsed time since the timer started

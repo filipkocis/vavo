@@ -4,7 +4,7 @@ use crate::prelude::{Color, Image, Material, Mesh, Resources};
 
 use super::{Asset, Assets, Handle};
 
-#[derive(crate::macros::Resource)]
+#[derive(Debug, Default, crate::macros::Resource)]
 pub struct AssetLoader {
     /// Cache of loaded assets, stores Handle<T: LoadableAsset>
     cache: HashMap<String, Box<dyn Any + Send + Sync>>,
@@ -12,9 +12,7 @@ pub struct AssetLoader {
 
 impl AssetLoader {
     pub fn new() -> Self {
-        Self {
-            cache: HashMap::new()
-        }
+        Self::default()
     }
 
     pub fn load<A: LoadableAsset>(&mut self, path: &str, resources: &mut Resources) -> Handle<A> {

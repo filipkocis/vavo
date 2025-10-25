@@ -2,6 +2,8 @@ use std::collections::HashMap;
 
 use wgpu::{Device, ShaderSource};
 
+/// Wrapper for a wgpu ShaderModule with a label
+#[derive(Debug)]
 pub struct Shader {
     /// Label used in the shader module will be `label_shader`.
     /// e.g. label: "main" -> main_shader
@@ -34,16 +36,14 @@ impl Shader {
 /// # Info
 /// This may be removed in the future when a more robust system is in place, currently doing it
 /// with AssetLoader will not work
-#[derive(crate::macros::Resource)]
+#[derive(Debug, Default, crate::macros::Resource)]
 pub struct ShaderLoader {
     cache: HashMap<String, Shader>,
 }
 
 impl ShaderLoader {
     pub fn new() -> Self {
-        Self {
-            cache: HashMap::new()
-        }
+        Self::default()
     }
 
     /// Load and creates a wgsl shader, returns None if label already exists.
@@ -56,7 +56,11 @@ impl ShaderLoader {
         let shader = Shader::wgsl(device, label, wgsl);
         self.cache.insert(label.to_string(), shader);
 
-        Some(self.cache.get(label).expect("Shader label should exist after insertion"))
+        Some(
+            self.cache
+                .get(label)
+                .expect("Shader label should exist after insertion"),
+        )
     }
 
     /// Get a shader by label

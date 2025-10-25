@@ -10,12 +10,8 @@ impl<T> RenderHandle<T> {
     pub(super) fn new(id: u64) -> Self {
         Self {
             id,
-            _marker: std::marker::PhantomData
+            _marker: std::marker::PhantomData,
         }
-    }
-
-    pub(crate) fn id(&self) -> u64 {
-        self.id
     }
 }
 

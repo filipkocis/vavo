@@ -48,7 +48,7 @@ fn shadow_render_system(
             continue;
         }
 
-        per_light_render_pass(i as u32, &light, &grouped, &transforms_storage, &light_manager, pipeline, &mut buffers, ctx);
+        per_light_render_pass(i as u32, light, &grouped, &transforms_storage, &light_manager, pipeline, &mut buffers, ctx);
     }
 }
 
@@ -99,10 +99,10 @@ fn per_light_render_pass(
         let instance_offset = group.instance_offset;
 
         // check unlit material
-        if let Some(material) = materials.get(material) {
-            if material.unlit {
-                continue;
-            }
+        if let Some(material) = materials.get(material)
+            && material.unlit
+        {
+            continue;
         }
 
         // set vertex buffer with mesh

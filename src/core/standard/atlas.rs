@@ -10,8 +10,8 @@ pub struct ShadowMapAtlas {
 impl ShadowMapAtlas {
     pub fn new(tile_size: (u32, u32), rows: u32, cols: u32, images: &mut Assets<Image>) -> Self {
         let mut atlas = Image::new_with_defaults(vec![], wgpu::Extent3d {
-            width: tile_size.0 as u32 * cols,
-            height: tile_size.1 as u32 * rows,
+            width: tile_size.0 * cols,
+            height: tile_size.1 * rows,
             depth_or_array_layers: 1,
         });
 

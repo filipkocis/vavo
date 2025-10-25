@@ -48,10 +48,10 @@ pub fn print_render_graph_topology(ctx: &mut SystemsContext) {
         names.push(node.name.clone());
 
         println!("({i}) {}", node.name);
-        if let Some(deps) = normalized.get(&node.name) {
-            if !deps.is_empty() {
-                println!("  AfterN -> {:?}", deps);
-            }
+        if let Some(deps) = normalized.get(&node.name)
+            && !deps.is_empty()
+        {
+            println!("  AfterN -> {:?}", deps);
         }
         if !node.after.is_empty() {
             println!("  After -> {:?}", node.after);

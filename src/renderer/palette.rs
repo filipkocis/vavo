@@ -1,4 +1,4 @@
-/// Color palette from bevy_color
+//! Color palette from bevy_color
 
 use super::Color;
 

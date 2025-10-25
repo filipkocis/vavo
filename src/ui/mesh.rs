@@ -8,7 +8,7 @@ use crate::prelude::*;
 use crate::render_assets::*;
 
 /// Mesh for UI nodes, either 2d or 3d
-#[derive(Resource, Debug)]
+#[derive(Default, Resource, Debug)]
 pub struct UiMesh {
     pub colors: Vec<Color>,
     pub positions: Vec<[f32; 3]>,
@@ -19,34 +19,28 @@ pub struct UiMesh {
 }
 
 /// Specialized UiMesh wrapper for transparent UI nodes
-#[derive(Resource, Debug)]
+#[derive(Default, Resource, Debug)]
 pub struct UiMeshTransparent(pub UiMesh);
 
 impl UiMeshTransparent {
     pub fn new() -> Self {
-        Self(UiMesh::new())
+        Self::default()
     }
 }
 
 /// Specialized UiMesh wrapper for UI nodes with [UiImage] component
-#[derive(Resource, Debug)]
+#[derive(Default, Resource, Debug)]
 pub struct UiMeshImages(pub UiMesh);
 
 impl UiMeshImages {
     pub fn new() -> Self {
-        Self(UiMesh::new())
+        Self::default()
     }
 }
 
 impl UiMesh {
     pub fn new() -> Self {
-        Self {
-            colors: Vec::new(),
-            positions: Vec::new(),
-            indices: Vec::new(),
-            transform_indices: Vec::new(),
-            entity_ids: Vec::new(),
-        }
+        Self::default()
     }
 
     pub fn clear(&mut self) {

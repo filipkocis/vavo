@@ -48,7 +48,7 @@ impl<R:Resource> From<&Res<R>> for ResourceId {
 }
 impl<A:Asset> From<&Handle<A>> for AssetHandleId {
     fn from(value: &Handle<A>) -> Self {
-       AssetHandleId(TypeId::of::<A>(), value.id())
+        AssetHandleId(TypeId::of::<A>(), value.id())
     }
 }
 impl<C:Component> From<(EntityId, &C)> for EntityComponentId {
@@ -66,8 +66,8 @@ pub struct RenderAssets<RA: RenderAsset> {
     next_id: u64,
 }
 
-impl<RA: RenderAsset> RenderAssets<RA> {
-    pub fn new() -> Self {
+impl<RA: RenderAsset> Default for RenderAssets<RA> {
+    fn default() -> Self {
         Self {
             storage: HashMap::new(),
             handle_map: HashMap::new(),
@@ -75,6 +75,12 @@ impl<RA: RenderAsset> RenderAssets<RA> {
             resource_map: HashMap::new(),
             next_id: 0,
         }
+    }
+}
+
+impl<RA: RenderAsset> RenderAssets<RA> {
+    pub fn new() -> Self {
+        Self::default()
     }
 
     fn step_id(&mut self) -> RenderHandle<RA> {

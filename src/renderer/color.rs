@@ -1,8 +1,9 @@
 use std::ops::{Add, Div, Mul, Sub};
 
 #[repr(C)]
-#[derive(Debug, Copy, Clone, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
-#[derive(crate::macros::Reflect)]
+#[derive(
+    Debug, Copy, Clone, PartialEq, bytemuck::Pod, bytemuck::Zeroable, crate::macros::Reflect,
+)]
 pub struct Color {
     pub r: f32,
     pub g: f32,
@@ -54,31 +55,31 @@ impl Color {
     }
 }
 
-impl Into<wgpu::Color> for Color {
-    fn into(self) -> wgpu::Color {
-        wgpu::Color {
-            r: self.r.into(),
-            g: self.g.into(),
-            b: self.b.into(),
-            a: self.a.into(),
+impl From<Color> for wgpu::Color {
+    fn from(value: Color) -> Self {
+        Self {
+            r: value.r.into(),
+            g: value.g.into(),
+            b: value.b.into(),
+            a: value.a.into(),
         }
     }
 }
 
-impl Into<glyphon::Color> for Color {
-    fn into(self) -> glyphon::Color {
-        let color = self.as_rgba_slice_u8();
-        glyphon::Color::rgba(color[0], color[1], color[2], color[3])
+impl From<Color> for glyphon::Color {
+    fn from(value: Color) -> Self {
+        let color = value.as_rgba_slice_u8();
+        Self::rgba(color[0], color[1], color[2], color[3])
     }
 }
 
-impl Into<Color> for glyphon::Color {
-    fn into(self) -> Color {
-        Color::new(
-            self.r() as f32 / 255.0,
-            self.g() as f32 / 255.0,
-            self.b() as f32 / 255.0,
-            self.a() as f32 / 255.0,
+impl From<glyphon::Color> for Color {
+    fn from(value: glyphon::Color) -> Self {
+        Self::new(
+            value.r() as f32 / 255.0,
+            value.g() as f32 / 255.0,
+            value.b() as f32 / 255.0,
+            value.a() as f32 / 255.0,
         )
     }
 }
@@ -111,7 +112,7 @@ impl Sub for Color {
             g: self.g - rhs.g,
             b: self.b - rhs.b,
             a: self.a - rhs.a,
-        }        
+        }
     }
 }
 
@@ -124,7 +125,7 @@ impl Mul<f32> for Color {
             g: self.g * rhs,
             b: self.b * rhs,
             a: self.a * rhs,
-        }        
+        }
     }
 }
 
@@ -137,6 +138,6 @@ impl Div<f32> for Color {
             g: self.g / rhs,
             b: self.b / rhs,
             a: self.a / rhs,
-        }        
+        }
     }
 }

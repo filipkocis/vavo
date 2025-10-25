@@ -19,7 +19,7 @@
 //! ## Spatial Audio
 //!
 //! - To play a sound spatially, add a [`SpatialEmitter`] component to an entity. You must have a
-//! [`SpatialListener`] in the scene. The listener is usually on the camera.
+//!   [`SpatialListener`] in the scene. The listener is usually on the camera.
 //! ```ignore
 //! let mut listener = SpatialListener::default(); // initializes in an update system
 //! // ... add the listener to the camera entity
@@ -32,8 +32,8 @@
 //! ## Audio Tracks
 //!
 //! - To create a new audio track, use the [`AudioManager`]. It's a wrapper around kira's
-//! [manager](kira::AudioManager). These tracks are useful for organizing audio playback, they also
-//! support tweening and other effects which are applied to the whole track.
+//!   [manager](kira::AudioManager). These tracks are useful for organizing audio playback, they also
+//!   support tweening and other effects which are applied to the whole track.
 //! ```ignore
 //! let mut manager = ctx.resources.get_mut::<AudioManager>().unwrap();
 //! let track = manager.add_sub_track(TrackBuilder::new()).unwrap();

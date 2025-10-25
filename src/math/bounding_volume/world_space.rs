@@ -3,7 +3,7 @@ use vavo_macros::{Component, Reflect};
 
 use super::{LocalBoundingVolume, Sphere, AABB, OBB};
 
-#[derive(Reflect, Component, Clone, Debug)]
+#[derive(Default, Reflect, Component, Clone, Debug)]
 /// A bounding volume that represents a world space bounding volume. Changes when the object's
 /// [`GlobalTransform`](crate::math::GlobalTransform) changes, it is dependent on the
 /// [`LocalBoundingVolume`](super::LocalBoundingVolume).
@@ -11,13 +11,14 @@ pub enum WorldBoundingVolume {
     Sphere(Sphere),
     AABB(AABB),
     OBB(OBB),
+    #[default]
     None,
 }
 
 impl WorldBoundingVolume {
     /// Creates a new bounding volume of type None
     pub fn new() -> Self {
-        Self::None
+        Self::default()
     }
 
     pub fn new_sphere(center: Vec3, radius: f32) -> Self {

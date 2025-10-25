@@ -9,6 +9,17 @@ pub struct NodeData {
     pub depth_target: Option<DepthTargetData>,
 }
 
+impl Default for NodeData {
+    fn default() -> Self {
+        Self {
+            needs_regen: true,
+            pipeline: None,
+            color_target: None,
+            depth_target: None,
+        }
+    }
+}
+
 pub enum ColorTargetData {
     Texture(Texture),
     RAE(RenderAssetEntry<Texture>),
@@ -21,12 +32,7 @@ pub enum DepthTargetData {
 
 impl NodeData {
     pub fn new() -> Self {
-        Self {
-            needs_regen: true,
-            pipeline: None,
-            color_target: None,
-            depth_target: None,
-        }
+        Self::default()
     }
 
     pub fn generate_pipeline(&mut self, ctx: &mut SystemsContext, pipeline_builder: &PipelineBuilder) {

@@ -7,6 +7,7 @@ use std::{
 };
 
 /// Manager for events. Created events are stored in a staging area until the end of the frame.
+#[derive(Debug, Default)]
 pub struct Events {
     /// Current frame events
     storage: HashMap<TypeId, Vec<Box<dyn Any>>>,
@@ -16,10 +17,7 @@ pub struct Events {
 
 impl Events {
     pub fn new() -> Self {
-        Self {
-            storage: HashMap::new(),
-            staging: HashMap::new(),
-        }
+        Self::default()
     }
 
     /// Apply staged events to be used in the next frame
@@ -27,20 +25,20 @@ impl Events {
         self.storage.clear();
 
         for (type_id, events_staging) in self.staging.drain() {
-            let events = self.storage.entry(type_id).or_insert(Vec::new());
+            let events = self.storage.entry(type_id).or_default();
             events.extend(events_staging);
         }
     }
 
     pub(super) fn write<T: 'static>(&mut self, resource: T) {
-        let events_t = self.staging.entry(TypeId::of::<T>()).or_insert(Vec::new());
+        let events_t = self.staging.entry(TypeId::of::<T>()).or_default();
         events_t.push(Box::new(resource));
     }
 
     /// Write event T directly to the storage bypassing the staging area
     #[inline]
     pub(super) fn write_immediately<T: 'static>(&mut self, resource: T) {
-        let events_t = self.storage.entry(TypeId::of::<T>()).or_insert(Vec::new());
+        let events_t = self.storage.entry(TypeId::of::<T>()).or_default();
         events_t.push(Box::new(resource));
     }
 

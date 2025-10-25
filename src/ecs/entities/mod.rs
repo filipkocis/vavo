@@ -11,7 +11,7 @@ use std::{any::TypeId, collections::HashMap, hash::Hash, mem::ManuallyDrop};
 use crate::ecs::entities::archetype::TickFilterIndices;
 use crate::ecs::entities::{archetype::TypedComponentData, tracking::EntityTracking};
 use crate::macros::{Component, Reflect};
-use crate::query::{filter::Filters, QueryComponentType};
+use crate::query::{QueryComponentType, filter::Filters};
 
 use archetype::{Archetype, ArchetypeId};
 use relation::{Children, Parent};
@@ -502,15 +502,17 @@ impl Entities {
     /// Breaks the relation link between parent and child.
     /// Remove child from parent's Children component, and remove Parent component from child.
     pub(crate) fn remove_child(&mut self, parent_id: EntityId, child_id: EntityId) {
-        if let Some(children) = self.get_component_mut::<Children>(parent_id) {
-            if children.ids.contains(&child_id) {
-                children.remove(child_id);
-                let children_len = children.ids.len();
-                self.remove_component(child_id, TypeId::of::<Parent>());
+        let Some(children) = self.get_component_mut::<Children>(parent_id) else {
+            return;
+        };
 
-                if children_len == 0 {
-                    self.remove_component(parent_id, TypeId::of::<Children>());
-                }
+        if children.ids.contains(&child_id) {
+            children.remove(child_id);
+            let children_len = children.ids.len();
+            self.remove_component(child_id, TypeId::of::<Parent>());
+
+            if children_len == 0 {
+                self.remove_component(parent_id, TypeId::of::<Children>());
             }
         }
     }
