@@ -60,7 +60,7 @@ impl RenderGraph {
     }
 
     /// Populates the `before` dependencies with the respective `after` dependencies from nodes
-    pub(crate) fn normalize_dependencies(&mut self) -> HashMap<String, Vec<String>> {
+    pub(crate) fn normalize_dependencies(&self) -> HashMap<String, Vec<String>> {
         let mut nodes = self
             .nodes
             .iter()

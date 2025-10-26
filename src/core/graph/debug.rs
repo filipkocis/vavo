@@ -1,8 +1,8 @@
 use crate::{
-    app::Plugin,
-    prelude::Time,
-    query::Query,
-    system::{SystemStage, SystemsContext},
+    app::{App, Plugin},
+    core::graph::RenderGraph,
+    prelude::{Res, Time},
+    system::SystemStage,
 };
 
 /// QOL plugin to print the render graph topology
@@ -11,10 +11,11 @@ pub struct DebugRenderGraphPlugin;
 impl Plugin for DebugRenderGraphPlugin {
     fn build(&self, app: &mut crate::prelude::App) {
         app.register_system(
-            |ctx: &mut SystemsContext, _: Query<()>| {
-                let time = ctx.resources.get::<Time>();
+            |time: Res<Time>, app: &mut App| {
                 if time.tick() == 1 {
-                    print_render_graph_topology(ctx);
+                    // Safe because we don't mutate the graph
+                    let graph = unsafe { app.render_graph() };
+                    print_render_graph_topology(graph);
                 }
             },
             SystemStage::Render,
@@ -22,10 +23,8 @@ impl Plugin for DebugRenderGraphPlugin {
     }
 }
 
-pub fn print_render_graph_topology(ctx: &mut SystemsContext) {
+pub fn print_render_graph_topology(graph: &RenderGraph) {
     println!("Render Graph Topology:");
-
-    let graph = unsafe { &mut *ctx.graph };
     println!("Graph Nodes: {}", graph.nodes.len());
 
     println!("\nUnsorted Graph Nodes:");

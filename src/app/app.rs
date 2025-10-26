@@ -167,6 +167,14 @@ impl App {
         }
 
         ctx.commands.apply(&mut self.world);
+
+    /// Get a mutable reference to the render graph
+    ///
+    /// # Safety
+    /// The render graph should only be accessed from startup systems to edit nodes in the grpah.
+    #[inline]
+    pub unsafe fn render_graph(&mut self) -> &mut RenderGraph {
+        &mut self.render_graph
     }
 
     fn execute_render_graph(&mut self, renderer: Renderer, queue: &mut CommandQueue) {
