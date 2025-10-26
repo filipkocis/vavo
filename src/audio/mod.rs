@@ -40,20 +40,19 @@
 //! let audio_track = AudioTrack::<YourTrackMarkerType>::new(track);
 //! ```
 
-
-mod manager;
-mod track;
 mod commands;
+mod manager;
 mod sound;
-mod update;
 mod spatial;
+mod track;
+mod update;
 
 pub mod prelude {
     pub use super::AudioSource;
-    pub use super::track::{AudioTrack, MainTrack};    
-    pub use super::commands::{Easing, TweenCommand, PlayCommand};
+    pub use super::commands::{Easing, PlayCommand, TweenCommand};
     pub use super::sound::PlaybackState;
-    pub use super::spatial::{SpatialListener, SpatialEmitter};
+    pub use super::spatial::{SpatialEmitter, SpatialListener};
+    pub use super::track::{AudioTrack, MainTrack};
 }
 
 use std::{fmt::Debug, path::Path};
@@ -62,9 +61,12 @@ use crate::{assets::LoadableAsset, prelude::*};
 
 // TODO: refactor audio once Added<C> and Removed<C> filters are implemented
 
-use update::{cleanup_audio_tracks, update_audio_tracks, update_spatial_audio_tracks, update_spatial_listeners};
 use kira::{sound::static_sound::StaticSoundData, track::TrackBuilder};
 use manager::{AudioManager, AudioManagerSettings};
+use update::{
+    cleanup_audio_tracks, update_audio_tracks, update_spatial_audio_tracks,
+    update_spatial_listeners,
+};
 
 /// Source for an audio file, to play it use [`AudioTrack::play`]
 ///
@@ -92,19 +94,14 @@ impl Plugin for AudioPlugin {
         let settings = AudioManagerSettings::default();
         let mut audio_manager = AudioManager::new(settings).expect("Failed to create AudioManager");
 
-        let sub_track = audio_manager.add_sub_track(TrackBuilder::new()).expect("Failed to create main sub track");
+        let sub_track = audio_manager
+            .add_sub_track(TrackBuilder::new())
+            .expect("Failed to create main sub track");
         let main_track = AudioTrack::<MainTrack>::new(sub_track);
 
-        app
-            .set_resource(audio_manager)
+        app.set_resource(audio_manager)
             .set_resource(main_track)
             .init_resource::<Assets<AudioSource>>()
-
-            // .add_system(update_spatial_listeners)
-            // .add_system(update_audio_tracks)
-            // .add_system(update_spatial_audio_tracks)
-            // .add_system(cleanup_audio_tracks);
-
             // TODO: it has to be in Last stage since thats when GlobalTransform gets updated, once
             // Changed<C> works with a frame delay, it can be moved to the update stage. For now
             // there is no other way of change detection
@@ -120,6 +117,6 @@ impl LoadableAsset for AudioSource {
         match StaticSoundData::from_file(path.as_ref()) {
             Ok(sound_data) => AudioSource::new(sound_data),
             Err(err) => panic!("Failed to load sound from '{:?}': {}", path, err),
-        }   
+        }
     }
 }
