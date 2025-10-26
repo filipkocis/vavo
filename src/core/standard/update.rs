@@ -4,21 +4,28 @@ use crate::{prelude::*, render_assets::*};
 
 /// Internal system that updates active camera buffers with changed projection and transform.
 pub fn update_camera_buffers(
-    ctx: &mut SystemsContext, 
-    mut query: Query< 
-        (EntityId, &Camera, &Projection, &GlobalTransform), 
-        (With<Camera3D>, Or<(Changed<Projection>, Changed<GlobalTransform>)>)
-    >
+    ctx: &mut SystemsContext,
+    mut query: Query<
+        (EntityId, &Camera, &Projection, &GlobalTransform),
+        (
+            With<Camera3D>,
+            Or<(Changed<Projection>, Changed<GlobalTransform>)>,
+        ),
+    >,
 ) {
     let mut buffers = ctx.resources.get_mut::<RenderAssets<Buffer>>();
-    let resize_event = ctx.event_reader.read::<WindowEvent>()
-        .into_iter().filter_map(|e| {
+    let resize_event = ctx
+        .event_reader
+        .read::<WindowEvent>()
+        .into_iter()
+        .filter_map(|e| {
             if let WindowEvent::Resized(size) = e {
                 Some(*size)
             } else {
                 None
             }
-        }).next_back();
+        })
+        .next_back();
 
     if let Some(size) = resize_event {
         let mut proj_query = query.cast::<&mut Projection, With<Camera>>();
@@ -29,15 +36,18 @@ pub fn update_camera_buffers(
 
     for (id, camera, projection, global_transform) in query.iter_mut() {
         if !camera.active {
-            continue
+            continue;
         }
 
         let camera_buffer = buffers.get_by_entity(id, camera, ctx);
         let camera_buffer_data = Camera::get_buffer_data(projection, global_transform);
 
-        let camera_buffer = camera_buffer.uniform.as_ref().expect("Camera buffer should be an uniform buffer");
+        let camera_buffer = camera_buffer
+            .uniform
+            .as_ref()
+            .expect("Camera buffer should be an uniform buffer");
         let data = bytemuck::cast_slice(&camera_buffer_data);
-        
+
         ctx.renderer.queue().write_buffer(camera_buffer, 0, data);
     }
 }
@@ -45,19 +55,25 @@ pub fn update_camera_buffers(
 /// Internal system that updates global transforms of entities with changed local transforms.
 pub fn update_global_transforms(_: &mut SystemsContext, mut q: Query<()>) {
     // update root entities
-    let mut query = q.cast::<(&mut GlobalTransform, &Transform), (Changed<Transform>, Without<Parent>)>();
+    let mut query =
+        q.cast::<(&mut GlobalTransform, &Transform), (Changed<Transform>, Without<Parent>)>();
     for (global, local) in query.iter_mut() {
         global.update(local);
     }
 
     // recursively update children of updated entities
-    let mut query = q.cast::<(EntityId, &mut GlobalTransform), (With<Children>, Changed<Transform>)>();
+    let mut query =
+        q.cast::<(EntityId, &mut GlobalTransform), (With<Children>, Changed<Transform>)>();
     for (id, global) in query.iter_mut() {
         update_children(id, global, q.cast());
     }
 }
 
-fn update_children(parent_id: EntityId, parent_global: &GlobalTransform, mut parent_query: Query<&Children>) {
+fn update_children(
+    parent_id: EntityId,
+    parent_global: &GlobalTransform,
+    mut parent_query: Query<&Children>,
+) {
     // get children of parent
     let children = match parent_query.get(parent_id) {
         Some(children) => children,
@@ -73,6 +89,6 @@ fn update_children(parent_id: EntityId, parent_global: &GlobalTransform, mut par
 
             // recursively update children of child
             update_children(*child, global, child_query.cast());
-        } 
+        }
     }
 }
