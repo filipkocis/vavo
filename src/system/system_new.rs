@@ -1,5 +1,6 @@
 use crate::{
-    prelude::{Component, Mut, Ref, Res, ResMut, Resource, Tick, World},
+    event::event_handler::EventWriter,
+    prelude::{Component, EntityId, Mut, Ref, Res, ResMut, Resource, Tick, World},
     query::{Query, RunQuery, filter::QueryFilter},
     system::Commands,
 };
@@ -215,76 +216,147 @@ pub trait IntoParamInfo {
 /// Any type that can be used as a system parameter (including tuples of parameters).
 /// Implemented for types which can be extracted from the world during system execution.
 pub trait SystemParam: IntoParamInfo {
+    /// The state stored between system runs.
+    type State: Send + Sync + 'static;
     /// Extract the parameter from the world.
-    fn extract(world: &mut World) -> Self;
+    fn extract(world: &mut World, state: &mut Self::State) -> Self;
+
+    /// Initialize the parameter state.
+    fn init_state() -> Self::State;
+    /// Initialize the parameter state with access to the world.
+    #[inline]
+    fn init_state_world(_world: &mut World) -> Self::State {
+        Self::init_state()
+    }
 }
 
 impl SystemParam for &mut World {
+    type State = ();
     #[inline]
-    fn extract(world: &mut World) -> Self {
+    fn extract(world: &mut World, _state: &mut Self::State) -> Self {
         unsafe { &mut *(world as *mut _) }
     }
+    #[inline]
+    fn init_state() -> Self::State {}
 }
 impl IntoParamInfo for &mut World {
     fn params_info() -> Vec<ParamInfo> {
-        let is_mutable = true;
-        let type_info = TypeInfo::new(type_name::<World>(), TypeId::of::<World>());
-        vec![ParamInfo::new(is_mutable, type_info)]
+        param_info::<World>(true)
     }
 }
 
 impl SystemParam for Commands<'_, '_> {
+    type State = ();
     #[inline]
-    fn extract(world: &mut World) -> Self {
+    fn extract(world: &mut World, _state: &mut Self::State) -> Self {
         // Reborrow world to satisfy lifetime requirements
         let reborrowed = unsafe { &mut *(world as *mut World) };
         reborrowed.commands()
     }
+    #[inline]
+    fn init_state() -> Self::State {}
 }
 impl IntoParamInfo for Commands<'_, '_> {
     fn params_info() -> Vec<ParamInfo> {
-        let is_mutable = true;
-        let type_info = TypeInfo::new(type_name::<Commands>(), TypeId::of::<Commands>());
-        vec![ParamInfo::new(is_mutable, type_info)]
+        param_info::<Commands>(true)
+    }
+}
+impl SystemParam for EventWriter<'_> {
+    type State = ();
+    #[inline]
+    fn extract(_world: &mut World, _state: &mut Self::State) -> Self {
+        todo!("world event writer extraction")
+        // world.events().writer()
+    }
+    #[inline]
+    fn init_state() -> Self::State {}
+}
+impl IntoParamInfo for EventWriter<'_> {
+    fn params_info() -> Vec<ParamInfo> {
+        param_info::<EventWriter>(true)
     }
 }
 
 impl<R: Resource> SystemParam for Res<R> {
+    type State = ();
     #[inline]
-    fn extract(world: &mut World) -> Self {
+    fn extract(world: &mut World, _state: &mut Self::State) -> Self {
         world.resources.get()
     }
+    #[inline]
+    fn init_state() -> Self::State {}
 }
 impl<R: Resource> IntoParamInfo for Res<R> {
     fn params_info() -> Vec<ParamInfo> {
-        let is_mutable = false;
-        let type_info = TypeInfo::new(type_name::<R>(), TypeId::of::<R>());
-        vec![ParamInfo::new(is_mutable, type_info)]
+        param_info::<R>(false)
     }
 }
 
 impl<R: Resource> SystemParam for ResMut<R> {
+    type State = ();
     #[inline]
-    fn extract(world: &mut World) -> Self {
+    fn extract(world: &mut World, _state: &mut Self::State) -> Self {
         world.resources.get_mut()
     }
+    #[inline]
+    fn init_state() -> Self::State {}
 }
 impl<R: Resource> IntoParamInfo for ResMut<R> {
     fn params_info() -> Vec<ParamInfo> {
-        let is_mutable = true;
-        let type_info = TypeInfo::new(type_name::<R>(), TypeId::of::<R>());
-        vec![ParamInfo::new(is_mutable, type_info)]
+        param_info::<R>(true)
+    }
+}
+impl<R: Resource> SystemParam for Option<Res<R>> {
+    type State = ();
+    #[inline]
+    fn extract(world: &mut World, _state: &mut Self::State) -> Self {
+        world.resources.try_get()
+    }
+    #[inline]
+    fn init_state() -> Self::State {}
+}
+impl<R: Resource> IntoParamInfo for Option<Res<R>> {
+    fn params_info() -> Vec<ParamInfo> {
+        param_info::<R>(false)
     }
 }
 
+impl<R: Resource> SystemParam for Option<ResMut<R>> {
+    type State = ();
+    #[inline]
+    fn extract(world: &mut World, _state: &mut Self::State) -> Self {
+        world.resources.try_get_mut()
+    }
+    #[inline]
+    fn init_state() -> Self::State {}
+}
+impl<R: Resource> IntoParamInfo for Option<ResMut<R>> {
+    fn params_info() -> Vec<ParamInfo> {
+        param_info::<R>(true)
+    }
+}
+
+struct QueryCache; // Placeholder for query state
 impl<T, F> SystemParam for Query<T, F>
 where
     F: QueryFilter,
     Query<T, F>: IntoParamInfo,
 {
+    type State = QueryCache; // Placeholder for query state
+
     #[inline]
-    fn extract(world: &mut World) -> Self {
+    fn extract(world: &mut World, _state: &mut Self::State) -> Self {
         world.query_filtered::<T, F>()
+    }
+
+    #[inline]
+    fn init_state() -> Self::State {
+        QueryCache
+    }
+
+    #[inline]
+    fn init_state_world(_world: &mut World) -> Self::State {
+        QueryCache
     }
 }
 impl<T, F> IntoParamInfo for Query<T, F>
@@ -298,52 +370,46 @@ where
 }
 impl IntoParamInfo for EntityId {
     fn params_info() -> Vec<ParamInfo> {
-        let is_mutable = false;
-        let type_info = TypeInfo::new(type_name::<EntityId>(), TypeId::of::<EntityId>());
-        vec![ParamInfo::new(is_mutable, type_info)]
+        param_info::<EntityId>(false)
     }
 }
 impl<C: Component> IntoParamInfo for &mut C {
     fn params_info() -> Vec<ParamInfo> {
-        let is_mutable = true;
-        let type_info = TypeInfo::new(type_name::<C>(), TypeId::of::<C>());
-        vec![ParamInfo::new(is_mutable, type_info)]
+        param_info::<C>(true)
     }
 }
 impl<C: Component> IntoParamInfo for &C {
     fn params_info() -> Vec<ParamInfo> {
-        let is_mutable = false;
-        let type_info = TypeInfo::new(type_name::<C>(), TypeId::of::<C>());
-        vec![ParamInfo::new(is_mutable, type_info)]
+        param_info::<C>(false)
     }
 }
 impl<C: Component> IntoParamInfo for Mut<'_, C> {
     fn params_info() -> Vec<ParamInfo> {
-        let is_mutable = true;
-        let type_info = TypeInfo::new(type_name::<C>(), TypeId::of::<C>());
-        vec![ParamInfo::new(is_mutable, type_info)]
+        param_info::<C>(true)
     }
 }
 impl<C: Component> IntoParamInfo for Ref<'_, C> {
     fn params_info() -> Vec<ParamInfo> {
-        let is_mutable = false;
-        let type_info = TypeInfo::new(type_name::<C>(), TypeId::of::<C>());
-        vec![ParamInfo::new(is_mutable, type_info)]
+        param_info::<C>(false)
     }
 }
 impl<C: Component> IntoParamInfo for Option<&mut C> {
     fn params_info() -> Vec<ParamInfo> {
-        let is_mutable = true;
-        let type_info = TypeInfo::new(type_name::<C>(), TypeId::of::<C>());
-        vec![ParamInfo::new(is_mutable, type_info)]
+        param_info::<C>(true)
     }
 }
 impl<C: Component> IntoParamInfo for Option<&C> {
     fn params_info() -> Vec<ParamInfo> {
-        let is_mutable = false;
-        let type_info = TypeInfo::new(type_name::<C>(), TypeId::of::<C>());
-        vec![ParamInfo::new(is_mutable, type_info)]
+        param_info::<C>(false)
     }
+}
+/// Helper function to create ParamInfo for a single type T
+#[inline]
+fn param_info<T: 'static>(is_mutable: bool) -> Vec<ParamInfo> {
+    vec![ParamInfo::new(
+        is_mutable,
+        TypeInfo::new(type_name::<T>(), TypeId::of::<T>()),
+    )]
 }
 
 macro_rules! impl_system_param_tuple {
@@ -353,15 +419,33 @@ macro_rules! impl_system_param_tuple {
             where
                 $($param: SystemParam,)*
             {
+                type State = ($($param::State,)*);
+
                 #[allow(unused_variables)]
                 #[inline]
-                fn extract(world: &mut World) -> Self {
+                fn extract(world: &mut World, state: &mut Self::State) -> Self {
+                    #[allow(non_snake_case)]
+                    let ($($param,)*) = state;
+
                     #[allow(clippy::unused_unit)]
                     (
                         $(
-                            $param::extract(unsafe { &mut *(world as *mut _) }),
+                            $param::extract(unsafe { &mut *(world as *mut _) }, $param ),
                         )*
                     )
+                }
+
+                #[inline]
+                fn init_state() -> Self::State {
+                    #[allow(clippy::unused_unit)]
+                    ($($param::init_state(),)*)
+                }
+
+                #[allow(unused_variables)]
+                #[inline]
+                fn init_state_world(world: &mut World) -> Self::State {
+                    #[allow(clippy::unused_unit)]
+                    ($($param::init_state_world(unsafe { &mut *(world as *mut _) }),)*)
                 }
             }
 
@@ -464,11 +548,16 @@ macro_rules! impl_into_system {
                         );
                     }
 
+                    $(
+                        #[allow(non_snake_case)]
+                        let mut $param = $param::init_state();
+                    )*
+
                     #[allow(unused_variables)]
                     let exec_fn = Box::new(move |world: &mut World| {
                         $(
                             #[allow(non_snake_case)]
-                            let $param = $param::extract(unsafe { &mut *(world as *mut _) });
+                            let $param = $param::extract(unsafe { &mut *(world as *mut _) }, &mut $param);
                         )*
                         self($($param),*);
                     });
