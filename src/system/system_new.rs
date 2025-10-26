@@ -2,7 +2,7 @@ use crate::{
     event::event_handler::EventWriter,
     prelude::{Component, EntityId, Mut, Ref, Res, ResMut, Resource, Tick, World},
     query::{Query, RunQuery, filter::QueryFilter},
-    system::Commands,
+    system::{Commands, commands::CommandQueue},
 };
 use std::{
     any::{TypeId, type_name},
@@ -245,16 +245,26 @@ impl IntoParamInfo for &mut World {
     }
 }
 
+/// State for Commands system parameter, implemented as a wrapper with Send + Sync
+#[derive(Default)]
+struct CommandsState(CommandQueue);
+unsafe impl Send for CommandsState {}
+unsafe impl Sync for CommandsState {}
+
 impl SystemParam for Commands<'_, '_> {
-    type State = ();
+    type State = CommandsState;
     #[inline]
-    fn extract(world: &mut World, _state: &mut Self::State) -> Self {
-        // Reborrow world to satisfy lifetime requirements
-        let reborrowed = unsafe { &mut *(world as *mut World) };
-        reborrowed.commands()
+    fn extract(world: &mut World, state: &mut Self::State) -> Self {
+        // // Reborrow world to satisfy lifetime requirements
+        let world = unsafe { &mut *(world as *mut World) };
+        let state = unsafe { &mut *(state as *mut Self::State) };
+
+        Commands::new(&mut world.entities.tracking, &mut state.0)
     }
     #[inline]
-    fn init_state() -> Self::State {}
+    fn init_state() -> Self::State {
+        CommandsState::default()
+    }
 }
 impl IntoParamInfo for Commands<'_, '_> {
     fn params_info() -> Vec<ParamInfo> {
