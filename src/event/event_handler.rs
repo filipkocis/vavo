@@ -17,7 +17,7 @@ pub struct EventReader<'a> {
 impl<'a> EventWriter<'a> {
     /// Send a new event
     #[inline]
-    pub fn send<T: 'static>(&self, event: T) {
+    pub fn send<T: 'static>(&mut self, event: T) {
         unsafe {
             (*self.events).write(event);
         }

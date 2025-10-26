@@ -333,6 +333,21 @@ impl IntoParamInfo for EventWriter<'_> {
         param_info::<EventWriter>(true)
     }
 }
+impl SystemParam for EventReader<'_> {
+    type State = ();
+    #[inline]
+    fn extract(_world: &mut World, _state: &mut Self::State) -> Self {
+        todo!("world event reader extraction")
+        // world.events().reader()
+    }
+    #[inline]
+    fn init_state() -> Self::State {}
+}
+impl IntoParamInfo for EventReader<'_> {
+    fn params_info() -> Vec<ParamInfo> {
+        param_info::<EventReader>(true)
+    }
+}
 
 impl<R: Resource> SystemParam for Res<R> {
     type State = ();
