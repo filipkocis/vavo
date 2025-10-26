@@ -76,15 +76,23 @@ pub struct SystemExec {
     pub exec_info: TypeInfo,
     /// System execution function
     exec: Box<SystemExecFn>,
+    /// System apply function
+    apply: Box<SystemExecFn>,
 }
 
 impl SystemExec {
     /// Create a new system execution from function `exec` and its type information
-    pub fn new(params_info: Vec<ParamInfo>, exec_info: TypeInfo, exec: Box<SystemExecFn>) -> Self {
+    pub fn new(
+        params_info: Vec<ParamInfo>,
+        exec_info: TypeInfo,
+        exec: Box<SystemExecFn>,
+        apply: Box<SystemExecFn>,
+    ) -> Self {
         Self {
             params_info,
             exec_info,
             exec,
+            apply,
         }
     }
 
@@ -92,6 +100,12 @@ impl SystemExec {
     #[inline]
     pub fn run(&mut self, world: &mut World) {
         (self.exec)(world);
+    }
+
+    /// Execute the system's apply function
+    #[inline]
+    pub fn apply(&mut self, world: &mut World) {
+        (self.apply)(world);
     }
 }
 
@@ -127,6 +141,12 @@ impl System {
             self.exec.run(world);
             self.last_run = *world.tick;
         }
+    }
+
+    /// Applies any changes to the world needed after system execution by system parameters.
+    /// This is run on the main thread after all parallel systems have finished executing.
+    pub fn apply(&mut self, world: &mut World) {
+        self.exec.apply(world);
     }
 
     /// Check if all run conditions are satisfied
@@ -218,11 +238,17 @@ pub trait IntoParamInfo {
 pub trait SystemParam: IntoParamInfo {
     /// The state stored between system runs.
     type State: Send + Sync + 'static;
+
     /// Extract the parameter from the world.
     fn extract(world: &mut World, state: &mut Self::State) -> Self;
 
+    /// Apply any changes to the world after system execution on the main thread.
+    #[inline]
+    fn apply(_world: &mut World, _state: &mut Self::State) {}
+
     /// Initialize the parameter state.
     fn init_state() -> Self::State;
+
     /// Initialize the parameter state with access to the world.
     #[inline]
     fn init_state_world(_world: &mut World) -> Self::State {
@@ -261,6 +287,12 @@ impl SystemParam for Commands<'_, '_> {
 
         Commands::new(&mut world.entities.tracking, &mut state.0)
     }
+
+    #[inline]
+    fn apply(world: &mut World, state: &mut Self::State) {
+        world.command_queue.extend(&mut state.0);
+    }
+
     #[inline]
     fn init_state() -> Self::State {
         CommandsState::default()
@@ -496,47 +528,6 @@ fn check_borrow_conflicts(params_info: &[ParamInfo]) -> Option<TypeInfo> {
     None
 }
 
-// impl<P1, P2, P3, F> IntoSystem<(P1, P2, P3)> for F
-// where
-//     P1: SystemParam,
-//     P2: SystemParam,
-//     P3: SystemParam,
-//     F: FnMut(P1, P2, P3) + Send + Sync + 'static,
-// {
-//     fn build(mut self) -> System {
-//         let params_info = <(P1, P2, P3)>::params_info();
-//         let exec_info = TypeInfo::new(type_name::<F>(), TypeId::of::<F>());
-//
-//         if let Some(conflict) = check_borrow_conflicts(&params_info) {
-//             panic!(
-//                 "System function '{}' has conflicting parameter accesses: {:?}",
-//                 exec_info.type_name(),
-//                 conflict.type_name(),
-//             );
-//         }
-//
-//         let exec_fn = Box::new(move |world: &mut World| {
-//             let p1 = P1::extract(unsafe { &mut *(world as *mut _) });
-//             let p2 = P2::extract(unsafe { &mut *(world as *mut _) });
-//             let p3 = P3::extract(unsafe { &mut *(world as *mut _) });
-//             self(p1, p2, p3);
-//         });
-//
-//         let exec = SystemExec::new(params_info, exec_info, exec_fn);
-//
-//         System {
-//             last_run: Tick::default(),
-//             exec,
-//             conditions: Vec::new(),
-//         }
-//     }
-//
-//     #[inline]
-//     fn run_if(self, condition: impl IntoSystemCondition) -> System {
-//         self.build().internal_run_if(condition.build())
-//     }
-// }
-
 macro_rules! impl_into_system {
     ($(($($param:ident),*)),*) => {
         $(
@@ -547,6 +538,8 @@ macro_rules! impl_into_system {
             {
                 #[inline]
                 fn build(mut self) -> System {
+                    #![allow(non_snake_case)]
+
                     let params_info = <( $($param,)* )>::params_info();
                     let exec_info = TypeInfo::new(type_name::<F>(), TypeId::of::<F>());
 
@@ -558,21 +551,32 @@ macro_rules! impl_into_system {
                         );
                     }
 
-                    $(
-                        #[allow(non_snake_case)]
-                        let mut $param = $param::init_state();
-                    )*
+                    // Initialize parameter states into a tuple
+                    $( let mut $param = $param::init_state(); )*
+
+                    // Safety: These are used within the 'apply' closure, which is on the main
+                    // thread after all systems have finished, so 'exec' will not be running
+                    #[allow(clippy::unused_unit, unused_mut, unused_unsafe)]
+                    let mut unsafe_states_copy = unsafe { ( $(&mut *(&mut $param as *mut _),)* ) };
 
                     #[allow(unused_variables)]
                     let exec_fn = Box::new(move |world: &mut World| {
                         $(
-                            #[allow(non_snake_case)]
                             let $param = $param::extract(unsafe { &mut *(world as *mut _) }, &mut $param);
                         )*
                         self($($param),*);
                     });
 
-                    let exec = SystemExec::new(params_info, exec_info, exec_fn);
+                    #[allow(unused_variables)]
+                    let apply_fn = Box::new(move |world: &mut World| {
+                        let ( $(ref mut $param,)* ) = unsafe_states_copy;
+
+                        $(
+                            $param::apply(unsafe { &mut *(world as *mut _) }, $param);
+                        )*
+                    });
+
+                    let exec = SystemExec::new(params_info, exec_info, exec_fn, apply_fn);
 
                     System {
                         last_run: Tick::default(),
