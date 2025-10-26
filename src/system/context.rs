@@ -3,8 +3,8 @@ use crate::{
     core::graph::RenderGraph,
     ecs::resources::Resources,
     event::{
-        event_handler::{EventReader, EventWriter},
         Events,
+        event_handler::{EventReader, EventWriter},
     },
     prelude::Tick,
     window::Renderer,

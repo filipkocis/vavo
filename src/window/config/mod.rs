@@ -5,7 +5,10 @@ pub use cursor::*;
 pub use icon::*;
 
 use glam::IVec2;
-use winit::{dpi::{LogicalSize, Size}, window::{Fullscreen, WindowAttributes, WindowButtons}};
+use winit::{
+    dpi::{LogicalSize, Size},
+    window::{Fullscreen, WindowAttributes, WindowButtons},
+};
 
 /// Configuration used when creating a window.
 #[derive(crate::macros::Resource, Debug, Clone)]
@@ -15,7 +18,7 @@ pub struct WindowConfig {
     ///
     /// # Usage
     /// You can use `(u32, u32).into()` to convert a tuple into [`WindowResolution`].
-    pub resolution: WindowResolution, 
+    pub resolution: WindowResolution,
     pub resize_constraints: WindowResizeConstraints,
     pub mode: WindowMode,
 
@@ -77,7 +80,7 @@ impl From<(u32, u32)> for WindowResolution {
             physical_width: value.0,
             physical_height: value.1,
             scale_factor: 1.0,
-        } 
+        }
     }
 }
 
@@ -106,8 +109,8 @@ impl WindowResizeConstraints {
         }
 
         Some(Size::Logical(LogicalSize::new(
-            self.min_width as f64, 
-            self.min_height as f64
+            self.min_width as f64,
+            self.min_height as f64,
         )))
     }
 
@@ -117,8 +120,8 @@ impl WindowResizeConstraints {
         }
 
         Some(Size::Logical(LogicalSize::new(
-            self.max_width as f64, 
-            self.max_height as f64
+            self.max_width as f64,
+            self.max_height as f64,
         )))
     }
 }
@@ -163,7 +166,8 @@ impl WindowMode {
                     }
                 };
 
-                let Some(video_mode_handle) = monitor.video_modes()
+                let Some(video_mode_handle) = monitor
+                    .video_modes()
                     // TODO: Is this necessary?
                     .max_by_key(|mode| {
                         let w = mode.size().width as u64;
@@ -171,11 +175,12 @@ impl WindowMode {
                         let r = mode.refresh_rate_millihertz() as u64;
 
                         w.saturating_mul(h).saturating_mul(r)
-                    }) else {
-                        eprintln!("No video mode found, falling back to windowed mode");
-                        return None;
-                    };
-                
+                    })
+                else {
+                    eprintln!("No video mode found, falling back to windowed mode");
+                    return None;
+                };
+
                 video_mode_handle
             })),
         }
@@ -230,7 +235,9 @@ impl From<WindowPosition> for Option<winit::dpi::Position> {
         match value {
             WindowPosition::Auto => None,
             WindowPosition::Centered => unimplemented!("WindowPosition::Centered"),
-            WindowPosition::Physical(pos) => Some(winit::dpi::Position::Physical(winit::dpi::PhysicalPosition::new(pos.x, pos.y)))
+            WindowPosition::Physical(pos) => Some(winit::dpi::Position::Physical(
+                winit::dpi::PhysicalPosition::new(pos.x, pos.y),
+            )),
         }
     }
 }
@@ -275,7 +282,7 @@ impl From<EnabledButtons> for WindowButtons {
         buttons.set(WindowButtons::CLOSE, value.close);
         buttons.set(WindowButtons::MINIMIZE, value.minimize);
         buttons.set(WindowButtons::MAXIMIZE, value.maximize);
-        buttons 
+        buttons
     }
 }
 
@@ -294,7 +301,7 @@ impl From<WindowLevel> for winit::window::WindowLevel {
             WindowLevel::AlwaysOnBottom => Self::AlwaysOnBottom,
             WindowLevel::Normal => Self::Normal,
             WindowLevel::AlwaysOnTop => Self::AlwaysOnTop,
-        } 
+        }
     }
 }
 
@@ -313,7 +320,7 @@ impl From<PreferredTheme> for Option<winit::window::Theme> {
             PreferredTheme::None => None,
             PreferredTheme::Light => Some(winit::window::Theme::Light),
             PreferredTheme::Dark => Some(winit::window::Theme::Dark),
-        } 
+        }
     }
 }
 
@@ -374,7 +381,11 @@ impl WindowConfig {
         attrs
     }
 
-    pub fn post_apply(&self, window: &winit::window::Window, event_loop: &winit::event_loop::ActiveEventLoop) {
+    pub fn post_apply(
+        &self,
+        window: &winit::window::Window,
+        event_loop: &winit::event_loop::ActiveEventLoop,
+    ) {
         // fullscreen
         let fullscreen = self.mode.into_winit_fullscreen(window);
         window.set_fullscreen(fullscreen);

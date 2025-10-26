@@ -18,11 +18,7 @@ pub struct CustomIcon {
 
 impl Icon {
     /// Load custom cursor from RGBA data.
-    pub fn from_rgba(
-        rgba: impl Into<Vec<u8>>,
-        width: u32,
-        height: u32,
-    ) -> Self {
+    pub fn from_rgba(rgba: impl Into<Vec<u8>>, width: u32, height: u32) -> Self {
         let custom_icon = CustomIcon {
             rgba: rgba.into(),
             width,
@@ -58,6 +54,6 @@ impl From<Icon> for Option<winit::window::Icon> {
                     }
                 }
             }
-        } 
+        }
     }
 }

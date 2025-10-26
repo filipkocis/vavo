@@ -64,12 +64,15 @@ pub struct CustomCursor {
 
 impl From<CursorIcon> for Cursor {
     fn from(value: CursorIcon) -> Self {
-        Cursor::Icon(value) 
+        Cursor::Icon(value)
     }
 }
 
 impl Cursor {
-    pub fn into_winit_cursor(&self, event_loop: &winit::event_loop::ActiveEventLoop) -> winit::window::Cursor {
+    pub fn into_winit_cursor(
+        &self,
+        event_loop: &winit::event_loop::ActiveEventLoop,
+    ) -> winit::window::Cursor {
         match self.clone() {
             Self::Icon(icon) => winit::window::Cursor::Icon(icon),
             Self::Custom(custom) => {
@@ -78,7 +81,7 @@ impl Cursor {
                     custom.width,
                     custom.height,
                     custom.hotspot_x,
-                    custom.hotspot_y
+                    custom.hotspot_y,
                 ) {
                     Ok(source) => event_loop.create_custom_cursor(source).into(),
                     Err(err) => {
@@ -86,7 +89,6 @@ impl Cursor {
                         winit::window::Cursor::default()
                     }
                 }
-
             }
         }
     }

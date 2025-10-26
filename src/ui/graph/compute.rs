@@ -3,7 +3,7 @@ use glyphon::FontSystem;
 
 use crate::{prelude::*, render_assets::RenderAssets, ui::prelude::*, ui::text::TextBuffer};
 
-use super::build_temp::{nodes_to_temp_graph, TempNode};
+use super::build_temp::{TempNode, nodes_to_temp_graph};
 
 /// Post update system to compute ui nodes and update their transforms
 pub fn compute_nodes_and_transforms(ctx: &mut SystemsContext, mut q: Query<()>) {
@@ -19,13 +19,13 @@ pub fn compute_nodes_and_transforms(ctx: &mut SystemsContext, mut q: Query<()>) 
 
     let screen_width = ctx.renderer.size().width as f32;
     let screen_height = ctx.renderer.size().height as f32;
-    
+
     for node in &mut root_temp_nodes {
         node.measure_intrinsic_size(ctx);
         node.compute_percent_size(screen_width, screen_height);
         node.compute_auto_size();
         node.compute_percent_size(screen_width, screen_height); // recompute after auto size
-        
+
         node.apply_constraints(ctx, None);
         node.compute_gaps(ctx);
         node.resolve_text_wrap(&mut font_system);
@@ -45,17 +45,18 @@ pub fn compute_nodes_and_transforms(ctx: &mut SystemsContext, mut q: Query<()>) 
 /// # Important
 /// When setting z_index on text, it will recreate the text buffer render asset with new metadata.
 fn resolve_z_index(
-    ctx: &mut SystemsContext, 
-    text_buffers: &mut RenderAssets<TextBuffer>, 
-    nodes: &mut Vec<TempNode>, 
-    layer: &mut usize
+    ctx: &mut SystemsContext,
+    text_buffers: &mut RenderAssets<TextBuffer>,
+    nodes: &mut Vec<TempNode>,
+    layer: &mut usize,
 ) {
-    nodes.sort_by(|a, b| a.node.z_index.cmp(&b.node.z_index)); 
+    nodes.sort_by(|a, b| a.node.z_index.cmp(&b.node.z_index));
 
     for node in nodes {
         if let Some(ref mut text) = node.text {
             text.attrs.metadata = *layer + 1; // +1 to fix LessEqual depthmap issues 
             
+
             // simply remove the render asset, to recreate it with the new metadata, since buffer
             // does not have a `set_attrs` method, bufferlines do, but it gets reset
             text_buffers.remove_by_entity(node.id, &**text);
@@ -95,17 +96,17 @@ impl TempNode<'_> {
         }
 
         let (base_width, width) = if self.node.width == Val::Auto {
-            let text_width = self.text_rae.as_ref()
+            let text_width = self
+                .text_rae
+                .as_ref()
                 .map(|rae| rae.width())
                 .unwrap_or_default();
 
-            match (
-                self.node.display,
-                self.node.flex_direction.is_row(),
-            ) {
+            match (self.node.display, self.node.flex_direction.is_row()) {
                 (Display::Flex, true) => (total_base_width, total_width + text_width),
-                (Display::Block, _) |
-                (Display::Flex, false) => (max_base_width, max_width.max(text_width)),
+                (Display::Block, _) | (Display::Flex, false) => {
+                    (max_base_width, max_width.max(text_width))
+                }
                 (Display::None, _) => (0.0, 0.0),
                 (Display::Grid, _) => unimplemented!("Grid auto size"),
             }
@@ -115,17 +116,15 @@ impl TempNode<'_> {
         };
 
         let height = if self.node.height == Val::Auto {
-            let text_height = self.text_rae.as_ref()
+            let text_height = self
+                .text_rae
+                .as_ref()
                 .map(|rae| rae.height())
                 .unwrap_or_default();
 
-            match (
-                self.node.display,
-                self.node.flex_direction.is_row(),
-            ) {
+            match (self.node.display, self.node.flex_direction.is_row()) {
                 (Display::Flex, true) => max_height.max(text_height),
-                (Display::Block, _) |
-                (Display::Flex, false) => total_height + text_height,
+                (Display::Block, _) | (Display::Flex, false) => total_height + text_height,
                 (Display::None, _) => 0.0,
                 (Display::Grid, _) => unimplemented!("Grid auto size"),
             }
@@ -133,7 +132,7 @@ impl TempNode<'_> {
             self.node.height.compute_val(0.0, ctx)
         };
 
-        self.computed.width.set(width); 
+        self.computed.width.set(width);
         self.computed.height.set(height);
         self.computed.base_width = base_width;
     }
@@ -162,26 +161,20 @@ impl TempNode<'_> {
         }
 
         if self.node.width == Val::Auto {
-            match (
-                self.node.display,
-                self.node.flex_direction.is_row(),
-            ) {
+            match (self.node.display, self.node.flex_direction.is_row()) {
                 (Display::Flex, true) => self.computed.width.set(total_width),
-                (Display::Block, _) |
-                (Display::Flex, false) => self.computed.width.set(max_width),
+                (Display::Block, _) | (Display::Flex, false) => self.computed.width.set(max_width),
                 (Display::None, _) => self.computed.width.set(0.0),
                 (Display::Grid, _) => unimplemented!("Grid auto size"),
             }
         }
 
         if self.node.height == Val::Auto {
-            match (
-                self.node.display,
-                self.node.flex_direction.is_row(),
-            ) {
+            match (self.node.display, self.node.flex_direction.is_row()) {
                 (Display::Flex, true) => self.computed.height.set(max_height),
-                (Display::Block, _) |
-                (Display::Flex, false) => self.computed.height.set(total_height),
+                (Display::Block, _) | (Display::Flex, false) => {
+                    self.computed.height.set(total_height)
+                }
                 (Display::None, _) => self.computed.height.set(0.0),
                 (Display::Grid, _) => unimplemented!("Grid auto size"),
             }
@@ -193,7 +186,7 @@ impl TempNode<'_> {
     fn compute_percent_size(&mut self, parent_width: f32, parent_height: f32) {
         if let Val::Percent(val) = self.node.width {
             self.computed.width.set(parent_width * val / 100.0);
-        } 
+        }
 
         if let Val::Percent(val) = self.node.height {
             self.computed.height.set(parent_height * val / 100.0);
@@ -208,7 +201,10 @@ impl TempNode<'_> {
     fn compute_min_max(&mut self, ctx: &mut SystemsContext, parent: Option<*mut TempNode>) {
         let (parent_content_width, parent_content_height) = if let Some(parent) = parent {
             let parent = unsafe { &mut *parent };
-            (parent.computed.width.content, parent.computed.height.content) 
+            (
+                parent.computed.width.content,
+                parent.computed.height.content,
+            )
         } else {
             let size = ctx.renderer.size();
             (size.width as f32, size.height as f32)
@@ -227,15 +223,27 @@ impl TempNode<'_> {
             self.computed.max_height = f32::INFINITY;
         }
 
-        self.computed.width.set(self.computed.width.content.min(self.computed.max_width).max(self.computed.min_width));
-        self.computed.height.set(self.computed.height.content.min(self.computed.max_height).max(self.computed.min_height));
+        self.computed.width.set(
+            self.computed
+                .width
+                .content
+                .min(self.computed.max_width)
+                .max(self.computed.min_width),
+        );
+        self.computed.height.set(
+            self.computed
+                .height
+                .content
+                .min(self.computed.max_height)
+                .max(self.computed.min_height),
+        );
     }
 
     /// Computes the box sizing for one node
     fn compute_box_sizing(&mut self, ctx: &mut SystemsContext, parent: Option<*mut TempNode>) {
         let parent_content_width = if let Some(parent) = parent {
             let parent = unsafe { &mut *parent };
-            parent.computed.width.content 
+            parent.computed.width.content
         } else {
             let size = ctx.renderer.size();
             size.width as f32
@@ -264,13 +272,13 @@ impl TempNode<'_> {
 
         if self.node.box_sizing == BoxSizing::ContentBox {
             set_content_box_width();
-            set_content_box_height();   
+            set_content_box_height();
         } else {
             if self.node.width == Val::Auto {
                 set_content_box_width();
             } else {
-                self.computed.width.content -= padding_border_horizontal; 
-                self.computed.width.total += margin.vertical(); 
+                self.computed.width.content -= padding_border_horizontal;
+                self.computed.width.total += margin.vertical();
 
                 if self.computed.width.content < 0.0 {
                     self.computed.width.border += self.computed.width.content.abs();
@@ -290,7 +298,7 @@ impl TempNode<'_> {
                     self.computed.height.total += self.computed.height.content.abs();
                     self.computed.height.content = 0.0;
                 }
-            } 
+            }
         }
     }
 
@@ -312,7 +320,8 @@ impl TempNode<'_> {
             let height_diff = child.computed.height.content - original_height;
 
             let width_growth = (child.computed.width.total - self.computed.width.content).max(0.0);
-            let height_growth = (child.computed.height.total - self.computed.height.content).max(0.0);
+            let height_growth =
+                (child.computed.height.total - self.computed.height.content).max(0.0);
 
             total_width_diff += width_diff;
             max_width_diff = max_width_diff.max(width_growth);
@@ -343,11 +352,18 @@ impl TempNode<'_> {
 
         // compute gaps
         if self.node.display == Display::Grid || self.node.display == Display::Flex {
-            self.computed.column_gap = self.node.column_gap.compute_val(self.computed.width.content, ctx);
-            self.computed.row_gap = self.node.row_gap.compute_val(self.computed.height.content, ctx);
+            self.computed.column_gap = self
+                .node
+                .column_gap
+                .compute_val(self.computed.width.content, ctx);
+            self.computed.row_gap = self
+                .node
+                .row_gap
+                .compute_val(self.computed.height.content, ctx);
         }
         if self.node.display == Display::Grid || self.node.is_flex_row() {
-            self.computed.base_width += self.computed.column_gap * self.children.len().saturating_sub(1) as f32;
+            self.computed.base_width +=
+                self.computed.column_gap * self.children.len().saturating_sub(1) as f32;
         }
 
         // apply gaps
@@ -398,19 +414,17 @@ impl TempNode<'_> {
     /// Traversal: BOTTOM UP
     fn compute_translation(&mut self) {
         // apply box offset
-        let self_offset_x = self.computed.border.left
-                    + self.computed.padding.left;
-        let self_offset_y = self.computed.border.top
-                    + self.computed.padding.top;
+        let self_offset_x = self.computed.border.left + self.computed.padding.left;
+        let self_offset_y = self.computed.border.top + self.computed.padding.top;
 
         self.transform.translation = Vec3::new(
-            self.computed.margin.left, 
-            self.computed.margin.top, 
-            self.computed.z_index as f32
+            self.computed.margin.left,
+            self.computed.margin.top,
+            self.computed.z_index as f32,
         );
 
         match self.node.display {
-            Display::None => {},
+            Display::None => {}
             Display::Grid => unimplemented!("Grid translation"),
             Display::Block => {
                 let offset_x = self_offset_x;
@@ -423,7 +437,7 @@ impl TempNode<'_> {
 
                     offset_y += child.computed.height.total;
                 }
-            },
+            }
             Display::Flex => {
                 let justify_content_offsets = self.justify_content_offsets();
                 let align_items_offsets = self.align_items_offsets();
@@ -435,9 +449,9 @@ impl TempNode<'_> {
                 for mut i in 0..self.children.len() {
                     if is_reverse {
                         i = self.children.len() - 1 - i;
-                    } 
+                    }
                     let child = &mut self.children[i];
-                
+
                     let justify_content_offset = justify_content_offsets[i];
                     let align_items_offset = align_items_offsets[i];
 
@@ -449,15 +463,13 @@ impl TempNode<'_> {
                     child.transform.translation += align_items_offset;
 
                     if self.node.flex_direction.is_row() {
-                        offset_x += child.computed.width.total
-                            + self.computed.column_gap;
+                        offset_x += child.computed.width.total + self.computed.column_gap;
                     } else {
-                        offset_y += child.computed.height.total
-                            + self.computed.row_gap;
+                        offset_y += child.computed.height.total + self.computed.row_gap;
                     }
                 }
             }
-        } 
+        }
     }
 
     /// Returns the offsets for `align-items` for each child node.
@@ -470,8 +482,10 @@ impl TempNode<'_> {
         }
 
         match self.node.flex_direction {
-            FlexDirection::Row | FlexDirection::RowReverse => {
-                self.children.iter().map(|child| {
+            FlexDirection::Row | FlexDirection::RowReverse => self
+                .children
+                .iter()
+                .map(|child| {
                     let diff = self.computed.height.content - child.computed.height.total;
                     let offset = match self.node.align_items {
                         AlignItems::FlexStart => 0.0,
@@ -480,10 +494,12 @@ impl TempNode<'_> {
                         AlignItems::Stretch => 0.0,
                     };
                     Vec3::new(0.0, offset, 0.0)
-                }).collect()
-            },
-            FlexDirection::Column | FlexDirection::ColumnReverse => {
-                self.children.iter().map(|child| {
+                })
+                .collect(),
+            FlexDirection::Column | FlexDirection::ColumnReverse => self
+                .children
+                .iter()
+                .map(|child| {
                     let diff = self.computed.width.content - child.computed.width.total;
                     let offset = match self.node.align_items {
                         AlignItems::FlexStart => 0.0,
@@ -492,12 +508,12 @@ impl TempNode<'_> {
                         AlignItems::Stretch => 0.0,
                     };
                     Vec3::new(offset, 0.0, 0.0)
-                }).collect()
-            }
+                })
+                .collect(),
         }
     }
 
-    /// Internal calculation for `justify_content_offsets` method 
+    /// Internal calculation for `justify_content_offsets` method
     fn justify_content_offsets_internal(&self, is_row: bool, gaps_num: f32) -> Vec<Vec3> {
         let new_vec3 = |val: f32| {
             if is_row {
@@ -513,13 +529,16 @@ impl TempNode<'_> {
             self.computed.row_gap
         };
 
-        let content_size = self.children.iter().fold(gaps_num * computed_gap, |acc, child| 
-            acc + if is_row {
-                child.computed.width.total
-            } else {
-                child.computed.height.total
-            }
-        );
+        let content_size = self
+            .children
+            .iter()
+            .fold(gaps_num * computed_gap, |acc, child| {
+                acc + if is_row {
+                    child.computed.width.total
+                } else {
+                    child.computed.height.total
+                }
+            });
 
         let offset = if is_row {
             self.computed.width.content
@@ -530,34 +549,45 @@ impl TempNode<'_> {
         match self.node.justify_content {
             JustifyContent::FlexStart => self.offsets_from(Vec3::ZERO),
             JustifyContent::FlexEnd => self.offsets_from(new_vec3(offset)),
-            JustifyContent::Center => self.offsets_from(new_vec3(offset / 2.0)), 
+            JustifyContent::Center => self.offsets_from(new_vec3(offset / 2.0)),
             JustifyContent::SpaceBetween => {
                 let offset = offset.max(0.0);
                 let between_gap = offset / gaps_num;
-                self.children.iter().enumerate().map(|(i, _)| {
-                    let gap = if i == 0 { 0.0 } else { between_gap * i as f32 };
-                    new_vec3(gap)
-                }).collect()
-            },
+                self.children
+                    .iter()
+                    .enumerate()
+                    .map(|(i, _)| {
+                        let gap = if i == 0 { 0.0 } else { between_gap * i as f32 };
+                        new_vec3(gap)
+                    })
+                    .collect()
+            }
             JustifyContent::SpaceAround => {
                 let offset = offset.max(0.0);
-                let around_gap = offset / (gaps_num + 1.0);  
-                self.children.iter().enumerate().map(|(i, _)| {
-                    let gap = (around_gap * i as f32) + around_gap / 2.0;
-                    new_vec3(gap)
-                }).collect()
+                let around_gap = offset / (gaps_num + 1.0);
+                self.children
+                    .iter()
+                    .enumerate()
+                    .map(|(i, _)| {
+                        let gap = (around_gap * i as f32) + around_gap / 2.0;
+                        new_vec3(gap)
+                    })
+                    .collect()
             }
             JustifyContent::SpaceEvenly => {
                 let offset = offset.max(0.0);
-                let even_gap = offset / (gaps_num + 2.0);  
-                self.children.iter().enumerate().map(|(i, _)| {
-                    let gap = even_gap * (i + 1) as f32;
-                    new_vec3(gap)
-                }).collect()
+                let even_gap = offset / (gaps_num + 2.0);
+                self.children
+                    .iter()
+                    .enumerate()
+                    .map(|(i, _)| {
+                        let gap = even_gap * (i + 1) as f32;
+                        new_vec3(gap)
+                    })
+                    .collect()
             }
         }
     }
-
 
     /// Returns the offsets for `justify-content` for each child node.
     /// `result.len() == self.children.len()`
@@ -565,7 +595,7 @@ impl TempNode<'_> {
     /// Only the main axis field is used in a flex container, otherwise fields are 0.0.
     fn justify_content_offsets(&self) -> Vec<Vec3> {
         if self.node.display != Display::Flex {
-            return self.offsets_from(Vec3::ZERO); 
+            return self.offsets_from(Vec3::ZERO);
         }
 
         let gaps_num = (self.children.len() as isize - 1).max(0) as f32;
@@ -607,10 +637,13 @@ impl TempNode<'_> {
 
         // adjust width for flex row shrink
         if self.node.is_flex_row() {
-            let total = self.children.iter().fold(0.0, |acc, child| acc + child.computed.width.total);
+            let total = self
+                .children
+                .iter()
+                .fold(0.0, |acc, child| acc + child.computed.width.total);
             let overflow = self.computed.width.content - total;
             let diff = overflow / self.children.len() as f32;
-            
+
             if diff < 0.0 {
                 for child in &mut self.children {
                     child.computed.width.add(diff);
@@ -619,8 +652,8 @@ impl TempNode<'_> {
             }
         }
 
-        for child in &mut self.children { 
-            // TODO: take box sizing into account ? 
+        for child in &mut self.children {
+            // TODO: take box sizing into account ?
             // fit x-overflowing element which can be sized to parent
             if matches!(child.node.width, Val::Auto)
                 && child.computed.width.total > self.computed.width.content
@@ -630,7 +663,7 @@ impl TempNode<'_> {
                 // byproduct is wrapping text to fit screen-width
                 let diff = child.computed.width.total - self.computed.width.content;
                 child.computed.width.add(-diff);
-                child.constrain_to_width(); 
+                child.constrain_to_width();
             }
 
             child.resolve_text_wrap(font_system);
@@ -658,7 +691,7 @@ impl TempNode<'_> {
 
     /// clamp one node in respect to min / max height
     fn constrain_to_height(&mut self) {
-         let (min_diff, max_diff) = if self.node.box_sizing == BoxSizing::ContentBox {
+        let (min_diff, max_diff) = if self.node.box_sizing == BoxSizing::ContentBox {
             let min = (self.computed.min_height - self.computed.height.content).max(0.0);
             let max = (self.computed.max_height - self.computed.height.content).min(0.0);
             (min, max)
@@ -667,7 +700,7 @@ impl TempNode<'_> {
             let max = (self.computed.max_height - self.computed.height.border).min(0.0);
             (min, max)
         };
-        
+
         if min_diff > 0.0 {
             self.computed.height.add(min_diff);
         } else {
@@ -675,7 +708,7 @@ impl TempNode<'_> {
         }
     }
 
-    /// Recalculates auto-sized elements 
+    /// Recalculates auto-sized elements
     /// Traversal: BOTTOM UP
     fn fit_auto_size(&mut self) {
         if self.children.is_empty() {
@@ -701,13 +734,9 @@ impl TempNode<'_> {
         let gaps_num = self.children.len().saturating_sub(1) as f32;
 
         if self.node.width == Val::Auto {
-            let width = match (
-                self.node.display,
-                self.node.flex_direction.is_row(),
-            ) {
+            let width = match (self.node.display, self.node.flex_direction.is_row()) {
                 (Display::Flex, true) => total_width + self.computed.column_gap * gaps_num,
-                (Display::Block, _) |
-                (Display::Flex, false) => max_width,
+                (Display::Block, _) | (Display::Flex, false) => max_width,
                 (Display::None, _) => return,
                 (Display::Grid, _) => unimplemented!("Grid fit auto size"),
             };
@@ -717,10 +746,7 @@ impl TempNode<'_> {
         }
 
         if self.node.height == Val::Auto {
-            let height = match (
-                self.node.display,
-                self.node.flex_direction.is_row(),
-            ) {
+            let height = match (self.node.display, self.node.flex_direction.is_row()) {
                 (Display::Flex, true) => max_height,
                 (Display::Block, _) => total_height,
                 (Display::Flex, false) => total_height + self.computed.row_gap * gaps_num,
@@ -745,8 +771,10 @@ impl TempNode<'_> {
         }
 
         for child in &mut self.children {
-            if child.node.width == Val::Auto && self.node.align_items == AlignItems::Stretch && 
-                (self.node.is_flex_column() || self.node.display == Display::Block) {
+            if child.node.width == Val::Auto
+                && self.node.align_items == AlignItems::Stretch
+                && (self.node.is_flex_column() || self.node.display == Display::Block)
+            {
                 let diff = self.computed.width.content - child.computed.width.total;
                 child.computed.width.add(diff);
                 child.constrain_to_width();
