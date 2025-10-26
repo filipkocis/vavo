@@ -1,6 +1,6 @@
+use crate::app::App;
 use crate::prelude::EntityId;
 use crate::query::Query;
-use crate::system::Commands;
 use crate::system::commands::CommandQueue;
 
 use super::entities::Entities;
@@ -16,7 +16,14 @@ pub struct World {
     /// Component types metadata registry
     pub registry: ComponentsRegistry,
 
-    command_queue: CommandQueue,
+    /// The parent app that contains this world, if any.
+    /// Needed for systems that require access to fields only available in App.
+    /// TODO: This will be removed in the future once those fields are available through other
+    /// means, such as resource wrappers.
+    parent_app: *mut App,
+
+    /// Main command queue for the world
+    pub(crate) command_queue: CommandQueue,
 }
 
 impl Default for World {
@@ -28,6 +35,7 @@ impl Default for World {
             resources: Resources::new(),
             tick,
             registry: ComponentsRegistry::new(),
+            parent_app: std::ptr::null_mut(),
             command_queue: CommandQueue::new(),
         };
 
@@ -72,14 +80,18 @@ impl World {
         Query::new(&mut self.entities, *self.tick)
     }
 
-    /// Returns new commands instance with the world's command queue
+    /// Returns a mutable reference to the parent app.
+    ///
+    /// # Safety
+    /// Will panic if the world was not created within an app.
+    /// Completely unsafe as the pointer allows for mutable aliasing.
     #[inline]
-    pub fn commands<'a, 'b>(&'a mut self) -> Commands<'a, 'b>
-    where
-        'a: 'b,
-        'b: 'a,
-    {
-        Commands::new(&mut self.entities.tracking, &mut self.command_queue)
+    pub(crate) unsafe fn parent_app(&mut self) -> &mut App {
+        if self.parent_app.is_null() {
+            panic!("World was not created within an App, parent_app is null.");
+        } else {
+            unsafe { &mut *self.parent_app }
+        }
     }
 
     /// Flushes all queued commands to the world
@@ -87,5 +99,14 @@ impl World {
     pub(crate) fn flush_commands(&mut self) {
         let world = unsafe { &mut *(self as *mut _) };
         self.command_queue.apply(world)
+    }
+
+    /// Reborrows the world as a mutable reference with a different lifetime.
+    ///
+    /// # Safety
+    /// This is unsafe because it can lead to aliasing mutable references if used improperly.
+    #[inline]
+    pub(crate) unsafe fn reborrow<'a, 'b>(&'a mut self) -> &'b mut World {
+        unsafe { &mut *(self as *mut World) }
     }
 }

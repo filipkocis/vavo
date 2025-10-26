@@ -1,5 +1,6 @@
 use crate::{
-    event::event_handler::EventWriter,
+    app::App,
+    event::event_handler::{EventReader, EventWriter},
     prelude::{Component, EntityId, Mut, Ref, Res, ResMut, Resource, Tick, World},
     query::{Query, RunQuery, filter::QueryFilter},
     system::{Commands, commands::CommandQueue},
@@ -260,7 +261,7 @@ impl SystemParam for &mut World {
     type State = ();
     #[inline]
     fn extract(world: &mut World, _state: &mut Self::State) -> Self {
-        unsafe { &mut *(world as *mut _) }
+        unsafe { world.reborrow() }
     }
     #[inline]
     fn init_state() -> Self::State {}
@@ -268,6 +269,20 @@ impl SystemParam for &mut World {
 impl IntoParamInfo for &mut World {
     fn params_info() -> Vec<ParamInfo> {
         param_info::<World>(true)
+    }
+}
+impl SystemParam for &mut App {
+    type State = ();
+    #[inline]
+    fn extract(world: &mut World, _state: &mut Self::State) -> Self {
+        unsafe { world.reborrow().parent_app() }
+    }
+    #[inline]
+    fn init_state() -> Self::State {}
+}
+impl IntoParamInfo for &mut App {
+    fn params_info() -> Vec<ParamInfo> {
+        param_info::<App>(true)
     }
 }
 
@@ -281,8 +296,8 @@ impl SystemParam for Commands<'_, '_> {
     type State = CommandsState;
     #[inline]
     fn extract(world: &mut World, state: &mut Self::State) -> Self {
-        // // Reborrow world to satisfy lifetime requirements
-        let world = unsafe { &mut *(world as *mut World) };
+        // Reborrow to satisfy lifetime requirements
+        let world = unsafe { world.reborrow() };
         let state = unsafe { &mut *(state as *mut Self::State) };
 
         Commands::new(&mut world.entities.tracking, &mut state.0)
@@ -472,7 +487,7 @@ macro_rules! impl_system_param_tuple {
                     #[allow(clippy::unused_unit)]
                     (
                         $(
-                            $param::extract(unsafe { &mut *(world as *mut _) }, $param ),
+                            $param::extract(unsafe { world.reborrow() }, $param ),
                         )*
                     )
                 }
@@ -487,7 +502,7 @@ macro_rules! impl_system_param_tuple {
                 #[inline]
                 fn init_state_world(world: &mut World) -> Self::State {
                     #[allow(clippy::unused_unit)]
-                    ($($param::init_state_world(unsafe { &mut *(world as *mut _) }),)*)
+                    ($($param::init_state_world(unsafe { world.reborrow() }),)*)
                 }
             }
 
@@ -562,7 +577,7 @@ macro_rules! impl_into_system {
                     #[allow(unused_variables)]
                     let exec_fn = Box::new(move |world: &mut World| {
                         $(
-                            let $param = $param::extract(unsafe { &mut *(world as *mut _) }, &mut $param);
+                            let $param = $param::extract(unsafe { world.reborrow() }, &mut $param);
                         )*
                         self($($param),*);
                     });
@@ -572,7 +587,7 @@ macro_rules! impl_into_system {
                         let ( $(ref mut $param,)* ) = unsafe_states_copy;
 
                         $(
-                            $param::apply(unsafe { &mut *(world as *mut _) }, $param);
+                            $param::apply(unsafe { world.reborrow() }, $param);
                         )*
                     });
 
