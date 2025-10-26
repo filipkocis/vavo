@@ -10,16 +10,8 @@ impl Plugin for InspectorPlugin {
         app.register_state::<InspectorState>()
             .add_startup_system(setup_inspector)
             .add_system(handle_inspector)
-            .add_system(
-                create_inspector
-                    .system()
-                    .run_if(on_enter(InspectorState::On)),
-            )
-            .add_system(
-                cleanup_inspector
-                    .system()
-                    .run_if(on_exit(InspectorState::On)),
-            );
+            .add_system(create_inspector.run_if(on_enter(InspectorState::On)))
+            .add_system(cleanup_inspector.run_if(on_exit(InspectorState::On)));
     }
 }
 
@@ -34,14 +26,14 @@ enum InspectorState {
 }
 
 /// Sets up resources for Inspector
-fn setup_inspector(ctx: &mut SystemsContext, _: Query<()>) {}
+fn setup_inspector() {}
 
 /// Handles the input for the Inspector menu
-fn handle_inspector(ctx: &mut SystemsContext, _: Query<()>) {
-    let input = ctx.resources.get::<Input<KeyCode>>();
-    let state = ctx.resources.get::<State<InspectorState>>();
-    let mut next_state = ctx.resources.get_mut::<NextState<InspectorState>>();
-
+fn handle_inspector(
+    input: Res<Input<KeyCode>>,
+    state: Res<State<InspectorState>>,
+    mut next_state: ResMut<NextState<InspectorState>>,
+) {
     if input.just_pressed(KeyCode::Backquote) {
         match state.get() {
             InspectorState::On => next_state.set(InspectorState::Off),
@@ -56,14 +48,14 @@ fn handle_inspector(ctx: &mut SystemsContext, _: Query<()>) {
 
 /// Creates the Inspector UI menu
 fn create_inspector(
-    ctx: &mut SystemsContext,
+    mut commands: Commands,
     mut query: Query<(EntityId, &Transform, &GlobalTransform)>,
+    app: &mut App,
 ) {
     let query_result = query.iter_mut();
     let count = query_result.len();
 
-    let menu = ctx
-        .commands
+    let menu = commands
         .spawn_empty()
         .insert(InspectorMenu)
         .insert(Node {
@@ -74,7 +66,7 @@ fn create_inspector(
         })
         .entity_id();
 
-    ctx.commands.entity(menu).with_children(|p| {
+    commands.entity(menu).with_children(|p| {
         p.spawn_empty()
             .insert(Node {
                 color: Some(color::WHITE),
@@ -85,7 +77,7 @@ fn create_inspector(
     });
 
     for (id, transform, global) in query_result {
-        ctx.commands.entity(menu).with_children(|p| {
+        commands.entity(menu).with_children(|p| {
             p.spawn_empty()
                 .insert(Node {
                     color: Some(color::WHITE),
@@ -96,7 +88,6 @@ fn create_inspector(
         });
     }
 
-    let app = unsafe { &*ctx.app };
     let registry = &app.type_registry;
     println!("PRINTING");
     for archetype in app.world.entities.archetypes() {
@@ -130,8 +121,8 @@ fn create_inspector(
 }
 
 /// Despawns Inspector UI menu
-fn cleanup_inspector(ctx: &mut SystemsContext, mut query: Query<EntityId, With<InspectorMenu>>) {
+fn cleanup_inspector(mut commands: Commands, mut query: Query<EntityId, With<InspectorMenu>>) {
     if let Some(id) = query.iter_mut().first() {
-        ctx.commands.entity(*id).despawn_recursive();
+        commands.entity(*id).despawn_recursive();
     }
 }
