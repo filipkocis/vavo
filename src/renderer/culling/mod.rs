@@ -75,11 +75,10 @@ impl Visibility {
 /// This system updates the `Visibility` component of all entities in the scene if the camera has
 /// its `Frustum` changed.
 pub fn frustum_visibility_update_system(
-    ctx: &mut SystemsContext,
+    settings: Res<FrustumCullingSettings>,
     mut query: Query<(&WorldBoundingVolume, &mut Visibility)>,
 ) {
     // early exit based on settings
-    let settings = ctx.resources.get::<FrustumCullingSettings>();
     if !settings.enabled {
         return;
     }
@@ -107,7 +106,8 @@ pub fn frustum_visibility_update_system(
 /// This system updates the `Frustum` component of all active cameras in the scene based on
 /// `GlobalTransform` or `Projection` change. The component is added if it doesn't exist.
 pub fn update_camera_frustum_system(
-    ctx: &mut SystemsContext,
+    settings: Res<FrustumCullingSettings>,
+    mut commands: Commands,
     mut query: Query<
         (
             EntityId,
@@ -124,7 +124,6 @@ pub fn update_camera_frustum_system(
     >,
 ) {
     // early exit based on settings
-    let settings = ctx.resources.get::<FrustumCullingSettings>();
     if !settings.enabled {
         return;
     }
@@ -142,7 +141,7 @@ pub fn update_camera_frustum_system(
         if let Some(frustum) = frustum {
             *frustum = new_frustum;
         } else {
-            ctx.commands.entity(id).insert(new_frustum);
+            commands.entity(id).insert(new_frustum);
         }
     }
 }
@@ -151,7 +150,9 @@ pub fn update_camera_frustum_system(
 /// It also adds default `WorldBoundingVolume::None` and `Visibility::new(false)`. All of these
 /// components are added only if they don't exist (even if they got removed).
 pub fn add_local_bounding_volume_system(
-    ctx: &mut SystemsContext,
+    settings: Res<FrustumCullingSettings>,
+    mesh_assets: Res<Assets<Mesh>>,
+    mut commands: Commands,
     mut query: Query<
         (EntityId, &Handle<Mesh>),
         Or<(
@@ -163,19 +164,17 @@ pub fn add_local_bounding_volume_system(
     >,
 ) {
     // early exit based on settings
-    let settings = ctx.resources.get::<FrustumCullingSettings>();
     if !settings.enabled {
         return;
     }
 
-    let mesh_assets = ctx.resources.get::<Assets<Mesh>>();
     for (id, mesh_handle) in query.iter_mut() {
         // get the mesh
         let mesh = mesh_assets.get(mesh_handle).unwrap();
 
         // add the local bounding volume
         let sphere = Sphere::from_mesh(mesh);
-        ctx.commands
+        commands
             .entity(id)
             .insert_if_new(LocalBoundingVolume::Sphere(sphere))
             .insert_if_new(WorldBoundingVolume::None)
@@ -186,7 +185,7 @@ pub fn add_local_bounding_volume_system(
 /// This system gets entities with `local bounding volume` where either `GlobalTransform` or
 /// `LocalBoundingVolume` has changed, and updates the `WorldBoundingVolume` and `Visibility`.
 pub fn visibility_update_system(
-    ctx: &mut SystemsContext,
+    settings: Res<FrustumCullingSettings>,
     mut query: Query<
         (
             &LocalBoundingVolume,
@@ -198,7 +197,6 @@ pub fn visibility_update_system(
     >,
 ) {
     // early exit based on settings
-    let settings = ctx.resources.get::<FrustumCullingSettings>();
     if !settings.enabled {
         return;
     }
