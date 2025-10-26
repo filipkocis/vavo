@@ -39,12 +39,11 @@ impl<R: Resource> AudioTrack<R> {
     }
 
     /// Apply all queued commands
-    pub(crate) fn apply(&mut self, resources: &mut Resources) {
+    pub(crate) fn apply(&mut self, sources: &Res<Assets<AudioSource>>) {
         while let Some(command) = self.commands.pop_front() {
             match command {
                 AudioCommand::Play(handle, commands) => {
-                    let assets = resources.get::<Assets<AudioSource>>(); 
-                    let sound_data = assets.get(&handle).expect("Failed to get sound data from assets");
+                    let sound_data = sources.get(&handle).expect("Failed to get sound data from assets");
 
                     let sound = match self.track.play(sound_data.source.clone()) {
                         Ok(sound) => sound,
@@ -131,14 +130,13 @@ impl SpatialAudioTrack {
     /// Apply all queued commands to the spatial track
     pub(crate) fn apply(
         &mut self, 
-        resources: &mut Resources, 
+        sources: &Res<Assets<AudioSource>>,
         commands: &mut VecDeque<AudioCommand>, 
     ) {
-        while let Some(command) = commands.pop_front() {
+        for command in commands.drain(..) {
             match command {
                 AudioCommand::Play(handle, commands) => {
-                    let assets = resources.get::<Assets<AudioSource>>(); 
-                    let sound_data = assets.get(&handle).expect("Failed to get sound data from assets");
+                    let sound_data = sources.get(&handle).expect("Failed to get sound data from assets");
 
                     let sound = match self.track.play(sound_data.source.clone()) {
                         Ok(sound) => sound,
