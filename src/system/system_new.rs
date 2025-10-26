@@ -1,6 +1,7 @@
 use crate::{
     prelude::{Component, Mut, Ref, Res, ResMut, Resource, Tick, World},
     query::{Query, RunQuery, filter::QueryFilter},
+    system::Commands,
 };
 use std::{
     any::{TypeId, type_name},
@@ -216,6 +217,36 @@ pub trait IntoParamInfo {
 pub trait SystemParam: IntoParamInfo {
     /// Extract the parameter from the world.
     fn extract(world: &mut World) -> Self;
+}
+
+impl SystemParam for &mut World {
+    #[inline]
+    fn extract(world: &mut World) -> Self {
+        unsafe { &mut *(world as *mut _) }
+    }
+}
+impl IntoParamInfo for &mut World {
+    fn params_info() -> Vec<ParamInfo> {
+        let is_mutable = true;
+        let type_info = TypeInfo::new(type_name::<World>(), TypeId::of::<World>());
+        vec![ParamInfo::new(is_mutable, type_info)]
+    }
+}
+
+impl SystemParam for Commands<'_, '_> {
+    #[inline]
+    fn extract(world: &mut World) -> Self {
+        // Reborrow world to satisfy lifetime requirements
+        let reborrowed = unsafe { &mut *(world as *mut World) };
+        reborrowed.commands()
+    }
+}
+impl IntoParamInfo for Commands<'_, '_> {
+    fn params_info() -> Vec<ParamInfo> {
+        let is_mutable = true;
+        let type_info = TypeInfo::new(type_name::<Commands>(), TypeId::of::<Commands>());
+        vec![ParamInfo::new(is_mutable, type_info)]
+    }
 }
 
 impl<R: Resource> SystemParam for Res<R> {
