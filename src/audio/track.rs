@@ -1,9 +1,15 @@
-use std::{collections::{HashMap, VecDeque}, marker::PhantomData};
+use std::{
+    collections::{HashMap, VecDeque},
+    marker::PhantomData,
+};
 
-use kira::{sound::IntoOptionalRegion, track::{SpatialTrackHandle, TrackHandle}};
+use kira::{
+    sound::IntoOptionalRegion,
+    track::{SpatialTrackHandle, TrackHandle},
+};
 
+use super::{AudioSource, PlayCommand, TweenCommand, commands::AudioCommand, sound::Sound};
 use crate::prelude::*;
-use super::{commands::AudioCommand, sound::Sound, AudioSource, PlayCommand, TweenCommand};
 
 /// Marker for the main [`audio track`](AudioTrack)
 #[derive(Resource)]
@@ -43,7 +49,9 @@ impl<R: Resource> AudioTrack<R> {
         while let Some(command) = self.commands.pop_front() {
             match command {
                 AudioCommand::Play(handle, commands) => {
-                    let sound_data = sources.get(&handle).expect("Failed to get sound data from assets");
+                    let sound_data = sources
+                        .get(&handle)
+                        .expect("Failed to get sound data from assets");
 
                     let sound = match self.track.play(sound_data.source.clone()) {
                         Ok(sound) => sound,
@@ -51,28 +59,37 @@ impl<R: Resource> AudioTrack<R> {
                     };
 
                     let sound = Sound::new(sound, commands);
-                    self.sounds.push(sound); 
-                },
+                    self.sounds.push(sound);
+                }
 
                 AudioCommand::Pause(tween) => {
                     self.track.pause(tween);
-                    self.spatial_tracks.values_mut().for_each(|track| track.track.pause(tween));
-                },
+                    self.spatial_tracks
+                        .values_mut()
+                        .for_each(|track| track.track.pause(tween));
+                }
                 AudioCommand::Resume(tween) => {
                     self.track.resume(tween);
-                    self.spatial_tracks.values_mut().for_each(|track| track.track.resume(tween));
-                },
+                    self.spatial_tracks
+                        .values_mut()
+                        .for_each(|track| track.track.resume(tween));
+                }
                 AudioCommand::SetVolume(volume, tween) => {
                     self.track.set_volume(volume, tween);
-                    self.spatial_tracks.values_mut().for_each(|track| track.track.set_volume(volume, tween));
-                },
+                    self.spatial_tracks
+                        .values_mut()
+                        .for_each(|track| track.track.set_volume(volume, tween));
+                }
 
-                command => self.sounds.iter_mut().for_each(|sound| sound.apply(command.clone()))
+                command => self
+                    .sounds
+                    .iter_mut()
+                    .for_each(|sound| sound.apply(command.clone())),
             }
         }
     }
 
-    /// Pushes a command to the queue 
+    /// Pushes a command to the queue
     fn push(&mut self, command: AudioCommand) -> &mut AudioCommand {
         self.commands.push_back(command);
         self.commands.back_mut().unwrap()
@@ -80,37 +97,44 @@ impl<R: Resource> AudioTrack<R> {
 
     /// Plays an audio asset
     pub fn play(&mut self, source: Handle<AudioSource>) -> PlayCommand<'_> {
-        self.push(AudioCommand::Play(source, Default::default())).play_command()
+        self.push(AudioCommand::Play(source, Default::default()))
+            .play_command()
     }
 
     /// Stops all sounds
     pub fn stop(&mut self) -> TweenCommand<'_> {
-        self.push(AudioCommand::Stop(Default::default())).tween_command()
+        self.push(AudioCommand::Stop(Default::default()))
+            .tween_command()
     }
 
     /// Pauses all sounds
     pub fn pause(&mut self) -> TweenCommand<'_> {
-        self.push(AudioCommand::Pause(Default::default())).tween_command()
+        self.push(AudioCommand::Pause(Default::default()))
+            .tween_command()
     }
 
     /// Resumes all sounds
     pub fn resume(&mut self) -> TweenCommand<'_> {
-        self.push(AudioCommand::Resume(Default::default())).tween_command()
+        self.push(AudioCommand::Resume(Default::default()))
+            .tween_command()
     }
 
     /// Sets the volume of all sounds in decibels
     pub fn set_volume(&mut self, volume: f32) -> TweenCommand<'_> {
-        self.push(AudioCommand::SetVolume(volume, Default::default())).tween_command()
+        self.push(AudioCommand::SetVolume(volume, Default::default()))
+            .tween_command()
     }
 
     /// Sets the panning of all sounds
     pub fn set_panning(&mut self, panning: f32) -> TweenCommand<'_> {
-        self.push(AudioCommand::SetPanning(panning, Default::default())).tween_command()
+        self.push(AudioCommand::SetPanning(panning, Default::default()))
+            .tween_command()
     }
 
     /// Sets the playback rate of all sounds
     pub fn set_playback_rate(&mut self, rate: f64) -> TweenCommand<'_> {
-        self.push(AudioCommand::SetPlaybackRate(rate, Default::default())).tween_command()
+        self.push(AudioCommand::SetPlaybackRate(rate, Default::default()))
+            .tween_command()
     }
 
     /// Sets the loop region of all sounds
@@ -129,14 +153,16 @@ impl SpatialAudioTrack {
 
     /// Apply all queued commands to the spatial track
     pub(crate) fn apply(
-        &mut self, 
+        &mut self,
         sources: &Res<Assets<AudioSource>>,
-        commands: &mut VecDeque<AudioCommand>, 
+        commands: &mut VecDeque<AudioCommand>,
     ) {
         for command in commands.drain(..) {
             match command {
                 AudioCommand::Play(handle, commands) => {
-                    let sound_data = sources.get(&handle).expect("Failed to get sound data from assets");
+                    let sound_data = sources
+                        .get(&handle)
+                        .expect("Failed to get sound data from assets");
 
                     let sound = match self.track.play(sound_data.source.clone()) {
                         Ok(sound) => sound,
@@ -144,14 +170,17 @@ impl SpatialAudioTrack {
                     };
 
                     let sound = Sound::new(sound, commands);
-                    self.sounds.push(sound); 
-                },
+                    self.sounds.push(sound);
+                }
 
                 AudioCommand::Pause(tween) => self.track.pause(tween),
                 AudioCommand::Resume(tween) => self.track.resume(tween),
                 AudioCommand::SetVolume(volume, tween) => self.track.set_volume(volume, tween),
 
-                command => self.sounds.iter_mut().for_each(|sound| sound.apply(command.clone()))
+                command => self
+                    .sounds
+                    .iter_mut()
+                    .for_each(|sound| sound.apply(command.clone())),
             }
         }
     }
