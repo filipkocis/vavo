@@ -1,15 +1,15 @@
 use glam::{EulerRot, Quat, Vec3};
 use winit::keyboard::KeyCode;
 
-use crate::prelude::*;
+use crate::{event::event_handler::EventReader, prelude::*};
 
 pub fn movement_system(
-    ctx: &mut SystemsContext,
+    time: Res<Time>,
+    key_input: Res<Input<KeyCode>>,
+    event_reader: EventReader,
     mut query: Query<(&mut Transform, &mut Projection, &Camera), With<Camera3D>>,
 ) {
-    let time = ctx.resources.get::<Time>();
-    let key_input = ctx.resources.get::<Input<KeyCode>>();
-    let mouse_motion = ctx.event_reader.read::<MouseMotion>();
+    let mouse_motion = event_reader.read::<MouseMotion>();
 
     // Camera translation
     let mut pos_dx = 0.0;

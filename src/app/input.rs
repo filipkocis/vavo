@@ -1,8 +1,8 @@
 use std::{collections::HashSet, hash::Hash};
 
-pub use winit::{keyboard::KeyCode, event::MouseButton};
+pub use winit::{event::MouseButton, keyboard::KeyCode};
 
-use crate::{query::Query, system::{SystemStage, SystemsContext}};
+use crate::{prelude::ResMut, system::SystemStage};
 
 use super::{App, Plugin};
 
@@ -68,10 +68,12 @@ impl<I: InputData> Input<I> {
 }
 
 /// UI input clearing system for just pressed inputs.
-fn clear_just_pressed_inputs(ctx: &mut SystemsContext, _: Query<()>) {
-    let resources = &mut ctx.resources;
-    resources.get_mut::<Input<KeyCode>>().clear_just_pressed();
-    resources.get_mut::<Input<MouseButton>>().clear_just_pressed();
+fn clear_just_pressed_inputs(
+    mut key_input: ResMut<Input<KeyCode>>,
+    mut mouse_input: ResMut<Input<MouseButton>>,
+) {
+    key_input.clear_just_pressed();
+    mouse_input.clear_just_pressed();
 }
 
 /// Adds `Input<KeyCode>` and `Input<MouseButton>` resources to enable keyboard and mouse input
