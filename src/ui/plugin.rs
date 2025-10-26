@@ -1,12 +1,19 @@
-use glyphon::{FontSystem, SwashCache, Cache, Viewport, TextAtlas, TextRenderer};
+use glyphon::{Cache, FontSystem, SwashCache, TextAtlas, TextRenderer, Viewport};
 
-use super::{graph::{
-    compute::compute_nodes_and_transforms, graph_nodes::register_ui_graph, storage::UiTransformStorage, update::{update_glyphon_viewport, update_ui_mesh_and_transforms}
-}, interactivity::{ui_interaction_update, Button}, mesh::{UiMesh, UiMeshImages, UiMeshTransparent}};
+use super::{
+    graph::{
+        compute::compute_nodes_and_transforms,
+        graph_nodes::register_ui_graph,
+        storage::UiTransformStorage,
+        update::{update_glyphon_viewport, update_ui_mesh_and_transforms},
+    },
+    interactivity::{Button, ui_interaction_update},
+    mesh::{UiMesh, UiMeshImages, UiMeshTransparent},
+};
 
-use crate::{prelude::*, ui::prelude::*};
-use crate::render_assets::RenderAssets;
 use super::text::TextBuffer;
+use crate::render_assets::RenderAssets;
+use crate::{prelude::*, ui::prelude::*};
 
 /// System to initialize new UI nodes, it adds Transform and ComputedNode components
 pub fn initialize_ui_nodes(
@@ -14,7 +21,8 @@ pub fn initialize_ui_nodes(
     mut query: Query<EntityId, (With<Node>, Without<Transform>, Without<ComputedNode>)>,
 ) {
     for id in query.iter_mut() {
-        ctx.commands.entity(id)
+        ctx.commands
+            .entity(id)
             .insert(Transform::default())
             .insert(ComputedNode::default());
     }
@@ -26,8 +34,7 @@ pub fn initialize_button_ui_nodes(
     mut query: Query<EntityId, (With<Node>, With<Button>, Without<Interaction>)>,
 ) {
     for id in query.iter_mut() {
-        ctx.commands.entity(id)
-            .insert(Interaction::default());
+        ctx.commands.entity(id).insert(Interaction::default());
     }
 }
 
@@ -42,13 +49,18 @@ fn insert_ui_text_resources(ctx: &mut SystemsContext, _: Query<()>) {
     let cache = Cache::new(device);
     let viewport = Viewport::new(device, &cache);
     let mut atlas = TextAtlas::new(device, queue, &cache, swapchain_format);
-    let text_renderer = TextRenderer::new(&mut atlas, device, wgpu::MultisampleState::default(), Some(wgpu::DepthStencilState {
-        format: wgpu::TextureFormat::Depth32Float,
-        depth_write_enabled: true,
-        depth_compare: wgpu::CompareFunction::Less,
-        stencil: wgpu::StencilState::default(),
-        bias: wgpu::DepthBiasState::default(), 
-    }));
+    let text_renderer = TextRenderer::new(
+        &mut atlas,
+        device,
+        wgpu::MultisampleState::default(),
+        Some(wgpu::DepthStencilState {
+            format: wgpu::TextureFormat::Depth32Float,
+            depth_write_enabled: true,
+            depth_compare: wgpu::CompareFunction::Less,
+            stencil: wgpu::StencilState::default(),
+            bias: wgpu::DepthBiasState::default(),
+        }),
+    );
 
     ctx.resources.insert(font_system);
     ctx.resources.insert(swash_cache);
@@ -75,9 +87,8 @@ pub struct UiPlugin;
 
 impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
-        app
-            .add_startup_system(insert_ui_resources) 
-            .add_startup_system(insert_ui_text_resources) 
+        app.add_startup_system(insert_ui_resources)
+            .add_startup_system(insert_ui_text_resources)
             .add_startup_system(register_ui_graph)
             .register_system(ui_interaction_update, SystemStage::First)
             .register_system(initialize_ui_nodes, SystemStage::PreUpdate)

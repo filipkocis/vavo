@@ -26,7 +26,9 @@ impl Buffer {
     }
 
     pub fn data_from_slice<A>(data: &[A]) -> &[u8]
-    where A: NoUninit + AnyBitPattern {
+    where
+        A: NoUninit + AnyBitPattern,
+    {
         bytemuck::cast_slice(data)
     }
 
@@ -35,14 +37,28 @@ impl Buffer {
     ///
     /// # Note
     /// If the data slice is empty, `vertex` buffer will be [None].
-    pub fn create_vertex_buffer<A>(self, data: &[A], num_vertices: usize, usages: Option<wgpu::BufferUsages>, device: &wgpu::Device) -> Self
-    where A: NoUninit + AnyBitPattern {
+    pub fn create_vertex_buffer<A>(
+        self,
+        data: &[A],
+        num_vertices: usize,
+        usages: Option<wgpu::BufferUsages>,
+        device: &wgpu::Device,
+    ) -> Self
+    where
+        A: NoUninit + AnyBitPattern,
+    {
         let vertex_buffer = if !data.is_empty() {
-            Some(device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some(&format!("{}_vertex_buffer", self.label)),
-                contents: bytemuck::cast_slice(data),
-                usage: if let Some(usages) = usages { wgpu::BufferUsages::VERTEX | usages } else { wgpu::BufferUsages::VERTEX }, 
-            }))
+            Some(
+                device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some(&format!("{}_vertex_buffer", self.label)),
+                    contents: bytemuck::cast_slice(data),
+                    usage: if let Some(usages) = usages {
+                        wgpu::BufferUsages::VERTEX | usages
+                    } else {
+                        wgpu::BufferUsages::VERTEX
+                    },
+                }),
+            )
         } else {
             None
         };
@@ -53,19 +69,30 @@ impl Buffer {
             ..self
         }
     }
-    
+
     /// Creates new index buffer with [wgpu::BufferUsages::INDEX] usage. Updates `num_indices`
     /// to the length of the data slice.
     ///
     /// # Note
     /// If the data slice is empty, `index` buffer will be [None].
-    pub fn create_index_buffer(self, data: &[u32], usages: Option<wgpu::BufferUsages>, device: &wgpu::Device) -> Self {
+    pub fn create_index_buffer(
+        self,
+        data: &[u32],
+        usages: Option<wgpu::BufferUsages>,
+        device: &wgpu::Device,
+    ) -> Self {
         let index_buffer = if !data.is_empty() {
-            Some(device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some(&format!("{}_index_buffer", self.label)),
-                contents: bytemuck::cast_slice(data),
-                usage: if let Some(usages) = usages { wgpu::BufferUsages::INDEX | usages } else { wgpu::BufferUsages::INDEX }, 
-            }))
+            Some(
+                device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some(&format!("{}_index_buffer", self.label)),
+                    contents: bytemuck::cast_slice(data),
+                    usage: if let Some(usages) = usages {
+                        wgpu::BufferUsages::INDEX | usages
+                    } else {
+                        wgpu::BufferUsages::INDEX
+                    },
+                }),
+            )
         } else {
             None
         };
@@ -81,14 +108,27 @@ impl Buffer {
     ///
     /// # Note
     /// If the data slice is empty, `uniform` buffer will be [None].
-    pub fn create_uniform_buffer<A>(self, data: &[A], usages: Option<wgpu::BufferUsages>, device: &wgpu::Device) -> Self
-    where A: NoUninit + AnyBitPattern {
-        let uniform_buffer = if !data.is_empty() { 
-            Some(device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some(&format!("{}_uniform_buffer", self.label)),
-                contents: bytemuck::cast_slice(data),
-                usage: if let Some(usages) = usages { wgpu::BufferUsages::UNIFORM | usages } else { wgpu::BufferUsages::UNIFORM }, 
-            })) 
+    pub fn create_uniform_buffer<A>(
+        self,
+        data: &[A],
+        usages: Option<wgpu::BufferUsages>,
+        device: &wgpu::Device,
+    ) -> Self
+    where
+        A: NoUninit + AnyBitPattern,
+    {
+        let uniform_buffer = if !data.is_empty() {
+            Some(
+                device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some(&format!("{}_uniform_buffer", self.label)),
+                    contents: bytemuck::cast_slice(data),
+                    usage: if let Some(usages) = usages {
+                        wgpu::BufferUsages::UNIFORM | usages
+                    } else {
+                        wgpu::BufferUsages::UNIFORM
+                    },
+                }),
+            )
         } else {
             None
         };
@@ -103,14 +143,27 @@ impl Buffer {
     ///
     /// # Note
     /// If the data slice is empty, `storage` buffer will be [None].
-    pub fn create_storage_buffer<A>(self, data: &[A], usages: Option<wgpu::BufferUsages>, device: &wgpu::Device) -> Self
-    where A: NoUninit + AnyBitPattern {
+    pub fn create_storage_buffer<A>(
+        self,
+        data: &[A],
+        usages: Option<wgpu::BufferUsages>,
+        device: &wgpu::Device,
+    ) -> Self
+    where
+        A: NoUninit + AnyBitPattern,
+    {
         let storage_buffer = if !data.is_empty() {
-            Some(device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some(&format!("{}_storage_buffer", self.label)),
-                contents: bytemuck::cast_slice(data),
-                usage: if let Some(usages) = usages { wgpu::BufferUsages::STORAGE | usages } else { wgpu::BufferUsages::STORAGE }, 
-            }))
+            Some(
+                device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some(&format!("{}_storage_buffer", self.label)),
+                    contents: bytemuck::cast_slice(data),
+                    usage: if let Some(usages) = usages {
+                        wgpu::BufferUsages::STORAGE | usages
+                    } else {
+                        wgpu::BufferUsages::STORAGE
+                    },
+                }),
+            )
         } else {
             None
         };

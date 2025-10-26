@@ -1,4 +1,7 @@
-use std::{ops::{Deref, DerefMut}, sync::Arc};
+use std::{
+    ops::{Deref, DerefMut},
+    sync::Arc,
+};
 
 use glam::Vec2;
 use winit::{dpi::PhysicalSize, window::Window};
@@ -66,25 +69,26 @@ impl<'a> RenderContext<'a> {
 
     pub(crate) fn as_renderer(&mut self) -> Renderer<'a> {
         Renderer(self)
-    } 
+    }
 
-    fn create_target(state: &AppState) -> Result<
-        (wgpu::SurfaceTexture, wgpu::TextureView),
-        wgpu::SurfaceError
-    > {
+    fn create_target(
+        state: &AppState,
+    ) -> Result<(wgpu::SurfaceTexture, wgpu::TextureView), wgpu::SurfaceError> {
         let surface = &state.surface;
         let surface_texture = surface.get_current_texture()?;
-        let texture_view = surface_texture.texture.create_view(&wgpu::TextureViewDescriptor {
-            format: Some(state.config.format),
-            ..Default::default()
-        });
+        let texture_view = surface_texture
+            .texture
+            .create_view(&wgpu::TextureViewDescriptor {
+                format: Some(state.config.format),
+                ..Default::default()
+            });
 
         Ok((surface_texture, texture_view))
     }
 
     fn create_encoder(device: &wgpu::Device) -> *mut wgpu::CommandEncoder {
         let encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Render Encoder")
+            label: Some("Render Encoder"),
         });
 
         Box::into_raw(Box::new(encoder))
@@ -126,19 +130,28 @@ impl RenderContext<'_> {
     }
 
     pub fn target(&self) -> (&wgpu::SurfaceTexture, &wgpu::TextureView) {
-        let target = self.target.as_ref().expect("no render target, system is probably in an update stage");
+        let target = self
+            .target
+            .as_ref()
+            .expect("no render target, system is probably in an update stage");
         (&target.0, &target.1)
     }
 
     pub fn view(&self) -> &wgpu::TextureView {
-        let target = self.target.as_ref().expect("no render target, system is probably in an update stage");
+        let target = self
+            .target
+            .as_ref()
+            .expect("no render target, system is probably in an update stage");
         &target.1
     }
 
     pub fn encoder(&self) -> CommandEncoder<'_> {
-        CommandEncoder::new(self.encoder.expect("no command encoder, system is probably in an update stage"))
+        CommandEncoder::new(
+            self.encoder
+                .expect("no command encoder, system is probably in an update stage"),
+        )
     }
- 
+
     pub fn device(&self) -> &wgpu::Device {
         &self.state.device
     }

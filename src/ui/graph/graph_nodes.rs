@@ -1,5 +1,5 @@
-use crate::prelude::*;
 use crate::core::graph::*;
+use crate::prelude::*;
 use crate::system::CustomGraphSystem;
 use crate::ui::image::render::ui_image_render_system;
 
@@ -40,7 +40,10 @@ fn ui_image_node(ctx: &mut SystemsContext) -> GraphNode {
     // Create graph node
     GraphNodeBuilder::new("ui_image")
         .set_pipeline(ui_pipeline_builder)
-        .set_system(GraphSystem::new("ui_image_render_system", ui_image_render_system))
+        .set_system(GraphSystem::new(
+            "ui_image_render_system",
+            ui_image_render_system,
+        ))
         .set_color_target(NodeColorTarget::Surface)
         .set_depth_target(NodeDepthTarget::Node("main".to_string()))
         .set_color_ops(wgpu::Operations {

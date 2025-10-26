@@ -1,7 +1,22 @@
-use crate::{app::{App, Plugin}, audio::AudioPlugin, core::standard::{movement::movement_system, prepare::graph_prerender_preparation_system, startup::{add_render_resources, register_standard_graph}, update::{update_camera_buffers, update_global_transforms}}, input::InputPlugin, prelude::{FixedTime, Time}, reflect::ReflectionPlugin, renderer::culling::FrustumCullingPlugin, system::SystemStage, ui::plugin::UiPlugin};
+use crate::{
+    app::{App, Plugin},
+    audio::AudioPlugin,
+    core::standard::{
+        movement::movement_system,
+        prepare::graph_prerender_preparation_system,
+        startup::{add_render_resources, register_standard_graph},
+        update::{update_camera_buffers, update_global_transforms},
+    },
+    input::InputPlugin,
+    prelude::{FixedTime, Time},
+    reflect::ReflectionPlugin,
+    renderer::culling::FrustumCullingPlugin,
+    system::SystemStage,
+    ui::plugin::UiPlugin,
+};
 
 /// Default plugins which are necessary for the app to run, includes:
-/// - [`RenderPlugin`] 
+/// - [`RenderPlugin`]
 /// - [`TimePlugin`]
 /// - [`InputPlugin`]
 /// - [`UiPlugin`]
@@ -12,8 +27,7 @@ pub struct DefaultPlugin;
 
 impl Plugin for DefaultPlugin {
     fn build(&self, app: &mut App) {
-        app
-            .add_plugin(RenderPlugin)
+        app.add_plugin(RenderPlugin)
             .add_plugin(TimePlugin)
             .add_plugin(InputPlugin)
             .add_plugin(UiPlugin)
@@ -31,8 +45,7 @@ pub struct RenderPlugin;
 
 impl Plugin for RenderPlugin {
     fn build(&self, app: &mut App) {
-        app
-            .add_startup_system(add_render_resources)
+        app.add_startup_system(add_render_resources)
             .add_startup_system(register_standard_graph)
             .register_system(update_global_transforms, SystemStage::Last)
             .register_system(update_camera_buffers, SystemStage::PreRender)
@@ -45,8 +58,7 @@ pub struct NoclipMovementPlugin;
 
 impl Plugin for NoclipMovementPlugin {
     fn build(&self, app: &mut App) {
-        app
-            .add_system(movement_system);
+        app.add_system(movement_system);
     }
 }
 

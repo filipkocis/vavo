@@ -21,8 +21,14 @@ pub enum Interaction {
 
 /// System to update UI interactions, runs in the First stage. So old computed values are used
 pub fn ui_interaction_update(
-    ctx: &mut SystemsContext, 
-    mut query: Query<(EntityId, &Node, &ComputedNode, &GlobalTransform, &Interaction)>
+    ctx: &mut SystemsContext,
+    mut query: Query<(
+        EntityId,
+        &Node,
+        &ComputedNode,
+        &GlobalTransform,
+        &Interaction,
+    )>,
 ) {
     let nodes = query.iter_mut();
     if nodes.is_empty() {
@@ -31,14 +37,17 @@ pub fn ui_interaction_update(
     }
 
     // clear old interactions, mark non-Nones as None
-    let mut interactions: HashMap<EntityId, Interaction> = nodes.iter().filter_map(|e| {
-        let interaction = *e.4;
-        if interaction == Interaction::None {
-            None
-        } else {
-            Some((e.0, Interaction::None))
-        }
-    }).collect();
+    let mut interactions: HashMap<EntityId, Interaction> = nodes
+        .iter()
+        .filter_map(|e| {
+            let interaction = *e.4;
+            if interaction == Interaction::None {
+                None
+            } else {
+                Some((e.0, Interaction::None))
+            }
+        })
+        .collect();
 
     // new interactions
     let (new_interactions, keep) = match get_interactions(ctx, &nodes) {
@@ -52,7 +61,9 @@ pub fn ui_interaction_update(
     // update interactions
     let mut interaction_query = query.cast::<&mut Interaction, ()>();
     for (id, new_interaction) in interactions {
-        let interaction = interaction_query.get(id).expect("Interaction component not found");
+        let interaction = interaction_query
+            .get(id)
+            .expect("Interaction component not found");
         *interaction = new_interaction;
     }
 }
@@ -60,11 +71,17 @@ pub fn ui_interaction_update(
 /// Get nodes with new interactions
 fn get_interactions(
     ctx: &mut SystemsContext,
-    nodes: &[(EntityId, &Node, &ComputedNode, &GlobalTransform, &Interaction)],
+    nodes: &[(
+        EntityId,
+        &Node,
+        &ComputedNode,
+        &GlobalTransform,
+        &Interaction,
+    )],
 ) -> Option<(
-        Vec<(EntityId, Interaction)>, // new
-        Vec<EntityId>, // keep
-    )> {
+    Vec<(EntityId, Interaction)>, // new
+    Vec<EntityId>,                // keep
+)> {
     let mouse_inputs = ctx.resources.get::<Input<MouseButton>>();
 
     let input_events = ctx.event_reader.read::<MouseInput>();
@@ -101,7 +118,7 @@ fn get_interactions(
         let right = left + computed.width.content + computed.padding.horizontal();
         let bottom = top + computed.height.content + computed.padding.vertical();
         let padding_box = Rect::new_min_max(left, top, right, bottom);
-        let hovering =  padding_box.contains(cursor_position);
+        let hovering = padding_box.contains(cursor_position);
 
         let state = match (**interaction, hovering, is_pressed, just_pressed) {
             // hovering
@@ -109,7 +126,7 @@ fn get_interactions(
             (Interaction::Press, true, true, _) => Interaction::Press,
             (_, true, false, false) => Interaction::Hover,
             (_, true, _, _) => Interaction::Hover,
-            
+
             // not hovering
             (Interaction::Press, false, true, false) => Interaction::Press,
 

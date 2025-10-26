@@ -1,53 +1,56 @@
 use glam::Vec2;
-use glyphon::{FontSystem, Resolution, SwashCache, TextArea, TextAtlas, TextBounds, TextRenderer, Viewport};
+use glyphon::{
+    FontSystem, Resolution, SwashCache, TextArea, TextAtlas, TextBounds, TextRenderer, Viewport,
+};
 use winit::event::WindowEvent;
 
 use crate::prelude::*;
 use crate::render_assets::RenderAssets;
-use crate::ui::{
-    prelude::*,
-    mesh::*,
-    text::TextBuffer,
-    graph::storage::UiTransformStorage,
-};
+use crate::ui::{graph::storage::UiTransformStorage, mesh::*, prelude::*, text::TextBuffer};
 
-/// System to update the glyphon text viewport resolution. 
+/// System to update the glyphon text viewport resolution.
 /// Runs only if the window size has changed.
 pub fn update_glyphon_viewport(ctx: &mut SystemsContext, _: Query<()>) {
     let mut viewport = ctx.resources.get_mut::<Viewport>();
     let queue = ctx.renderer.queue();
     let size = ctx.renderer.size();
 
-    viewport.update(queue, Resolution {
-        width: size.width,
-        height: size.height,
-    })
+    viewport.update(
+        queue,
+        Resolution {
+            width: size.width,
+            height: size.height,
+        },
+    )
 }
 
 /// Utility function to check for a window resize event.
 pub fn has_resized(ctx: &SystemsContext) -> bool {
-    ctx.event_reader.read::<WindowEvent>().iter().any(|event| {
-        matches!(event, WindowEvent::Resized(_))
-    })
+    ctx.event_reader
+        .read::<WindowEvent>()
+        .iter()
+        .any(|event| matches!(event, WindowEvent::Resized(_)))
 }
 
 /// Clear glyphon's text_renderer. Used when all nodes are removed.
 fn clear_text_renderer(ctx: &mut SystemsContext) {
-    let mut text_renderer = ctx.resources.get_mut::<TextRenderer>();     
+    let mut text_renderer = ctx.resources.get_mut::<TextRenderer>();
     let mut font_system = ctx.resources.get_mut::<FontSystem>();
     let mut text_atlas = ctx.resources.get_mut::<TextAtlas>();
     let viewport = ctx.resources.get::<Viewport>();
     let mut swash_cache = ctx.resources.get_mut::<SwashCache>();
-    
-    text_renderer.prepare(
-        ctx.renderer.device(), 
-        ctx.renderer.queue(), 
-        &mut font_system, 
-        &mut text_atlas, 
-        &viewport, 
-        [], 
-        &mut swash_cache,
-    ).unwrap();
+
+    text_renderer
+        .prepare(
+            ctx.renderer.device(),
+            ctx.renderer.queue(),
+            &mut font_system,
+            &mut text_atlas,
+            &viewport,
+            [],
+            &mut swash_cache,
+        )
+        .unwrap();
 }
 
 // TODO: add tracking system when only some nodes get removed, because now it will not trigger the update.
@@ -71,12 +74,23 @@ pub fn update_ui_mesh_and_transforms(ctx: &mut SystemsContext, mut query: Query<
 
     // get the amount of changed nodes
     let mut changed_query = query.cast::<EntityId, (
-        With<Transform>, With<GlobalTransform>, With<Node>, With<ComputedNode>, Changed<Transform>
+        With<Transform>,
+        With<GlobalTransform>,
+        With<Node>,
+        With<ComputedNode>,
+        Changed<Transform>,
     )>();
     let changed_len = changed_query.iter_mut().len();
 
     // query all nodes
-    let mut nodes_query = query.cast::<(EntityId, &GlobalTransform, &Node, &ComputedNode, Option<&Text>, Option<&UiImage>), ()>();
+    let mut nodes_query = query.cast::<(
+        EntityId,
+        &GlobalTransform,
+        &Node,
+        &ComputedNode,
+        Option<&Text>,
+        Option<&UiImage>,
+    ), ()>();
     let ui_nodes = nodes_query.iter_mut();
 
     // return if nothing changed
@@ -109,27 +123,31 @@ pub fn update_ui_mesh_and_transforms(ctx: &mut SystemsContext, mut query: Query<
     // intermediate storage for text buffer raes
     let mut intermediate_text_rae = Vec::new();
 
-    // add other node types as options 
-    let ui_nodes = ui_nodes.into_iter().map(|(id, global_transform, node, computed, text, image)| {
-        // HINT: if node has text, get the text buffer rae, add it to intermediate storage for RefCell
-        // lifetime issues, then later in code retrieve it and push its borrow to text_borrows
-        if let Some(text) = text {
-            let text = text_buffers.get_by_entity(id, text, ctx);
-            intermediate_text_rae.push(Some(text));
-        } else {
-            intermediate_text_rae.push(None);
-        };
+    // add other node types as options
+    let ui_nodes = ui_nodes
+        .into_iter()
+        .map(|(id, global_transform, node, computed, text, image)| {
+            // HINT: if node has text, get the text buffer rae, add it to intermediate storage for RefCell
+            // lifetime issues, then later in code retrieve it and push its borrow to text_borrows
+            if let Some(text) = text {
+                let text = text_buffers.get_by_entity(id, text, ctx);
+                intermediate_text_rae.push(Some(text));
+            } else {
+                intermediate_text_rae.push(None);
+            };
 
-        let has_image = image.is_some();
-        
-        // return core ui node
-        (id, global_transform, node, computed, has_image)
-    }).collect::<Vec<_>>();
+            let has_image = image.is_some();
+
+            // return core ui node
+            (id, global_transform, node, computed, has_image)
+        })
+        .collect::<Vec<_>>();
 
     // borrow intermediate text raes, needed for lifetime issues
-    let text_borrows = intermediate_text_rae.iter().map(|rae_option| {
-        rae_option.as_ref().map(|rae| rae.buffer.lock().unwrap())
-    }).collect::<Vec<_>>();
+    let text_borrows = intermediate_text_rae
+        .iter()
+        .map(|rae_option| rae_option.as_ref().map(|rae| rae.buffer.lock().unwrap()))
+        .collect::<Vec<_>>();
 
     let mut text_areas = Vec::new();
     let mut ui_transforms = Vec::new();
@@ -150,32 +168,94 @@ pub fn update_ui_mesh_and_transforms(ctx: &mut SystemsContext, mut query: Query<
         // x, y, w, h, color
         let quads = [
             // content + padding
-            (computed.border.left, computed.border.top, computed.width.border - horizontal, computed.height.border - vertical, node.background_color, has_image),
+            (
+                computed.border.left,
+                computed.border.top,
+                computed.width.border - horizontal,
+                computed.height.border - vertical,
+                node.background_color,
+                has_image,
+            ),
             // top border
-            (0.0, 0.0, computed.width.border, computed.border.top, node.border_color, false),
+            (
+                0.0,
+                0.0,
+                computed.width.border,
+                computed.border.top,
+                node.border_color,
+                false,
+            ),
             // left border
-            (0.0, 0.0, computed.border.left, computed.height.border, node.border_color, false),
+            (
+                0.0,
+                0.0,
+                computed.border.left,
+                computed.height.border,
+                node.border_color,
+                false,
+            ),
             // right border
-            (computed.width.border - computed.border.right, 0.0, computed.border.right, computed.height.border, node.border_color, false),
+            (
+                computed.width.border - computed.border.right,
+                0.0,
+                computed.border.right,
+                computed.height.border,
+                node.border_color,
+                false,
+            ),
             // bottom border
-            (0.0, computed.height.border - computed.border.bottom, computed.width.border, computed.border.bottom, node.border_color, false),
+            (
+                0.0,
+                computed.height.border - computed.border.bottom,
+                computed.width.border,
+                computed.border.bottom,
+                node.border_color,
+                false,
+            ),
         ];
 
         // add quad with borders to mesh
         for (x, y, w, h, color, has_image) in quads {
             if w > 0.0 && h > 0.0 && color.a > 0.0 {
                 if color.a == 1.0 {
-                    ui_mesh.add_rect(x, y, computed.z_index as f32, w, h, color, transform_index, id);
+                    ui_mesh.add_rect(
+                        x,
+                        y,
+                        computed.z_index as f32,
+                        w,
+                        h,
+                        color,
+                        transform_index,
+                        id,
+                    );
                 } else {
-                    ui_mesh_transparent.add_rect(x, y, computed.z_index as f32, w, h, color, transform_index, id);
+                    ui_mesh_transparent.add_rect(
+                        x,
+                        y,
+                        computed.z_index as f32,
+                        w,
+                        h,
+                        color,
+                        transform_index,
+                        id,
+                    );
                 }
             }
 
             if w > 0.0 && h > 0.0 && has_image {
-                ui_mesh_images.add_rect(x, y, computed.z_index as f32, w, h, color::WHITE, transform_index, id);
+                ui_mesh_images.add_rect(
+                    x,
+                    y,
+                    computed.z_index as f32,
+                    w,
+                    h,
+                    color::WHITE,
+                    transform_index,
+                    id,
+                );
             }
         }
-        
+
         // entitie's transform
         let glob_transform = global_transform.matrix.to_cols_array_2d();
         // TODO: we should use this instead of vec3.z in pos, but for nonui parent nodes this would
@@ -210,20 +290,22 @@ pub fn update_ui_mesh_and_transforms(ctx: &mut SystemsContext, mut query: Query<
     }
 
     // prepare text areas for rendering
-    text_renderer.prepare_with_depth(
-        ctx.renderer.device(), 
-        ctx.renderer.queue(), 
-        &mut font_system, 
-        &mut text_atlas, 
-        &viewport, 
-        text_areas, 
-        &mut swash_cache,
-        |md| {
-            // TODO: do a better way to match with UI shader, this is copypasting
-            let mil = 1_000_000.0;
-            (mil - md as f32 - 1.0) / mil
-        }
-    ).unwrap();
+    text_renderer
+        .prepare_with_depth(
+            ctx.renderer.device(),
+            ctx.renderer.queue(),
+            &mut font_system,
+            &mut text_atlas,
+            &viewport,
+            text_areas,
+            &mut swash_cache,
+            |md| {
+                // TODO: do a better way to match with UI shader, this is copypasting
+                let mil = 1_000_000.0;
+                (mil - md as f32 - 1.0) / mil
+            },
+        )
+        .unwrap();
 
     // update transform storage with ui nodes
     ui_transform_storage.update(&ui_transforms, ui_transforms.len(), ctx);

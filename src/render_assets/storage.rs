@@ -2,8 +2,8 @@ use std::ops::{Deref, DerefMut};
 
 use bytemuck::{AnyBitPattern, NoUninit};
 
-use crate::system::SystemsContext;
 use crate::macros::Resource;
+use crate::system::SystemsContext;
 
 use super::{BindGroup, Buffer};
 
@@ -26,25 +26,44 @@ pub struct Storage {
 
 impl Storage {
     /// Create a new Storage with n transforms of size bytes
-    pub fn new(name: &str, count: usize, element_size: usize, ctx: &mut SystemsContext, visibility: wgpu::ShaderStages) -> Self {
+    pub fn new(
+        name: &str,
+        count: usize,
+        element_size: usize,
+        ctx: &mut SystemsContext,
+        visibility: wgpu::ShaderStages,
+    ) -> Self {
         let data = vec![0u8; count * element_size];
 
         if data.is_empty() {
-            panic!("Storage buffer cannot be empty, '{}' has count '{}' and element_size '{}'",
+            panic!(
+                "Storage buffer cannot be empty, '{}' has count '{}' and element_size '{}'",
                 name, count, element_size
             );
         }
 
-        let buffer = Buffer::new("transform_storage")
-            .create_storage_buffer(&data, Some(wgpu::BufferUsages::COPY_DST), ctx.renderer.device());
+        let buffer = Buffer::new("transform_storage").create_storage_buffer(
+            &data,
+            Some(wgpu::BufferUsages::COPY_DST),
+            ctx.renderer.device(),
+        );
 
-        let storage_buffer = buffer.storage.as_ref()
+        let storage_buffer = buffer
+            .storage
+            .as_ref()
             .expect("Storage buffer should be storage");
         let bind_group = BindGroup::build(&format!("{}_storage", name))
             .add_storage_buffer(storage_buffer, visibility, true)
             .finish(ctx);
 
-        Self { name: name.to_string(), buffer, bind_group, size: count * element_size, visibility, count }
+        Self {
+            name: name.to_string(),
+            buffer,
+            bind_group,
+            size: count * element_size,
+            visibility,
+            count,
+        }
     }
 
     /// Set new size for the buffer. New empty buffer will replace the old one
@@ -65,14 +84,15 @@ impl Storage {
     /// Resizes the buffer if the data is larger than the current buffer size
     ///
     /// # Note
-    /// Count cannot be inferred from the data, since it can be a slice of anything, 
+    /// Count cannot be inferred from the data, since it can be a slice of anything,
     /// not just &[Element]
     ///
     /// # Panics
     /// Panics if the data length in bytes is not divisible by the provided count, since
     /// element_size is computed as `data_bytes.len() / count`
-    pub fn update<A>(&mut self, data: &[A], count: usize, ctx: &mut SystemsContext) 
-    where A: NoUninit + AnyBitPattern 
+    pub fn update<A>(&mut self, data: &[A], count: usize, ctx: &mut SystemsContext)
+    where
+        A: NoUninit + AnyBitPattern,
     {
         if data.is_empty() {
             return;
@@ -80,7 +100,11 @@ impl Storage {
 
         let data = bytemuck::cast_slice(data);
 
-        assert_eq!(data.len() % count, 0, "Data byte length must be divisible by provided element count");
+        assert_eq!(
+            data.len() % count,
+            0,
+            "Data byte length must be divisible by provided element count"
+        );
 
         if data.len() > self.size {
             let element_size = data.len() / count;
@@ -93,7 +117,10 @@ impl Storage {
 
     /// Return the storage buffer
     pub fn buffer(&self) -> &wgpu::Buffer {
-        self.buffer.storage.as_ref().expect("Storage buffer should be a storage buffer")
+        self.buffer
+            .storage
+            .as_ref()
+            .expect("Storage buffer should be a storage buffer")
     }
 
     /// Return the bind group
@@ -122,7 +149,12 @@ impl Storage {
 pub struct TransformStorage(Storage);
 
 impl TransformStorage {
-    pub fn new(n: usize, size: usize, ctx: &mut SystemsContext, visibility: wgpu::ShaderStages) -> Self {
+    pub fn new(
+        n: usize,
+        size: usize,
+        ctx: &mut SystemsContext,
+        visibility: wgpu::ShaderStages,
+    ) -> Self {
         Self(Storage::new("transform", n, size, ctx, visibility))
     }
 }
