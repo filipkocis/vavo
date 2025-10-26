@@ -1,8 +1,15 @@
 use glam::{Mat4, Vec3};
 
-use crate::{assets::Handle, render_assets::{BindGroup, Buffer, IntoRenderAsset, RenderAssets}, renderer::{palette, Color, Image}, system::SystemsContext, ecs::entities::EntityId, macros::{Component, Reflect}};
+use crate::{
+    assets::Handle,
+    ecs::entities::EntityId,
+    macros::{Component, Reflect},
+    render_assets::{BindGroup, Buffer, IntoRenderAsset, RenderAssets},
+    renderer::{Color, Image, palette},
+    system::SystemsContext,
+};
 
-use super::{bounding_volume::Plane, GlobalTransform, Rect};
+use super::{GlobalTransform, Rect, bounding_volume::Plane};
 
 /// Main camera component
 /// Requires Projection, Transform, and Camera2D/3D components
@@ -67,7 +74,7 @@ impl Default for PerspectiveProjection {
             aspect_ratio: 1.0,
         }
     }
-} 
+}
 
 impl Default for OrthographicProjection {
     fn default() -> Self {
@@ -98,17 +105,23 @@ impl Projection {
 
         match self {
             Projection::Perspective(p) => {
-                let projection = glam::Mat4::perspective_rh(p.fov.to_radians(), p.aspect_ratio, p.near, p.far);
+                let projection =
+                    glam::Mat4::perspective_rh(p.fov.to_radians(), p.aspect_ratio, p.near, p.far);
                 let view_projection = projection * view;
-                
+
                 view_projection.to_cols_array_2d()
-            },
+            }
             Projection::Orthographic(o) => {
                 let projection = glam::Mat4::orthographic_rh(
-                    o.area.min.x, o.area.max.x, o.area.min.y, o.area.max.y, o.near, o.far
+                    o.area.min.x,
+                    o.area.max.x,
+                    o.area.min.y,
+                    o.area.max.y,
+                    o.near,
+                    o.far,
                 );
                 let view_projection = projection * view;
-                
+
                 view_projection.to_cols_array_2d()
             }
         }
@@ -119,7 +132,7 @@ impl Projection {
         match self {
             Projection::Perspective(p) => {
                 p.aspect_ratio = width / height;
-            },
+            }
             Projection::Orthographic(o) => {
                 o.area = Rect::new_min_max(-width / 2.0, -height / 2.0, width / 2.0, height / 2.0);
             }
@@ -136,49 +149,49 @@ impl Projection {
 
         // Left plane (X-axis)
         planes[0].normal = Vec3::new(
-            view_proj_matrix[0][3] + view_proj_matrix[0][0],  // x
-            view_proj_matrix[1][3] + view_proj_matrix[1][0],  // y
-            view_proj_matrix[2][3] + view_proj_matrix[2][0],  // z
+            view_proj_matrix[0][3] + view_proj_matrix[0][0], // x
+            view_proj_matrix[1][3] + view_proj_matrix[1][0], // y
+            view_proj_matrix[2][3] + view_proj_matrix[2][0], // z
         );
         planes[0].d = view_proj_matrix[3][3] + view_proj_matrix[3][0];
 
         // Right plane (X-axis)
         planes[1].normal = Vec3::new(
-            view_proj_matrix[0][3] - view_proj_matrix[0][0],  // x
-            view_proj_matrix[1][3] - view_proj_matrix[1][0],  // y
-            view_proj_matrix[2][3] - view_proj_matrix[2][0],  // z
+            view_proj_matrix[0][3] - view_proj_matrix[0][0], // x
+            view_proj_matrix[1][3] - view_proj_matrix[1][0], // y
+            view_proj_matrix[2][3] - view_proj_matrix[2][0], // z
         );
         planes[1].d = view_proj_matrix[3][3] - view_proj_matrix[3][0];
 
         // Bottom plane (Y-axis)
         planes[2].normal = Vec3::new(
-            view_proj_matrix[0][3] + view_proj_matrix[0][1],  // x
-            view_proj_matrix[1][3] + view_proj_matrix[1][1],  // y
-            view_proj_matrix[2][3] + view_proj_matrix[2][1],  // z
+            view_proj_matrix[0][3] + view_proj_matrix[0][1], // x
+            view_proj_matrix[1][3] + view_proj_matrix[1][1], // y
+            view_proj_matrix[2][3] + view_proj_matrix[2][1], // z
         );
         planes[2].d = view_proj_matrix[3][3] + view_proj_matrix[3][1];
 
         // Top plane (Y-axis)
         planes[3].normal = Vec3::new(
-            view_proj_matrix[0][3] - view_proj_matrix[0][1],  // x
-            view_proj_matrix[1][3] - view_proj_matrix[1][1],  // y
-            view_proj_matrix[2][3] - view_proj_matrix[2][1],  // z
+            view_proj_matrix[0][3] - view_proj_matrix[0][1], // x
+            view_proj_matrix[1][3] - view_proj_matrix[1][1], // y
+            view_proj_matrix[2][3] - view_proj_matrix[2][1], // z
         );
         planes[3].d = view_proj_matrix[3][3] - view_proj_matrix[3][1];
 
         // Near plane (Z-axis)
         planes[4].normal = Vec3::new(
-            view_proj_matrix[0][3] + view_proj_matrix[0][2],  // x
-            view_proj_matrix[1][3] + view_proj_matrix[1][2],  // y
-            view_proj_matrix[2][3] + view_proj_matrix[2][2],  // z
+            view_proj_matrix[0][3] + view_proj_matrix[0][2], // x
+            view_proj_matrix[1][3] + view_proj_matrix[1][2], // y
+            view_proj_matrix[2][3] + view_proj_matrix[2][2], // z
         );
         planes[4].d = view_proj_matrix[3][3] + view_proj_matrix[3][2];
 
         // Far plane (Z-axis)
         planes[5].normal = Vec3::new(
-            view_proj_matrix[0][3] - view_proj_matrix[0][2],  // x
-            view_proj_matrix[1][3] - view_proj_matrix[1][2],  // y
-            view_proj_matrix[2][3] - view_proj_matrix[2][2],  // z
+            view_proj_matrix[0][3] - view_proj_matrix[0][2], // x
+            view_proj_matrix[1][3] - view_proj_matrix[1][2], // y
+            view_proj_matrix[2][3] - view_proj_matrix[2][2], // z
         );
         planes[5].d = view_proj_matrix[3][3] - view_proj_matrix[3][2];
 
@@ -194,8 +207,14 @@ impl Projection {
 }
 
 impl Camera {
-    pub fn get_buffer_data(projection: &Projection, global_transform: &GlobalTransform) -> Vec<f32> {
-        let mut data = projection.get_view_projection_matrix(&global_transform.matrix).as_flattened().to_vec();
+    pub fn get_buffer_data(
+        projection: &Projection,
+        global_transform: &GlobalTransform,
+    ) -> Vec<f32> {
+        let mut data = projection
+            .get_view_projection_matrix(&global_transform.matrix)
+            .as_flattened()
+            .to_vec();
         let translation = global_transform.translation();
 
         data.extend(&[
@@ -209,35 +228,43 @@ impl Camera {
 }
 
 impl IntoRenderAsset<Buffer> for Camera {
-    fn create_render_asset(
-            &self, 
-            ctx: &mut SystemsContext,
-            entity_id: Option<EntityId>
-    ) -> Buffer {
+    fn create_render_asset(&self, ctx: &mut SystemsContext, entity_id: Option<EntityId>) -> Buffer {
         let id = entity_id.expect("EntityId should be provided for Camera Buffer");
 
         let world = &unsafe { &mut *ctx.app }.world;
-        let projection = world.entities.get_component(id).expect("Camera should have a Projection component");
-        let global_transform = world.entities.get_component(id).expect("Camera should have a GlobalTransform component");
+        let projection = world
+            .entities
+            .get_component(id)
+            .expect("Camera should have a Projection component");
+        let global_transform = world
+            .entities
+            .get_component(id)
+            .expect("Camera should have a GlobalTransform component");
 
         let data = Camera::get_buffer_data(projection, global_transform);
-        
-        Buffer::new("camera")
-            .create_uniform_buffer(&data, Some(wgpu::BufferUsages::COPY_DST), ctx.renderer.device())
+
+        Buffer::new("camera").create_uniform_buffer(
+            &data,
+            Some(wgpu::BufferUsages::COPY_DST),
+            ctx.renderer.device(),
+        )
     }
 }
 
 impl IntoRenderAsset<BindGroup> for Camera {
     fn create_render_asset(
-            &self, 
-            ctx: &mut SystemsContext,
-            entity_id: Option<EntityId>
+        &self,
+        ctx: &mut SystemsContext,
+        entity_id: Option<EntityId>,
     ) -> BindGroup {
         let id = entity_id.expect("EntityId should be provided for Camera BindGroup");
 
         let mut buffers = ctx.resources.get_mut::<RenderAssets<Buffer>>();
-        let buffer = buffers.get_by_entity(id, self, ctx); 
-        let uniform_buffer = buffer.uniform.as_ref().expect("Camera buffer should be uniform");
+        let buffer = buffers.get_by_entity(id, self, ctx);
+        let uniform_buffer = buffer
+            .uniform
+            .as_ref()
+            .expect("Camera buffer should be uniform");
 
         BindGroup::build("camera")
             .add_uniform_buffer(uniform_buffer, wgpu::ShaderStages::VERTEX_FRAGMENT)

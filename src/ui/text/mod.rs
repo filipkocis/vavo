@@ -2,7 +2,11 @@ use std::sync::Mutex;
 
 use glyphon::{Attrs, Buffer, FontSystem, Metrics, Shaping};
 
-use crate::{prelude::{Color, Resource}, render_assets::IntoRenderAsset, macros::{RenderAsset, Component}};
+use crate::{
+    macros::{Component, RenderAsset},
+    prelude::{Color, Resource},
+    render_assets::IntoRenderAsset,
+};
 
 // TODO: use newtype pattern and derive
 impl Resource for glyphon::FontSystem {}
@@ -28,12 +32,18 @@ pub struct TextBuffer {
 impl TextBuffer {
     /// Set buffer size
     pub fn set_size(&self, font_system: &mut FontSystem, width: Option<f32>, height: Option<f32>) {
-        self.buffer.lock().unwrap().set_size(font_system, width, height);
+        self.buffer
+            .lock()
+            .unwrap()
+            .set_size(font_system, width, height);
     }
 
     /// Returns buffer width
     pub fn width(&self) -> f32 {
-        self.buffer.lock().unwrap().layout_runs()
+        self.buffer
+            .lock()
+            .unwrap()
+            .layout_runs()
             .map(|line| line.line_w)
             .reduce(f32::max) // .max() workaround for f32
             .unwrap_or_default()
@@ -41,7 +51,10 @@ impl TextBuffer {
 
     /// Returns buffer height
     pub fn height(&self) -> f32 {
-        self.buffer.lock().unwrap().layout_runs()
+        self.buffer
+            .lock()
+            .unwrap()
+            .layout_runs()
             .map(|line| line.line_height)
             .sum::<f32>()
     }
@@ -54,7 +67,7 @@ impl Text {
             font_size: 16.0,
             line_height: 1.5,
             attrs: Attrs::new(),
-            shaping: Shaping::Advanced
+            shaping: Shaping::Advanced,
         }
     }
 
@@ -85,19 +98,19 @@ impl Text {
 
 impl IntoRenderAsset<TextBuffer> for Text {
     fn create_render_asset(
-        &self, 
+        &self,
         ctx: &mut crate::prelude::SystemsContext,
-        _: Option<crate::prelude::EntityId>
+        _: Option<crate::prelude::EntityId>,
     ) -> TextBuffer {
         let mut font_system = ctx.resources.get_mut::<FontSystem>();
 
-        let metrics = Metrics::relative(self.font_size, self.line_height); 
+        let metrics = Metrics::relative(self.font_size, self.line_height);
 
         let mut buffer = Buffer::new(&mut font_system, metrics);
         let mut borrowed_buffer = buffer.borrow_with(&mut font_system);
 
         borrowed_buffer.set_size(None, None);
-        borrowed_buffer.set_text(&self.content, &self.attrs, self.shaping); 
+        borrowed_buffer.set_text(&self.content, &self.attrs, self.shaping);
         borrowed_buffer.shape_until_scroll(true);
 
         // borrowed_buffer.set_wrap(Wrap::WordOrGlyph);

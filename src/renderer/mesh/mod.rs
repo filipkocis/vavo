@@ -6,7 +6,12 @@ use glam::Vec3;
 pub use wgpu::PrimitiveTopology;
 use wgpu::{VertexAttribute, VertexFormat};
 
-use crate::{render_assets::{Buffer, IntoRenderAsset}, renderer::palette, system::SystemsContext, ecs::entities::EntityId};
+use crate::{
+    ecs::entities::EntityId,
+    render_assets::{Buffer, IntoRenderAsset},
+    renderer::palette,
+    system::SystemsContext,
+};
 
 use super::Color;
 
@@ -27,12 +32,12 @@ pub struct Mesh {
 
 impl Mesh {
     pub fn new(
-        topology: PrimitiveTopology, 
+        topology: PrimitiveTopology,
         colors: Option<Vec<Color>>,
         positions: Vec<[f32; 3]>,
-        normals: Option<Vec<[f32; 3]>>, 
-        uvs: Option<Vec<[f32; 2]>>, 
-        indices: Option<Vec<u32>>
+        normals: Option<Vec<[f32; 3]>>,
+        uvs: Option<Vec<[f32; 2]>>,
+        indices: Option<Vec<u32>>,
     ) -> Self {
         Self {
             topology,
@@ -46,7 +51,8 @@ impl Mesh {
 
     /// Returns the center (average) of the mesh
     pub fn center(&self) -> Vec3 {
-        self.positions.iter()
+        self.positions
+            .iter()
             .map(|p| Vec3::from(*p))
             .fold(Vec3::ZERO, |acc, v| acc + v)
             / (self.positions.len() as f32)
@@ -55,7 +61,8 @@ impl Mesh {
     /// Returns the maximum distance from the center to any vertex
     pub fn max_distance(&self) -> f32 {
         let center = self.center();
-        self.positions.iter()
+        self.positions
+            .iter()
             .map(|p| Vec3::from(*p))
             .map(|v| (v - center).length_squared()) // optimization for length
             .fold(0.0f32, |acc, d| acc.max(d))
@@ -84,16 +91,17 @@ impl Mesh {
     pub(crate) const VERTEX_SIZE_IN_U8: usize = 12 * std::mem::size_of::<f32>();
 
     fn vertex(&self, index: usize) -> [f32; Self::VERTEX_SIZE_IN_F32] {
-        let color = self.colors.as_ref().map_or(palette::TRANSPARENT, |v| v[index]);
+        let color = self
+            .colors
+            .as_ref()
+            .map_or(palette::TRANSPARENT, |v| v[index]);
         let pos = self.positions[index];
         let normal = self.normals.as_ref().map_or([0.0, 0.0, 0.0], |v| v[index]);
         let uv = self.uvs.as_ref().map_or([0.0, 0.0], |v| v[index]);
 
         [
-            pos[0], pos[1], pos[2],
-            color.r, color.g, color.b, color.a,
-            normal[0], normal[1], normal[2],
-            uv[0], uv[1],
+            pos[0], pos[1], pos[2], color.r, color.g, color.b, color.a, normal[0], normal[1],
+            normal[2], uv[0], uv[1],
         ]
     }
 
@@ -138,22 +146,22 @@ impl Mesh {
                     format: VertexFormat::Float32x2,
                     offset: mem::size_of::<[f32; 10]>() as wgpu::BufferAddress,
                     shader_location: 3,
-                }
-            ]
+                },
+            ],
         }
     }
 }
 
 impl IntoRenderAsset<Buffer> for Mesh {
-    fn create_render_asset(
-        &self, 
-        ctx: &mut SystemsContext,
-        _: Option<EntityId>
-    ) -> Buffer {
+    fn create_render_asset(&self, ctx: &mut SystemsContext, _: Option<EntityId>) -> Buffer {
         let device = ctx.renderer.device();
 
-        let buffer = Buffer::new("mesh")
-            .create_vertex_buffer(&self.vertex_data(), self.positions.len(), None, device);
+        let buffer = Buffer::new("mesh").create_vertex_buffer(
+            &self.vertex_data(),
+            self.positions.len(),
+            None,
+            device,
+        );
 
         if let Some(indices) = self.index_data() {
             buffer.create_index_buffer(indices, None, device)

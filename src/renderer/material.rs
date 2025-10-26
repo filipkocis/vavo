@@ -1,6 +1,11 @@
-use crate::{assets::Handle, render_assets::{BindGroup, Buffer, IntoRenderAsset}, system::SystemsContext, ecs::entities::EntityId};
+use crate::{
+    assets::Handle,
+    ecs::entities::EntityId,
+    render_assets::{BindGroup, Buffer, IntoRenderAsset},
+    system::SystemsContext,
+};
 
-use super::{palette, Color, Face, Image};
+use super::{Color, Face, Image, palette};
 
 #[derive(Debug, Clone, crate::macros::Asset)]
 pub struct Material {
@@ -33,13 +38,10 @@ impl Material {
             self.reflectance,
         ]));
 
-
-        let booleans = self.flip_normal_map_y as u32 |
-            ((matches!(self.cull_mode, Some(Face::Back)) as u32) << 1) |
-            ((self.unlit as u32) << 2);
-        data.extend_from_slice(bytemuck::cast_slice(&[
-            booleans, 0, 0, 0
-        ]));
+        let booleans = self.flip_normal_map_y as u32
+            | ((matches!(self.cull_mode, Some(Face::Back)) as u32) << 1)
+            | ((self.unlit as u32) << 2);
+        data.extend_from_slice(bytemuck::cast_slice(&[booleans, 0, 0, 0]));
 
         data
     }
@@ -59,33 +61,36 @@ impl Default for Material {
             flip_normal_map_y: false,
             cull_mode: Some(Face::default()),
             unlit: false,
-        } 
+        }
     }
 }
 
 impl IntoRenderAsset<Buffer> for Material {
-    fn create_render_asset(
-        &self, 
-        ctx: &mut SystemsContext,
-        _: Option<EntityId>
-    ) -> Buffer {
-        Buffer::new("material")
-            .create_uniform_buffer(&self.uniform_data(), None, ctx.renderer.device())
+    fn create_render_asset(&self, ctx: &mut SystemsContext, _: Option<EntityId>) -> Buffer {
+        Buffer::new("material").create_uniform_buffer(
+            &self.uniform_data(),
+            None,
+            ctx.renderer.device(),
+        )
     }
 }
 
 impl IntoRenderAsset<BindGroup> for Material {
-    fn create_render_asset(
-        &self, 
-        ctx: &mut SystemsContext,
-        _: Option<EntityId>
-    ) -> BindGroup {
+    fn create_render_asset(&self, ctx: &mut SystemsContext, _: Option<EntityId>) -> BindGroup {
         let buffer: Buffer = self.create_render_asset(ctx, None);
-        let uniform = buffer.uniform.expect("Material buffer should be an uniform buffer");
+        let uniform = buffer
+            .uniform
+            .expect("Material buffer should be an uniform buffer");
 
         BindGroup::build("material")
             .add_texture(&self.base_color_texture, ctx, self.base_color, None, None)
-            .add_texture(&self.normal_map_texture, ctx, Color::rgb(0.5, 0.5, 1.0), None, None)
+            .add_texture(
+                &self.normal_map_texture,
+                ctx,
+                Color::rgb(0.5, 0.5, 1.0),
+                None,
+                None,
+            )
             .add_uniform_buffer(&uniform, wgpu::ShaderStages::VERTEX_FRAGMENT)
             .finish(ctx)
     }

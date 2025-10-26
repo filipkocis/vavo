@@ -1,4 +1,7 @@
-use crate::{prelude::*, render_assets::{BindGroup, Buffer, IntoRenderAsset}};
+use crate::{
+    prelude::*,
+    render_assets::{BindGroup, Buffer, IntoRenderAsset},
+};
 
 /// An image UI node component.
 #[derive(Component, Clone, Debug)]
@@ -42,34 +45,26 @@ impl UiImage {
         let mut data = Vec::new();
 
         data.extend_from_slice(bytemuck::bytes_of(&self.tint));
-        
-        let booleans = self.flip_x as u32 |
-            ((self.flip_y as u32) << 1);
-        data.extend_from_slice(bytemuck::cast_slice(&[
-            booleans, 0, 0, 0
-        ]));
+
+        let booleans = self.flip_x as u32 | ((self.flip_y as u32) << 1);
+        data.extend_from_slice(bytemuck::cast_slice(&[booleans, 0, 0, 0]));
 
         data
     }
 }
 
 impl IntoRenderAsset<Buffer> for UiImage {
-    fn create_render_asset(
-        &self, 
-        ctx: &mut SystemsContext,
-        _: Option<EntityId>
-    ) -> Buffer {
-        Buffer::new("ui_image")
-            .create_uniform_buffer(&self.uniform_data(), None, ctx.renderer.device())
+    fn create_render_asset(&self, ctx: &mut SystemsContext, _: Option<EntityId>) -> Buffer {
+        Buffer::new("ui_image").create_uniform_buffer(
+            &self.uniform_data(),
+            None,
+            ctx.renderer.device(),
+        )
     }
 }
 
 impl IntoRenderAsset<BindGroup> for UiImage {
-    fn create_render_asset(
-        &self, 
-        ctx: &mut SystemsContext,
-        _: Option<EntityId>
-    ) -> BindGroup {
+    fn create_render_asset(&self, ctx: &mut SystemsContext, _: Option<EntityId>) -> BindGroup {
         let image = Some(self.image.clone());
 
         let buffer: Buffer = self.create_render_asset(ctx, None);

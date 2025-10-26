@@ -19,7 +19,8 @@ impl ShadowMapArray {
                 sample_count: 1,
                 dimension: wgpu::TextureDimension::D2,
                 format: wgpu::TextureFormat::Depth32Float,
-                usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+                usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                    | wgpu::TextureUsages::TEXTURE_BINDING,
                 view_formats: &[wgpu::TextureFormat::Depth32Float],
             }),
             sampler_descriptor: Some(wgpu::SamplerDescriptor {
@@ -28,7 +29,7 @@ impl ShadowMapArray {
                 ..Default::default()
             }),
             // We don't need a view, but we need to specify the format or Image will use
-            // incompatible defaults which will cause a panic 
+            // incompatible defaults which will cause a panic
             view_descriptor: Some(wgpu::TextureViewDescriptor {
                 label: Some("ShadowMapArray View"),
                 format: Some(wgpu::TextureFormat::Depth32Float),
@@ -41,7 +42,7 @@ impl ShadowMapArray {
         Self {
             size,
             texture: texture.texture,
-            sampler: texture.sampler
+            sampler: texture.sampler,
         }
     }
 
@@ -60,22 +61,31 @@ impl ShadowMapArray {
     }
 
     /// Get the size of the `depth_or_array_layers`
-    pub fn layers(&self) -> u32 { 
+    pub fn layers(&self) -> u32 {
         self.size.depth_or_array_layers
     }
 
     /// Create a texture view for this shadow map array
-    pub fn create_view(&self, layer: u32, count: Option<u32>, dimension: Option<wgpu::TextureViewDimension>) -> wgpu::TextureView {
+    pub fn create_view(
+        &self,
+        layer: u32,
+        count: Option<u32>,
+        dimension: Option<wgpu::TextureViewDimension>,
+    ) -> wgpu::TextureView {
         self.texture.create_view(&wgpu::TextureViewDescriptor {
-            label: Some(&format!("ShadowMapArray View [{}..{}]", layer, 
-                count.map(|c| layer + c).unwrap_or(self.size.depth_or_array_layers)
+            label: Some(&format!(
+                "ShadowMapArray View [{}..{}]",
+                layer,
+                count
+                    .map(|c| layer + c)
+                    .unwrap_or(self.size.depth_or_array_layers)
             )),
             format: Some(wgpu::TextureFormat::Depth32Float),
             dimension,
             aspect: wgpu::TextureAspect::DepthOnly,
             base_array_layer: layer,
             array_layer_count: count,
-            ..Default::default() 
+            ..Default::default()
         })
     }
 }
@@ -84,7 +94,7 @@ impl ShadowMapArray {
 
 // impl RenderAsset<BindGroup> for ShadowMapArray {
 //     fn create_render_asset(
-//         &self, 
+//         &self,
 //         ctx: &mut SystemsContext,
 //         _: Option<&crate::prelude::EntityId>
 //     ) -> BindGroup {

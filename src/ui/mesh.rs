@@ -52,15 +52,15 @@ impl UiMesh {
     }
 
     pub fn add_rect(
-        &mut self, 
-        x: f32, 
-        y: f32, 
-        z_layer: f32, 
-        w: f32, 
-        h: f32, 
-        color: Color, 
-        transform_index: u32, 
-        entity_id: EntityId
+        &mut self,
+        x: f32,
+        y: f32,
+        z_layer: f32,
+        w: f32,
+        h: f32,
+        color: Color,
+        transform_index: u32,
+        entity_id: EntityId,
     ) {
         let i = self.positions.len() as u32;
 
@@ -71,13 +71,13 @@ impl UiMesh {
             [x, y, z_layer],
         ]);
 
-        self.indices.extend([
-            i, i + 1, i + 2,
-            i + 2, i + 3, i,
-        ]);
+        self.indices.extend([i, i + 1, i + 2, i + 2, i + 3, i]);
 
         self.transform_indices.extend([
-            transform_index, transform_index, transform_index, transform_index,
+            transform_index,
+            transform_index,
+            transform_index,
+            transform_index,
         ]);
 
         self.colors.extend([color, color, color, color]);
@@ -93,10 +93,11 @@ impl UiMesh {
             let pos = self.positions[i];
             let transform_index = self.transform_indices[i];
 
-            data.extend([
-                color.r, color.g, color.b, color.a,
-                pos[0], pos[1], pos[2],
-            ].into_iter().flat_map(|f| f.to_ne_bytes()));
+            data.extend(
+                [color.r, color.g, color.b, color.a, pos[0], pos[1], pos[2]]
+                    .into_iter()
+                    .flat_map(|f| f.to_ne_bytes()),
+            );
 
             data.extend(transform_index.to_ne_bytes())
         }
@@ -128,17 +129,13 @@ impl UiMesh {
                     offset: std::mem::size_of::<[f32; 7]>() as wgpu::BufferAddress,
                     shader_location: 2,
                 },
-            ]
+            ],
         }
     }
 }
 
 impl IntoRenderAsset<Buffer> for UiMesh {
-    fn create_render_asset(
-        &self, 
-        ctx: &mut SystemsContext,
-        _: Option<EntityId>
-    ) -> Buffer {
+    fn create_render_asset(&self, ctx: &mut SystemsContext, _: Option<EntityId>) -> Buffer {
         let device = ctx.renderer.device();
 
         Buffer::new("ui_mesh")
@@ -162,11 +159,7 @@ impl DerefMut for UiMeshTransparent {
 }
 
 impl IntoRenderAsset<Buffer> for UiMeshTransparent {
-    fn create_render_asset(
-        &self, 
-        ctx: &mut SystemsContext,
-        entity_id: Option<EntityId>
-    ) -> Buffer {
+    fn create_render_asset(&self, ctx: &mut SystemsContext, entity_id: Option<EntityId>) -> Buffer {
         self.0.create_render_asset(ctx, entity_id)
     }
 }
@@ -186,11 +179,7 @@ impl DerefMut for UiMeshImages {
 }
 
 impl IntoRenderAsset<Buffer> for UiMeshImages {
-    fn create_render_asset(
-        &self, 
-        ctx: &mut SystemsContext,
-        entity_id: Option<EntityId>
-    ) -> Buffer {
+    fn create_render_asset(&self, ctx: &mut SystemsContext, entity_id: Option<EntityId>) -> Buffer {
         self.0.create_render_asset(ctx, entity_id)
     }
 }

@@ -1,4 +1,9 @@
-use crate::{assets::Assets, render_assets::{IntoRenderAsset, RenderAssetEntry, RenderAssets}, system::SystemsContext, macros::{RenderAsset, Asset}};
+use crate::{
+    assets::Assets,
+    macros::{Asset, RenderAsset},
+    render_assets::{IntoRenderAsset, RenderAssetEntry, RenderAssets},
+    system::SystemsContext,
+};
 
 use super::Color;
 
@@ -10,7 +15,7 @@ pub struct Texture {
 }
 
 #[derive(Clone)]
-/// Texture render asset which represents a 1x1 texture with a single rgba color. 
+/// Texture render asset which represents a 1x1 texture with a single rgba color.
 /// Created with default image descriptors.
 ///
 /// Internally, it creates a new image asset and creates a render asset texture from it
@@ -40,9 +45,7 @@ impl SingleColorTexture {
 
         // TODO add optimization to not create a new texture if similar texture already exists
 
-        Self {
-            handle: texture,
-        }
+        Self { handle: texture }
     }
 }
 
@@ -94,32 +97,43 @@ impl Image {
             ..Default::default()
         }
     }
-    
+
     pub fn default_view_descriptor() -> wgpu::TextureViewDescriptor<'static> {
         wgpu::TextureViewDescriptor {
             label: Some("Image Texture View"),
             format: Some(wgpu::TextureFormat::Rgba8UnormSrgb),
             dimension: Some(wgpu::TextureViewDimension::D2),
-            ..Default::default()  
+            ..Default::default()
         }
     }
 }
 
 impl IntoRenderAsset<Texture> for Image {
     fn create_render_asset(
-        &self, 
+        &self,
         ctx: &mut SystemsContext,
-        _: Option<crate::prelude::EntityId>
+        _: Option<crate::prelude::EntityId>,
     ) -> Texture {
         let device = ctx.renderer.device();
         let queue = ctx.renderer.queue();
 
         let default_texture_descriptor = Self::default_texture_descriptor(self.size);
-        let texture_descriptor = self.texture_descriptor.as_ref().unwrap_or(&default_texture_descriptor);
+        let texture_descriptor = self
+            .texture_descriptor
+            .as_ref()
+            .unwrap_or(&default_texture_descriptor);
 
         let texture = device.create_texture(texture_descriptor);
-        let view = texture.create_view(self.view_descriptor.as_ref().unwrap_or(&Self::default_view_descriptor()));
-        let sampler = device.create_sampler(self.sampler_descriptor.as_ref().unwrap_or(&Self::default_sampler_descriptor()));
+        let view = texture.create_view(
+            self.view_descriptor
+                .as_ref()
+                .unwrap_or(&Self::default_view_descriptor()),
+        );
+        let sampler = device.create_sampler(
+            self.sampler_descriptor
+                .as_ref()
+                .unwrap_or(&Self::default_sampler_descriptor()),
+        );
 
         if !self.data.is_empty() {
             queue.write_texture(
