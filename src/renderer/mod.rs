@@ -1,13 +1,14 @@
-mod material;
 mod color;
-mod image;
-pub mod palette;
-mod mesh;
 pub mod culling;
+mod image;
+mod material;
+mod mesh;
+pub mod newtype;
+pub mod palette;
 
-pub use material::Material;
-pub use image::{Texture, Image, SingleColorTexture};
 pub use color::Color;
+pub use image::{Image, SingleColorTexture, Texture};
+pub use material::Material;
 pub use mesh::{Mesh, Meshable};
 
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]

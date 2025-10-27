@@ -31,9 +31,8 @@ impl<'a> AppHandler<'a> {
     }
 
     pub fn resize(&mut self, new_size: PhysicalSize<u32>) {
-        let app_state = self.state.as_mut().unwrap();
-        app_state.resize(new_size);
-        self.app.resize(app_state.size);
+        self.state.as_mut().unwrap().resize(new_size);
+        self.app.resize(new_size);
     }
 }
 
@@ -52,10 +51,11 @@ impl<'a> ApplicationHandler for AppHandler<'a> {
             config.post_apply(&window, event_loop);
         }
 
-        let mut state = AppState::new(window);
+        let state = AppState::new(window);
+        state.apply_to_resources(&mut self.app.world.resources);
 
         if self.state.is_none() {
-            self.app.startup(&mut state);
+            self.app.startup();
         }
 
         self.state = Some(state);
@@ -79,7 +79,7 @@ impl<'a> ApplicationHandler for AppHandler<'a> {
     }
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, id: WindowId, event: WindowEvent) {
-        if id != self.state.as_ref().unwrap().window().id() {
+        if id != self.state.as_ref().unwrap().window.id() {
             return;
         }
 
@@ -114,15 +114,15 @@ impl<'a> ApplicationHandler for AppHandler<'a> {
 
             WindowEvent::Resized(physical_size) => self.resize(physical_size),
             WindowEvent::RedrawRequested => {
-                self.app.update(self.state.as_mut().unwrap());
+                self.app.update();
 
-                if let Err(err) = self.app.render(self.state.as_mut().unwrap()) {
+                if let Err(err) = self.app.render() {
                     match err {
                         wgpu::SurfaceError::Lost
                         | wgpu::SurfaceError::Outdated
                         | wgpu::SurfaceError::Other => {
                             eprintln!("Surface Lost or Outdated");
-                            self.resize(*self.state.as_ref().unwrap().size());
+                            self.state.as_ref().unwrap().reconfigure();
                         }
                         wgpu::SurfaceError::OutOfMemory => {
                             eprintln!("Out Of Memory");
@@ -130,7 +130,7 @@ impl<'a> ApplicationHandler for AppHandler<'a> {
                         }
                         wgpu::SurfaceError::Timeout => {
                             eprintln!("Surface Timeout");
-                            self.state.as_mut().unwrap().reconfigure();
+                            self.state.as_ref().unwrap().reconfigure();
                         }
                     }
                 }
@@ -140,7 +140,6 @@ impl<'a> ApplicationHandler for AppHandler<'a> {
     }
 
     fn about_to_wait(&mut self, _: &ActiveEventLoop) {
-        let window = self.state.as_ref().unwrap().window();
-        window.request_redraw();
+        self.state.as_ref().unwrap().window.request_redraw();
     }
 }
