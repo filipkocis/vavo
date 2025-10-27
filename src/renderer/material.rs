@@ -1,8 +1,8 @@
 use crate::{
     assets::Handle,
     ecs::entities::EntityId,
+    prelude::World,
     render_assets::{BindGroup, Buffer, IntoRenderAsset},
-    system::SystemsContext,
 };
 
 use super::{Color, Face, Image, palette};
@@ -66,32 +66,32 @@ impl Default for Material {
 }
 
 impl IntoRenderAsset<Buffer> for Material {
-    fn create_render_asset(&self, ctx: &mut SystemsContext, _: Option<EntityId>) -> Buffer {
+    fn create_render_asset(&self, world: &mut World, _: Option<EntityId>) -> Buffer {
         Buffer::new("material").create_uniform_buffer(
             &self.uniform_data(),
             None,
-            ctx.renderer.device(),
+            &world.resources.get(),
         )
     }
 }
 
 impl IntoRenderAsset<BindGroup> for Material {
-    fn create_render_asset(&self, ctx: &mut SystemsContext, _: Option<EntityId>) -> BindGroup {
-        let buffer: Buffer = self.create_render_asset(ctx, None);
+    fn create_render_asset(&self, world: &mut World, _: Option<EntityId>) -> BindGroup {
+        let buffer: Buffer = self.create_render_asset(world, None);
         let uniform = buffer
             .uniform
             .expect("Material buffer should be an uniform buffer");
 
         BindGroup::build("material")
-            .add_texture(&self.base_color_texture, ctx, self.base_color, None, None)
+            .add_texture(&self.base_color_texture, world, self.base_color, None, None)
             .add_texture(
                 &self.normal_map_texture,
-                ctx,
+                world,
                 Color::rgb(0.5, 0.5, 1.0),
                 None,
                 None,
             )
             .add_uniform_buffer(&uniform, wgpu::ShaderStages::VERTEX_FRAGMENT)
-            .finish(ctx)
+            .finish(&world.resources.get())
     }
 }

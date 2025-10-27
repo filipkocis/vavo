@@ -8,9 +8,9 @@ use wgpu::{VertexAttribute, VertexFormat};
 
 use crate::{
     ecs::entities::EntityId,
+    prelude::World,
     render_assets::{Buffer, IntoRenderAsset},
-    renderer::palette,
-    system::SystemsContext,
+    renderer::{newtype::RenderDevice, palette},
 };
 
 use super::Color;
@@ -153,18 +153,18 @@ impl Mesh {
 }
 
 impl IntoRenderAsset<Buffer> for Mesh {
-    fn create_render_asset(&self, ctx: &mut SystemsContext, _: Option<EntityId>) -> Buffer {
-        let device = ctx.renderer.device();
+    fn create_render_asset(&self, world: &mut World, _: Option<EntityId>) -> Buffer {
+        let device = world.resources.get::<RenderDevice>();
 
         let buffer = Buffer::new("mesh").create_vertex_buffer(
             &self.vertex_data(),
             self.positions.len(),
             None,
-            device,
+            &device,
         );
 
         if let Some(indices) = self.index_data() {
-            buffer.create_index_buffer(indices, None, device)
+            buffer.create_index_buffer(indices, None, &device)
         } else {
             buffer
         }

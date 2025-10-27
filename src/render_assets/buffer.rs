@@ -1,6 +1,8 @@
 use bytemuck::{AnyBitPattern, NoUninit};
 use wgpu::util::DeviceExt;
 
+use crate::renderer::newtype::RenderDevice;
+
 #[derive(crate::macros::RenderAsset)]
 pub struct Buffer {
     pub label: String,
@@ -42,7 +44,7 @@ impl Buffer {
         data: &[A],
         num_vertices: usize,
         usages: Option<wgpu::BufferUsages>,
-        device: &wgpu::Device,
+        device: &RenderDevice,
     ) -> Self
     where
         A: NoUninit + AnyBitPattern,
@@ -79,7 +81,7 @@ impl Buffer {
         self,
         data: &[u32],
         usages: Option<wgpu::BufferUsages>,
-        device: &wgpu::Device,
+        device: &RenderDevice,
     ) -> Self {
         let index_buffer = if !data.is_empty() {
             Some(
@@ -112,7 +114,7 @@ impl Buffer {
         self,
         data: &[A],
         usages: Option<wgpu::BufferUsages>,
-        device: &wgpu::Device,
+        device: &RenderDevice,
     ) -> Self
     where
         A: NoUninit + AnyBitPattern,
@@ -147,7 +149,7 @@ impl Buffer {
         self,
         data: &[A],
         usages: Option<wgpu::BufferUsages>,
-        device: &wgpu::Device,
+        device: &RenderDevice,
     ) -> Self
     where
         A: NoUninit + AnyBitPattern,

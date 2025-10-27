@@ -135,12 +135,12 @@ impl UiMesh {
 }
 
 impl IntoRenderAsset<Buffer> for UiMesh {
-    fn create_render_asset(&self, ctx: &mut SystemsContext, _: Option<EntityId>) -> Buffer {
-        let device = ctx.renderer.device();
+    fn create_render_asset(&self, world: &mut World, _: Option<EntityId>) -> Buffer {
+        let device = world.resources.get();
 
         Buffer::new("ui_mesh")
-            .create_vertex_buffer(&self.vertex_data(), self.positions.len(), None, device)
-            .create_index_buffer(&self.indices, None, device)
+            .create_vertex_buffer(&self.vertex_data(), self.positions.len(), None, &device)
+            .create_index_buffer(&self.indices, None, &device)
     }
 }
 
@@ -159,8 +159,8 @@ impl DerefMut for UiMeshTransparent {
 }
 
 impl IntoRenderAsset<Buffer> for UiMeshTransparent {
-    fn create_render_asset(&self, ctx: &mut SystemsContext, entity_id: Option<EntityId>) -> Buffer {
-        self.0.create_render_asset(ctx, entity_id)
+    fn create_render_asset(&self, world: &mut World, entity_id: Option<EntityId>) -> Buffer {
+        self.0.create_render_asset(world, entity_id)
     }
 }
 
@@ -179,7 +179,7 @@ impl DerefMut for UiMeshImages {
 }
 
 impl IntoRenderAsset<Buffer> for UiMeshImages {
-    fn create_render_asset(&self, ctx: &mut SystemsContext, entity_id: Option<EntityId>) -> Buffer {
-        self.0.create_render_asset(ctx, entity_id)
+    fn create_render_asset(&self, world: &mut World, entity_id: Option<EntityId>) -> Buffer {
+        self.0.create_render_asset(world, entity_id)
     }
 }

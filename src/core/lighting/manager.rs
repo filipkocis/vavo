@@ -1,5 +1,5 @@
 use crate::{
-    prelude::Light,
+    prelude::{Light, World},
     render_assets::{BindGroup, IntoRenderAsset},
     system::SystemsContext,
 };
@@ -168,7 +168,7 @@ impl LightAndShadowManager {
 impl IntoRenderAsset<BindGroup> for LightAndShadowManager {
     fn create_render_asset(
         &self,
-        ctx: &mut SystemsContext,
+        world: &mut World,
         _: Option<crate::prelude::EntityId>,
     ) -> BindGroup {
         let visibility = wgpu::ShaderStages::FRAGMENT;
@@ -225,6 +225,6 @@ impl IntoRenderAsset<BindGroup> for LightAndShadowManager {
                 None,
                 wgpu::BindingResource::Sampler(&self.sampler),
             )
-            .finish(ctx)
+            .finish(&world.resources.get())
     }
 }

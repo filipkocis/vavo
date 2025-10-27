@@ -44,17 +44,17 @@ impl ShadowMapAtlas {
 impl IntoRenderAsset<BindGroup> for ShadowMapAtlas {
     fn create_render_asset(
         &self,
-        ctx: &mut crate::prelude::SystemsContext,
+        world: &mut crate::prelude::World,
         _: Option<crate::prelude::EntityId>,
     ) -> BindGroup {
         BindGroup::build("shadow_map_atlas")
             .add_texture(
                 &Some(self.image.clone()),
-                ctx,
+                world,
                 palette::BLACK,
                 Some(wgpu::TextureSampleType::Depth),
                 Some(wgpu::SamplerBindingType::Comparison),
             )
-            .finish(ctx)
+            .finish(&world.resources.get())
     }
 }

@@ -1,9 +1,9 @@
 use std::num::NonZero;
 
 use crate::assets::Handle;
-use crate::prelude::Color;
+use crate::prelude::{Color, World};
+use crate::renderer::newtype::RenderDevice;
 use crate::renderer::{Image, SingleColorTexture, Texture};
-use crate::system::SystemsContext;
 
 use super::RenderAssets;
 use super::render_assets::RenderAssetEntry;
@@ -79,18 +79,18 @@ impl<'a> BindGroupBuilder<'a> {
     pub fn add_texture(
         mut self,
         texture: &Option<Handle<Image>>,
-        ctx: &mut SystemsContext,
+        world: &mut World,
         default_color: Color,
         sample_type: Option<wgpu::TextureSampleType>,
         sampler_bind: Option<wgpu::SamplerBindingType>,
     ) -> Self {
         if let Some(texture) = texture {
-            let mut render_images = ctx.resources.get_mut::<RenderAssets<Texture>>();
-            let texture = render_images.get_by_handle(texture, ctx);
+            let mut render_images = world.resources.get_mut::<RenderAssets<Texture>>();
+            let texture = render_images.get_by_handle(texture, world);
             self.textures
                 .push((self.binding, texture, sample_type, sampler_bind));
         } else {
-            let default_texture = SingleColorTexture::new(ctx, default_color).handle;
+            let default_texture = SingleColorTexture::new(world, default_color).handle;
             self.textures
                 .push((self.binding, default_texture, sample_type, sampler_bind));
         }
@@ -202,13 +202,11 @@ impl<'a> BindGroupBuilder<'a> {
         (entries, layouts)
     }
 
-    pub fn finish(self, ctx: &mut SystemsContext) -> BindGroup {
+    pub fn finish(self, device: &RenderDevice) -> BindGroup {
         let (mut entries, mut layouts) = self.texture_layout_entries();
 
         layouts.extend(self.layout_entries.clone());
         entries.extend(self.entries.clone());
-
-        let device = ctx.renderer.device();
 
         let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             entries: &layouts,

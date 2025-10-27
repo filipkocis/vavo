@@ -54,25 +54,25 @@ impl UiImage {
 }
 
 impl IntoRenderAsset<Buffer> for UiImage {
-    fn create_render_asset(&self, ctx: &mut SystemsContext, _: Option<EntityId>) -> Buffer {
+    fn create_render_asset(&self, world: &mut World, _: Option<EntityId>) -> Buffer {
         Buffer::new("ui_image").create_uniform_buffer(
             &self.uniform_data(),
             None,
-            ctx.renderer.device(),
+            &world.resources.get(),
         )
     }
 }
 
 impl IntoRenderAsset<BindGroup> for UiImage {
-    fn create_render_asset(&self, ctx: &mut SystemsContext, _: Option<EntityId>) -> BindGroup {
+    fn create_render_asset(&self, world: &mut World, _: Option<EntityId>) -> BindGroup {
         let image = Some(self.image.clone());
 
-        let buffer: Buffer = self.create_render_asset(ctx, None);
+        let buffer: Buffer = self.create_render_asset(world, None);
         let uniform = buffer.uniform.expect("UiImage buffer should be uniform");
 
         BindGroup::build("ui_image")
-            .add_texture(&image, ctx, color::WHITE, None, None)
+            .add_texture(&image, world, color::WHITE, None, None)
             .add_uniform_buffer(&uniform, wgpu::ShaderStages::VERTEX_FRAGMENT)
-            .finish(ctx)
+            .finish(&world.resources.get())
     }
 }

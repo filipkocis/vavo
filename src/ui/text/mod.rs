@@ -99,10 +99,10 @@ impl Text {
 impl IntoRenderAsset<TextBuffer> for Text {
     fn create_render_asset(
         &self,
-        ctx: &mut crate::prelude::SystemsContext,
+        world: &mut crate::prelude::World,
         _: Option<crate::prelude::EntityId>,
     ) -> TextBuffer {
-        let mut font_system = ctx.resources.get_mut::<FontSystem>();
+        let mut font_system = world.resources.get_mut::<FontSystem>();
 
         let metrics = Metrics::relative(self.font_size, self.line_height);
 

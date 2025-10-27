@@ -4,9 +4,9 @@ use crate::{
     assets::Handle,
     ecs::entities::EntityId,
     macros::{Component, Reflect},
+    prelude::World,
     render_assets::{BindGroup, Buffer, IntoRenderAsset, RenderAssets},
     renderer::{Color, Image, palette},
-    system::SystemsContext,
 };
 
 use super::{GlobalTransform, Rect, bounding_volume::Plane};
@@ -228,10 +228,9 @@ impl Camera {
 }
 
 impl IntoRenderAsset<Buffer> for Camera {
-    fn create_render_asset(&self, ctx: &mut SystemsContext, entity_id: Option<EntityId>) -> Buffer {
+    fn create_render_asset(&self, world: &mut World, entity_id: Option<EntityId>) -> Buffer {
         let id = entity_id.expect("EntityId should be provided for Camera Buffer");
 
-        let world = &unsafe { &mut *ctx.app }.world;
         let projection = world
             .entities
             .get_component(id)
@@ -246,21 +245,17 @@ impl IntoRenderAsset<Buffer> for Camera {
         Buffer::new("camera").create_uniform_buffer(
             &data,
             Some(wgpu::BufferUsages::COPY_DST),
-            ctx.renderer.device(),
+            &world.resources.get(),
         )
     }
 }
 
 impl IntoRenderAsset<BindGroup> for Camera {
-    fn create_render_asset(
-        &self,
-        ctx: &mut SystemsContext,
-        entity_id: Option<EntityId>,
-    ) -> BindGroup {
+    fn create_render_asset(&self, world: &mut World, entity_id: Option<EntityId>) -> BindGroup {
         let id = entity_id.expect("EntityId should be provided for Camera BindGroup");
 
-        let mut buffers = ctx.resources.get_mut::<RenderAssets<Buffer>>();
-        let buffer = buffers.get_by_entity(id, self, ctx);
+        let mut buffers = world.resources.get_mut::<RenderAssets<Buffer>>();
+        let buffer = buffers.get_by_entity(id, self, world);
         let uniform_buffer = buffer
             .uniform
             .as_ref()
@@ -268,6 +263,6 @@ impl IntoRenderAsset<BindGroup> for Camera {
 
         BindGroup::build("camera")
             .add_uniform_buffer(uniform_buffer, wgpu::ShaderStages::VERTEX_FRAGMENT)
-            .finish(ctx)
+            .finish(&world.resources.get())
     }
 }

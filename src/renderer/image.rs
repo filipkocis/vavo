@@ -1,8 +1,9 @@
 use crate::{
     assets::Assets,
     macros::{Asset, RenderAsset},
+    prelude::World,
     render_assets::{IntoRenderAsset, RenderAssetEntry, RenderAssets},
-    system::SystemsContext,
+    renderer::newtype::{RenderDevice, RenderQueue},
 };
 
 use super::Color;
@@ -24,7 +25,7 @@ pub struct SingleColorTexture {
 }
 
 impl SingleColorTexture {
-    pub fn new(ctx: &mut SystemsContext, color: Color) -> Self {
+    pub fn new(world: &mut World, color: Color) -> Self {
         let image = Image {
             data: color.as_rgba_slice_u8().to_vec(),
             size: wgpu::Extent3d {
@@ -37,11 +38,11 @@ impl SingleColorTexture {
             view_descriptor: None,
         };
 
-        let mut images = ctx.resources.get_mut::<Assets<Image>>();
+        let mut images = world.resources.get_mut::<Assets<Image>>();
         let image = images.add(image);
 
-        let mut textures = ctx.resources.get_mut::<RenderAssets<Texture>>();
-        let texture = textures.get_by_handle(&image, ctx);
+        let mut textures = world.resources.get_mut::<RenderAssets<Texture>>();
+        let texture = textures.get_by_handle(&image, world);
 
         // TODO add optimization to not create a new texture if similar texture already exists
 
@@ -111,11 +112,11 @@ impl Image {
 impl IntoRenderAsset<Texture> for Image {
     fn create_render_asset(
         &self,
-        ctx: &mut SystemsContext,
+        world: &mut World,
         _: Option<crate::prelude::EntityId>,
     ) -> Texture {
-        let device = ctx.renderer.device();
-        let queue = ctx.renderer.queue();
+        let device = world.resources.get::<RenderDevice>();
+        let queue = world.resources.get::<RenderQueue>();
 
         let default_texture_descriptor = Self::default_texture_descriptor(self.size);
         let texture_descriptor = self

@@ -3,14 +3,13 @@ use std::{any::TypeId, collections::HashMap, ops::Deref, sync::Arc};
 use crate::{
     assets::{Asset, Assets, Handle},
     ecs::{entities::EntityId, resources::Resource},
-    prelude::{Component, Res},
-    system::SystemsContext,
+    prelude::{Component, Res, World},
 };
 
 use super::{RenderAsset, RenderHandle};
 
 pub trait IntoRenderAsset<R: RenderAsset> {
-    fn create_render_asset(&self, ctx: &mut SystemsContext, entity_id: Option<EntityId>) -> R;
+    fn create_render_asset(&self, world: &mut World, entity_id: Option<EntityId>) -> R;
 }
 
 /// Wrapper for render asset entry to allow multiple mutable borrows for RenderAssets<RA>
@@ -104,7 +103,7 @@ impl<RA: RenderAsset> RenderAssets<RA> {
         &mut self,
         entity_id: EntityId,
         component: &C,
-        ctx: &mut SystemsContext,
+        world: &mut World,
     ) -> RenderAssetEntry<RA>
     where
         C: Component + IntoRenderAsset<RA>,
@@ -115,9 +114,9 @@ impl<RA: RenderAsset> RenderAssets<RA> {
             Some(key) => self
                 .storage
                 .entry(key.clone())
-                .or_insert_with(|| Arc::new(component.create_render_asset(ctx, Some(entity_id)))),
+                .or_insert_with(|| Arc::new(component.create_render_asset(world, Some(entity_id)))),
             None => {
-                let key = self.insert(component.create_render_asset(ctx, Some(entity_id)));
+                let key = self.insert(component.create_render_asset(world, Some(entity_id)));
                 self.entity_component_map
                     .insert(entity_component_id, key.clone());
                 self.storage.get(&key).unwrap()
@@ -130,7 +129,7 @@ impl<RA: RenderAsset> RenderAssets<RA> {
     pub fn get_by_handle<A>(
         &mut self,
         handle: &Handle<A>,
-        ctx: &mut SystemsContext,
+        world: &mut World,
     ) -> RenderAssetEntry<RA>
     where
         A: Asset + IntoRenderAsset<RA>,
@@ -141,9 +140,9 @@ impl<RA: RenderAsset> RenderAssets<RA> {
             Some(key) => self
                 .storage
                 .entry(key.clone())
-                .or_insert_with(|| Arc::new(Self::create_asset(handle, ctx))),
+                .or_insert_with(|| Arc::new(Self::create_asset(handle, world))),
             None => {
-                let key = self.insert(Self::create_asset(handle, ctx));
+                let key = self.insert(Self::create_asset(handle, world));
                 self.handle_map.insert(asset_handle_id, key.clone());
                 self.storage.get(&key).unwrap()
             }
@@ -155,7 +154,7 @@ impl<RA: RenderAsset> RenderAssets<RA> {
     pub fn get_by_resource<R>(
         &mut self,
         resource: &Res<R>,
-        ctx: &mut SystemsContext,
+        world: &mut World,
         replace: bool,
     ) -> RenderAssetEntry<RA>
     where
@@ -171,10 +170,10 @@ impl<RA: RenderAsset> RenderAssets<RA> {
 
                 self.storage
                     .entry(key.clone())
-                    .or_insert_with(|| Arc::new(resource.create_render_asset(ctx, None)))
+                    .or_insert_with(|| Arc::new(resource.create_render_asset(world, None)))
             }
             None => {
-                let key = self.insert(resource.create_render_asset(ctx, None));
+                let key = self.insert(resource.create_render_asset(world, None));
                 self.resource_map.insert(resource_id, key.clone());
                 self.storage.get(&key).unwrap()
             }
@@ -183,13 +182,13 @@ impl<RA: RenderAsset> RenderAssets<RA> {
         RenderAssetEntry(rae.clone())
     }
 
-    fn create_asset<A>(handle: &Handle<A>, ctx: &mut SystemsContext) -> RA
+    fn create_asset<A>(handle: &Handle<A>, world: &mut World) -> RA
     where
         A: Asset + IntoRenderAsset<RA>,
     {
-        let assets = ctx.resources.get::<Assets<A>>();
+        let assets = world.resources.get::<Assets<A>>();
         let asset = assets.get(handle).expect("Asset not found, invalid handle");
-        asset.create_render_asset(ctx, None)
+        asset.create_render_asset(world, None)
     }
 
     pub fn remove<A: Asset>(&mut self, handle: &Handle<A>) -> Option<Arc<RA>> {

@@ -3,8 +3,8 @@ use glam::{Mat4, Quat, Vec3, Vec4Swizzles};
 use crate::{
     ecs::entities::EntityId,
     macros::{Component, Reflect},
+    prelude::World,
     render_assets::{BindGroup, Buffer, IntoRenderAsset, RenderAssets},
-    system::SystemsContext,
 };
 
 /// Represents the local transform of an entity, relative to its parent or the world space if it
@@ -115,27 +115,23 @@ impl Default for Transform {
 }
 
 impl IntoRenderAsset<Buffer> for Transform {
-    fn create_render_asset(&self, ctx: &mut SystemsContext, _: Option<EntityId>) -> Buffer {
+    fn create_render_asset(&self, world: &mut World, _: Option<EntityId>) -> Buffer {
         let data = self.as_matrix().to_cols_array_2d();
 
         Buffer::new("transform").create_uniform_buffer(
             &[data],
             Some(wgpu::BufferUsages::COPY_DST),
-            ctx.renderer.device(),
+            &world.resources.get(),
         )
     }
 }
 
 impl IntoRenderAsset<BindGroup> for Transform {
-    fn create_render_asset(
-        &self,
-        ctx: &mut SystemsContext,
-        entity_id: Option<EntityId>,
-    ) -> BindGroup {
+    fn create_render_asset(&self, world: &mut World, entity_id: Option<EntityId>) -> BindGroup {
         let id = entity_id.expect("EntityId should be provided for Transform BindGroup");
 
-        let mut buffers = ctx.resources.get_mut::<RenderAssets<Buffer>>();
-        let buffer = buffers.get_by_entity(id, self, ctx);
+        let mut buffers = world.resources.get_mut::<RenderAssets<Buffer>>();
+        let buffer = buffers.get_by_entity(id, self, world);
         let uniform_buffer = buffer
             .uniform
             .as_ref()
@@ -143,6 +139,6 @@ impl IntoRenderAsset<BindGroup> for Transform {
 
         BindGroup::build("transform")
             .add_uniform_buffer(uniform_buffer, wgpu::ShaderStages::VERTEX)
-            .finish(ctx)
+            .finish(&world.resources.get())
     }
 }
