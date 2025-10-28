@@ -1,4 +1,14 @@
-use crate::{assets::Handle, math::GlobalTransform, prelude::{Material, Mesh}, query::{Query, RunQuery}, render_assets::TransformStorage, renderer::{culling::Visibility, newtype::{RenderDevice, RenderQueue}}};
+use crate::{
+    assets::Handle,
+    math::GlobalTransform,
+    prelude::{Material, Mesh},
+    query::{Query, RunQuery},
+    render_assets::TransformStorage,
+    renderer::{
+        culling::Visibility,
+        newtype::{RenderDevice, RenderQueue},
+    },
+};
 
 /// One instance group represents a group of instances with the same material and mesh.
 /// Instance count defines how many instances are in the group and instance offset is the offset in
@@ -11,7 +21,12 @@ pub struct InstanceGroup {
 }
 
 impl InstanceGroup {
-    pub fn new(material: Handle<Material>, mesh: Handle<Mesh>, instance_count: u32, instance_offset: u32) -> Self {
+    pub fn new(
+        material: Handle<Material>,
+        mesh: Handle<Mesh>,
+        instance_count: u32,
+        instance_offset: u32,
+    ) -> Self {
         Self {
             material,
             mesh,
@@ -34,7 +49,11 @@ impl GroupedInstances {
         device: &RenderDevice,
         queue: &RenderQueue,
         transforms_storage: &mut TransformStorage,
-        mut query: Query<(&Handle<Material>, &Handle<Mesh>, &GlobalTransform)>,
+        mut query: Query<(
+            &Handle<Material>,
+            &Handle<Mesh>,
+            &GlobalTransform,
+        )>,
     ) -> Self {
         // Prepare sorted storage
         let mut transforms = Vec::new();
@@ -64,7 +83,10 @@ impl GroupedInstances {
                     instance_count += 1;
                 } else {
                     groups.push(InstanceGroup::new(
-                        last_material, last_mesh, last_instance_count, instance_offset,
+                        last_material,
+                        last_mesh,
+                        last_instance_count,
+                        instance_offset,
                     ));
 
                     instance_offset += last_instance_count;
@@ -75,7 +97,12 @@ impl GroupedInstances {
             }
 
             if i == last_index {
-                groups.push(InstanceGroup::new(material.clone(), mesh.clone(), instance_count, instance_offset));
+                groups.push(InstanceGroup::new(
+                    material.clone(),
+                    mesh.clone(),
+                    instance_count,
+                    instance_offset,
+                ));
             }
 
             last_entry = Some((material.clone(), mesh.clone(), instance_count));
