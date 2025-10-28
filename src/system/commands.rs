@@ -2,7 +2,7 @@ use std::{any::TypeId, mem::ManuallyDrop};
 
 use crate::{
     ecs::{
-        entities::{tracking::EntityTracking, Component, EntityId},
+        entities::{Component, EntityId, tracking::EntityTracking},
         ptr::OwnedPtr,
         resources::{Resource, ResourceData},
         tick::Tick,
@@ -19,7 +19,7 @@ enum Command {
     SpawnEntity(EntityId),
     DespawnEntity(EntityId),
     DespawnEntityRecursive(EntityId),
-    InsertComponent(Box<dyn FnOnce(&mut World)>),
+    InsertComponent(Box<dyn FnOnce(&mut World) + Send + Sync + 'static>),
     RemoveComponent(EntityId, TypeId),
     AddChild(EntityId, EntityId),
     RemoveChild(EntityId, EntityId),
@@ -265,6 +265,11 @@ impl CommandQueue {
     #[inline]
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Extends the command queue with another command queue.
+    pub fn extend(&mut self, other: &mut CommandQueue) {
+        self.internal.extend(other.internal.drain(..));
     }
 
     /// Applies all queued commands to the world.
