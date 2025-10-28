@@ -1,4 +1,10 @@
-use crate::{prelude::Texture, render_assets::{pipeline::PipelineBuilder, Pipeline, IntoRenderAsset, RenderAssetEntry, RenderAssets}, system::SystemsContext};
+use crate::{
+    prelude::Texture,
+    render_assets::{
+        IntoRenderAsset, Pipeline, RenderAssetEntry, RenderAssets, pipeline::PipelineBuilder,
+    },
+    system::SystemsContext,
+};
 
 use super::{NodeColorTarget, NodeDepthTarget};
 
@@ -35,48 +41,59 @@ impl NodeData {
         Self::default()
     }
 
-    pub fn generate_pipeline(&mut self, ctx: &mut SystemsContext, pipeline_builder: &PipelineBuilder) {
+    pub fn generate_pipeline(
+        &mut self,
+        ctx: &mut SystemsContext,
+        pipeline_builder: &PipelineBuilder,
+    ) {
         self.pipeline = Some(pipeline_builder.finish(ctx));
     }
 
-    pub fn generate_color_target(&mut self, ctx: &mut SystemsContext, color_target: &NodeColorTarget) {
+    pub fn generate_color_target(
+        &mut self,
+        ctx: &mut SystemsContext,
+        color_target: &NodeColorTarget,
+    ) {
         match color_target {
             NodeColorTarget::None => {
                 self.color_target = None;
-            },
+            }
             NodeColorTarget::Image(image) => {
                 let mut textures = ctx.resources.get_mut::<RenderAssets<Texture>>();
                 let texture = textures.get_by_handle(image, ctx);
                 self.color_target = Some(ColorTargetData::RAE(texture));
-            },
+            }
             NodeColorTarget::Owned(image) => {
                 let target = image.create_render_asset(ctx, None);
                 self.color_target = Some(ColorTargetData::Texture(target));
-            },
-            NodeColorTarget::Node(_) |
-            NodeColorTarget::Surface => {
-                // handle in the renderer 
+            }
+            NodeColorTarget::Node(_) | NodeColorTarget::Surface => {
+                // handle in the renderer
             }
         }
     }
 
-    pub fn generate_depth_target(&mut self, ctx: &mut SystemsContext, depth_target: &NodeDepthTarget) {
+    pub fn generate_depth_target(
+        &mut self,
+        ctx: &mut SystemsContext,
+        depth_target: &NodeDepthTarget,
+    ) {
         match depth_target {
             NodeDepthTarget::None => {
                 self.depth_target = None;
-            },
+            }
             NodeDepthTarget::Image(image) => {
                 let mut textures = ctx.resources.get_mut::<RenderAssets<Texture>>();
                 let texture = textures.get_by_handle(image, ctx);
                 self.depth_target = Some(DepthTargetData::RAE(texture));
-            },
+            }
             NodeDepthTarget::Owned(image) => {
                 let target = image.create_render_asset(ctx, None);
                 self.depth_target = Some(DepthTargetData::Texture(target));
-            },
+            }
             NodeDepthTarget::Node(_) => {
-                // handle in the renderer 
-            },
+                // handle in the renderer
+            }
         }
     }
 }
