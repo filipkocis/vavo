@@ -12,16 +12,16 @@ use super::{
 };
 
 use super::text::TextBuffer;
-use crate::render_assets::RenderAssets;
-use crate::{prelude::*, ui::prelude::*};
+use crate::{prelude::*, renderer::newtype::RenderQueue, ui::prelude::*};
+use crate::{render_assets::RenderAssets, renderer::newtype::RenderDevice};
 
 /// System to initialize new UI nodes, it adds Transform and ComputedNode components
 pub fn initialize_ui_nodes(
-    ctx: &mut SystemsContext,
+    mut commands: Commands,
     mut query: Query<EntityId, (With<Node>, Without<Transform>, Without<ComputedNode>)>,
 ) {
     for id in query.iter_mut() {
-        ctx.commands
+        commands
             .entity(id)
             .insert(Transform::default())
             .insert(ComputedNode::default());
@@ -30,28 +30,28 @@ pub fn initialize_ui_nodes(
 
 /// System to initialize new button UI nodes, adds Interaction component
 pub fn initialize_button_ui_nodes(
-    ctx: &mut SystemsContext,
+    mut commands: Commands,
     mut query: Query<EntityId, (With<Node>, With<Button>, Without<Interaction>)>,
 ) {
     for id in query.iter_mut() {
-        ctx.commands.entity(id).insert(Interaction::default());
+        commands.entity(id).insert(Interaction::default());
     }
 }
 
 /// Inset necessary UI text resources to app
-fn insert_ui_text_resources(ctx: &mut SystemsContext, _: Query<()>) {
-    let device = ctx.renderer.device();
-    let queue = ctx.renderer.queue();
+fn insert_ui_text_resources(world: &mut World) {
+    let device = world.resources.get::<RenderDevice>();
+    let queue = world.resources.get::<RenderQueue>();
     let swapchain_format = ctx.renderer.config().format;
 
     let font_system = FontSystem::new();
     let swash_cache = SwashCache::new();
-    let cache = Cache::new(device);
-    let viewport = Viewport::new(device, &cache);
-    let mut atlas = TextAtlas::new(device, queue, &cache, swapchain_format);
+    let cache = Cache::new(&device);
+    let viewport = Viewport::new(&device, &cache);
+    let mut atlas = TextAtlas::new(&device, &queue, &cache, swapchain_format);
     let text_renderer = TextRenderer::new(
         &mut atlas,
-        device,
+        &device,
         wgpu::MultisampleState::default(),
         Some(wgpu::DepthStencilState {
             format: wgpu::TextureFormat::Depth32Float,
@@ -62,25 +62,25 @@ fn insert_ui_text_resources(ctx: &mut SystemsContext, _: Query<()>) {
         }),
     );
 
-    ctx.resources.insert(font_system);
-    ctx.resources.insert(swash_cache);
-    ctx.resources.insert(viewport);
-    ctx.resources.insert(atlas);
-    ctx.resources.insert(text_renderer);
-    ctx.resources.insert(RenderAssets::<TextBuffer>::new());
+    world.resources.insert(font_system);
+    world.resources.insert(swash_cache);
+    world.resources.insert(viewport);
+    world.resources.insert(atlas);
+    world.resources.insert(text_renderer);
+    world.resources.insert(RenderAssets::<TextBuffer>::new());
 }
 
 /// Inset necessary UI resources to app
-fn insert_ui_resources(ctx: &mut SystemsContext, _: Query<()>) {
-    let node_transform_storage = UiTransformStorage::new(1, 32, ctx, wgpu::ShaderStages::VERTEX);
+fn insert_ui_resources(world: &mut World) {
+    let node_transform_storage = UiTransformStorage::new(1, 32, world, wgpu::ShaderStages::VERTEX);
     let ui_mesh = UiMesh::new();
     let ui_mesh_transparent = UiMeshTransparent::new();
     let ui_mesh_images = UiMeshImages::new();
 
-    ctx.resources.insert(node_transform_storage);
-    ctx.resources.insert(ui_mesh);
-    ctx.resources.insert(ui_mesh_transparent);
-    ctx.resources.insert(ui_mesh_images);
+    world.resources.insert(node_transform_storage);
+    world.resources.insert(ui_mesh);
+    world.resources.insert(ui_mesh_transparent);
+    world.resources.insert(ui_mesh_images);
 }
 
 pub struct UiPlugin;

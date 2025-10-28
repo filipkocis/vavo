@@ -4,19 +4,19 @@ use glyphon::{
 };
 use winit::event::WindowEvent;
 
+use crate::event::event_handler::EventReader;
 use crate::prelude::*;
 use crate::render_assets::RenderAssets;
+use crate::renderer::newtype::{RenderDevice, RenderQueue};
 use crate::ui::{graph::storage::UiTransformStorage, mesh::*, prelude::*, text::TextBuffer};
 
 /// System to update the glyphon text viewport resolution.
 /// Runs only if the window size has changed.
-pub fn update_glyphon_viewport(ctx: &mut SystemsContext, _: Query<()>) {
-    let mut viewport = ctx.resources.get_mut::<Viewport>();
-    let queue = ctx.renderer.queue();
+pub fn update_glyphon_viewport(mut viewport: ResMut<Viewport>, queue: Res<RenderQueue>) {
     let size = ctx.renderer.size();
 
     viewport.update(
-        queue,
+        &queue,
         Resolution {
             width: size.width,
             height: size.height,
@@ -25,25 +25,25 @@ pub fn update_glyphon_viewport(ctx: &mut SystemsContext, _: Query<()>) {
 }
 
 /// Utility function to check for a window resize event.
-pub fn has_resized(ctx: &SystemsContext) -> bool {
-    ctx.event_reader
+pub fn has_resized(event_reader: &EventReader) -> bool {
+    event_reader
         .read::<WindowEvent>()
         .iter()
         .any(|event| matches!(event, WindowEvent::Resized(_)))
 }
 
 /// Clear glyphon's text_renderer. Used when all nodes are removed.
-fn clear_text_renderer(ctx: &mut SystemsContext) {
-    let mut text_renderer = ctx.resources.get_mut::<TextRenderer>();
-    let mut font_system = ctx.resources.get_mut::<FontSystem>();
-    let mut text_atlas = ctx.resources.get_mut::<TextAtlas>();
-    let viewport = ctx.resources.get::<Viewport>();
-    let mut swash_cache = ctx.resources.get_mut::<SwashCache>();
+fn clear_text_renderer(world: &mut World, device: &RenderDevice, queue: &RenderQueue) {
+    let mut text_renderer = world.resources.get_mut::<TextRenderer>();
+    let mut font_system = world.resources.get_mut::<FontSystem>();
+    let mut text_atlas = world.resources.get_mut::<TextAtlas>();
+    let viewport = world.resources.get::<Viewport>();
+    let mut swash_cache = world.resources.get_mut::<SwashCache>();
 
     text_renderer
         .prepare(
-            ctx.renderer.device(),
-            ctx.renderer.queue(),
+            device,
+            queue,
             &mut font_system,
             &mut text_atlas,
             &viewport,
@@ -65,43 +65,53 @@ fn clear_text_renderer(ctx: &mut SystemsContext) {
 ///
 /// # Note
 /// Applies z-index to the z component of the global transfrom pushed to the transform storage.
-pub fn update_ui_mesh_and_transforms(ctx: &mut SystemsContext, mut query: Query<()>) {
-    // resources
-    let mut ui_transform_storage = ctx.resources.get_mut::<UiTransformStorage>();
-    let mut ui_mesh = ctx.resources.get_mut::<UiMesh>();
-    let mut ui_mesh_transparent = ctx.resources.get_mut::<UiMeshTransparent>();
-    let mut ui_mesh_images = ctx.resources.get_mut::<UiMeshImages>();
+pub fn update_ui_mesh_and_transforms(
+    world: &mut World,
+    event_reader: EventReader,
 
-    // get the amount of changed nodes
-    let mut changed_query = query.cast::<EntityId, (
-        With<Transform>,
-        With<GlobalTransform>,
-        With<Node>,
-        With<ComputedNode>,
-        Changed<Transform>,
-    )>();
-    let changed_len = changed_query.iter_mut().len();
+    changed_query: Query<
+        EntityId,
+        (
+            With<Transform>,
+            With<GlobalTransform>,
+            With<Node>,
+            With<ComputedNode>,
+            Changed<Transform>,
+        ),
+    >,
 
-    // query all nodes
-    let mut nodes_query = query.cast::<(
+    nodes_query: Query<(
         EntityId,
         &GlobalTransform,
         &Node,
         &ComputedNode,
         Option<&Text>,
         Option<&UiImage>,
-    ), ()>();
+    )>,
+) {
+    // resources
+    let mut ui_transform_storage = world.resources.get_mut::<UiTransformStorage>();
+    let mut ui_mesh = world.resources.get_mut::<UiMesh>();
+    let mut ui_mesh_transparent = world.resources.get_mut::<UiMeshTransparent>();
+    let mut ui_mesh_images = world.resources.get_mut::<UiMeshImages>();
+    let device = world.resources.get::<RenderDevice>();
+    let queue = world.resources.get::<RenderQueue>();
+
+    // get the amount of changed nodes
+    let changed_len = changed_query.iter_mut().len();
+
+    // query all nodes
     let ui_nodes = nodes_query.iter_mut();
 
     // return if nothing changed
-    let resized = has_resized(ctx);
+    let resized = has_resized(&event_reader);
     if changed_len == 0 && !resized {
         // cleanup if all nodes were removed
         if ui_nodes.is_empty() && !ui_mesh.positions.is_empty() {
             ui_mesh.clear();
             ui_mesh_transparent.clear();
             ui_mesh_images.clear();
-            clear_text_renderer(ctx);
+            clear_text_renderer(world, &device, &queue);
         }
         return;
     }
@@ -113,12 +123,12 @@ pub fn update_ui_mesh_and_transforms(ctx: &mut SystemsContext, mut query: Query<
     ui_mesh_images.clear();
 
     // text resources
-    let mut text_buffers = ctx.resources.get_mut::<RenderAssets<TextBuffer>>();
-    let mut text_renderer = ctx.resources.get_mut::<TextRenderer>();
-    let mut font_system = ctx.resources.get_mut::<FontSystem>();
-    let mut text_atlas = ctx.resources.get_mut::<TextAtlas>();
-    let viewport = ctx.resources.get::<Viewport>();
-    let mut swash_cache = ctx.resources.get_mut::<SwashCache>();
+    let mut text_buffers = world.resources.get_mut::<RenderAssets<TextBuffer>>();
+    let mut text_renderer = world.resources.get_mut::<TextRenderer>();
+    let mut font_system = world.resources.get_mut::<FontSystem>();
+    let mut text_atlas = world.resources.get_mut::<TextAtlas>();
+    let viewport = world.resources.get::<Viewport>();
+    let mut swash_cache = world.resources.get_mut::<SwashCache>();
 
     // intermediate storage for text buffer raes
     let mut intermediate_text_rae = Vec::new();
@@ -130,7 +140,7 @@ pub fn update_ui_mesh_and_transforms(ctx: &mut SystemsContext, mut query: Query<
             // HINT: if node has text, get the text buffer rae, add it to intermediate storage for RefCell
             // lifetime issues, then later in code retrieve it and push its borrow to text_borrows
             if let Some(text) = text {
-                let text = text_buffers.get_by_entity(id, text, ctx);
+                let text = text_buffers.get_by_entity(id, text, world);
                 intermediate_text_rae.push(Some(text));
             } else {
                 intermediate_text_rae.push(None);
@@ -292,8 +302,8 @@ pub fn update_ui_mesh_and_transforms(ctx: &mut SystemsContext, mut query: Query<
     // prepare text areas for rendering
     text_renderer
         .prepare_with_depth(
-            ctx.renderer.device(),
-            ctx.renderer.queue(),
+            &device,
+            &queue,
             &mut font_system,
             &mut text_atlas,
             &viewport,

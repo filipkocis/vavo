@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use winit::event::MouseButton;
 
-use crate::{prelude::*, ui::prelude::*};
+use crate::{event::event_handler::EventReader, prelude::*, ui::prelude::*};
 
 /// Marks an UI entity as interactive, enabling mouse events via `Interaction`
 #[derive(Component, Debug, Clone, Copy)]
@@ -21,7 +21,8 @@ pub enum Interaction {
 
 /// System to update UI interactions, runs in the First stage. So old computed values are used
 pub fn ui_interaction_update(
-    ctx: &mut SystemsContext,
+    mouse_inputs: Res<Input<MouseButton>>,
+    event_reader: EventReader,
     mut query: Query<(
         EntityId,
         &Node,
@@ -50,7 +51,7 @@ pub fn ui_interaction_update(
         .collect();
 
     // new interactions
-    let (new_interactions, keep) = match get_interactions(ctx, &nodes) {
+    let (new_interactions, keep) = match get_interactions(mouse_inputs, event_reader, &nodes) {
         Some(interactions) => interactions,
         None => return,
     };
@@ -70,7 +71,8 @@ pub fn ui_interaction_update(
 
 /// Get nodes with new interactions
 fn get_interactions(
-    ctx: &mut SystemsContext,
+    mouse_inputs: Res<Input<MouseButton>>,
+    event_reader: EventReader,
     nodes: &[(
         EntityId,
         &Node,
@@ -82,10 +84,8 @@ fn get_interactions(
     Vec<(EntityId, Interaction)>, // new
     Vec<EntityId>,                // keep
 )> {
-    let mouse_inputs = ctx.resources.get::<Input<MouseButton>>();
-
-    let input_events = ctx.event_reader.read::<MouseInput>();
-    let move_events = ctx.event_reader.read::<CursorMoved>();
+    let input_events = event_reader.read::<MouseInput>();
+    let move_events = event_reader.read::<CursorMoved>();
 
     if input_events.is_empty() && move_events.is_empty() {
         // no events to process
