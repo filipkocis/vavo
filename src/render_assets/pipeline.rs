@@ -1,4 +1,4 @@
-use crate::{assets::ShaderLoader, system::SystemsContext};
+use crate::{assets::ShaderLoader, prelude::Res, renderer::newtype::RenderDevice};
 
 use super::RenderHandle;
 
@@ -231,10 +231,7 @@ impl PipelineBuilder {
     }
 
     /// Finish building the pipeline
-    pub fn finish(&self, ctx: &SystemsContext) -> Pipeline {
-        let device = ctx.renderer.device();
-        let shader_loader = ctx.resources.get::<ShaderLoader>();
-
+    pub fn finish(&self, device: &RenderDevice, shader_loader: Res<ShaderLoader>) -> Pipeline {
         // shader modules
         let (vertex_module, vertex_entry) = self.load_shader(&self.vertex_shader, &shader_loader);
         let fragment_maybe = self.load_shader_maybe(&self.fragment_shader, &shader_loader);
