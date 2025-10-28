@@ -2,8 +2,8 @@ use std::ops::{Deref, DerefMut};
 
 use bytemuck::{AnyBitPattern, NoUninit};
 
-use crate::macros::Resource;
-use crate::system::SystemsContext;
+use crate::renderer::newtype::RenderQueue;
+use crate::{macros::Resource, renderer::newtype::RenderDevice};
 
 use super::{BindGroup, Buffer};
 
@@ -30,7 +30,7 @@ impl Storage {
         name: &str,
         count: usize,
         element_size: usize,
-        ctx: &mut SystemsContext,
+        device: &RenderDevice,
         visibility: wgpu::ShaderStages,
     ) -> Self {
         let data = vec![0u8; count * element_size];
@@ -45,7 +45,7 @@ impl Storage {
         let buffer = Buffer::new("transform_storage").create_storage_buffer(
             &data,
             Some(wgpu::BufferUsages::COPY_DST),
-            ctx.renderer.device(),
+            &device,
         );
 
         let storage_buffer = buffer
@@ -54,7 +54,7 @@ impl Storage {
             .expect("Storage buffer should be storage");
         let bind_group = BindGroup::build(&format!("{}_storage", name))
             .add_storage_buffer(storage_buffer, visibility, true)
-            .finish(ctx);
+            .finish(&device);
 
         Self {
             name: name.to_string(),
@@ -67,12 +67,12 @@ impl Storage {
     }
 
     /// Set new size for the buffer. New empty buffer will replace the old one
-    pub fn resize(&mut self, count: usize, element_size: usize, ctx: &mut SystemsContext) {
+    pub fn resize(&mut self, count: usize, element_size: usize, device: &RenderDevice) {
         if count * element_size == self.size {
             return;
         }
 
-        let new = Self::new(&self.name, count, element_size, ctx, self.visibility);
+        let new = Self::new(&self.name, count, element_size, device, self.visibility);
 
         self.buffer = new.buffer;
         self.bind_group = new.bind_group;
@@ -90,8 +90,13 @@ impl Storage {
     /// # Panics
     /// Panics if the data length in bytes is not divisible by the provided count, since
     /// element_size is computed as `data_bytes.len() / count`
-    pub fn update<A>(&mut self, data: &[A], count: usize, ctx: &mut SystemsContext)
-    where
+    pub fn update<A>(
+        &mut self,
+        data: &[A],
+        count: usize,
+        device: &RenderDevice,
+        queue: &RenderQueue,
+    ) where
         A: NoUninit + AnyBitPattern,
     {
         if data.is_empty() {
@@ -108,11 +113,11 @@ impl Storage {
 
         if data.len() > self.size {
             let element_size = data.len() / count;
-            self.resize(count, element_size, ctx);
+            self.resize(count, element_size, device);
         }
 
         let buffer = self.buffer();
-        ctx.renderer.queue().write_buffer(buffer, 0, data);
+        queue.write_buffer(buffer, 0, data);
     }
 
     /// Return the storage buffer
@@ -152,10 +157,10 @@ impl TransformStorage {
     pub fn new(
         n: usize,
         size: usize,
-        ctx: &mut SystemsContext,
+        device: &RenderDevice,
         visibility: wgpu::ShaderStages,
     ) -> Self {
-        Self(Storage::new("transform", n, size, ctx, visibility))
+        Self(Storage::new("transform", n, size, device, visibility))
     }
 }
 
