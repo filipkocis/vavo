@@ -1,4 +1,4 @@
-use crate::{assets::Handle, math::GlobalTransform, prelude::{Material, Mesh}, query::{Query, RunQuery}, render_assets::TransformStorage, system::SystemsContext};
+use crate::{assets::Handle, math::GlobalTransform, prelude::{Material, Mesh}, query::{Query, RunQuery}, render_assets::TransformStorage, renderer::{culling::Visibility, newtype::{RenderDevice, RenderQueue}}};
 
 /// One instance group represents a group of instances with the same material and mesh.
 /// Instance count defines how many instances are in the group and instance offset is the offset in
@@ -31,16 +31,15 @@ impl GroupedInstances {
     /// Returns new grouped instances, requires transform storage to be a valid resource.
     /// Should be called before rendering and set as a resource.
     pub fn generate(
-        ctx: &mut SystemsContext,
-        mut query: Query<(&Handle<Material>, &Handle<Mesh>, &GlobalTransform, &Visibility)>,
+        device: &RenderDevice,
+        queue: &RenderQueue,
+        transforms_storage: &mut TransformStorage,
+        mut query: Query<(&Handle<Material>, &Handle<Mesh>, &GlobalTransform)>,
     ) -> Self {
         // Prepare sorted storage
         let mut transforms = Vec::new();
         let mut sorted = Vec::<(&Handle<Material>, &Handle<Mesh>, &GlobalTransform)>::new();
-        for (mat, mesh, global_transform, visibility) in query.iter_mut() {
-            if !visibility.is_visible() {
-                continue;
-            }
+        for (mat, mesh, global_transform) in query.iter_mut() {
             sorted.push((mat, mesh, global_transform));
         }
 
@@ -84,8 +83,7 @@ impl GroupedInstances {
         }
 
         // Set transforms storage
-        let mut transforms_storage = ctx.resources.get_mut::<TransformStorage>();
-        transforms_storage.update(&transforms, transforms.len(), ctx);
+        transforms_storage.update(&transforms, transforms.len(), device, queue);
 
         Self { groups }
     }
