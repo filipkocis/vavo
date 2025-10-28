@@ -1,10 +1,11 @@
-use crate::{prelude::Color, system::SystemsContext};
+use winit::dpi::PhysicalSize;
+
+use crate::prelude::Color;
 
 use super::{UiRect, Val};
 
 impl Val {
-    pub fn compute_val(&self, parent: f32, ctx: &SystemsContext) -> f32 {
-        let window_size = ctx.renderer.size();
+    pub fn compute_val(&self, parent: f32, window_size: PhysicalSize<u32>) -> f32 {
         match self {
             Val::Auto => 0.0,
             Val::Px(val) => *val,
@@ -16,12 +17,12 @@ impl Val {
     }
 
     /// Computes the intrinsic value of the Val
-    pub fn compute_intrinsic(&self, ctx: &SystemsContext) -> f32 {
+    pub fn compute_intrinsic(&self, window_size: PhysicalSize<u32>) -> f32 {
         match *self {
             Self::Px(val) => val,
             Self::Rem(val) => val * 16.0,
-            Self::Vw(val) => ctx.renderer.size().width as f32 * val / 100.0,
-            Self::Vh(val) => ctx.renderer.size().height as f32 * val / 100.0,
+            Self::Vw(val) => window_size.width as f32 * val / 100.0,
+            Self::Vh(val) => window_size.height as f32 * val / 100.0,
             _ => 0.0,
         }
     }
@@ -49,12 +50,12 @@ impl ComputedUiRect {
 
 impl UiRect {
     /// Compute Rect fields based on parent width for padding and margin, self width for border
-    pub fn compute_rect(&self, width: f32, ctx: &mut SystemsContext) -> ComputedUiRect {
+    pub fn compute_rect(&self, width: f32, window_size: PhysicalSize<u32>) -> ComputedUiRect {
         ComputedUiRect {
-            left: self.left.compute_val(width, ctx),
-            right: self.right.compute_val(width, ctx),
-            top: self.top.compute_val(width, ctx),
-            bottom: self.bottom.compute_val(width, ctx),
+            left: self.left.compute_val(width, window_size),
+            right: self.right.compute_val(width, window_size),
+            top: self.top.compute_val(width, window_size),
+            bottom: self.bottom.compute_val(width, window_size),
         }
     }
 }
@@ -102,8 +103,7 @@ impl ComputedBox {
     }
 }
 
-#[derive(Default, Debug, Clone)]
-#[derive(crate::macros::Component)]
+#[derive(Default, Debug, Clone, crate::macros::Component)]
 pub struct ComputedNode {
     pub color: Color,
     pub z_index: i32,

@@ -1,33 +1,45 @@
 use glam::Vec3;
 use glyphon::FontSystem;
+use winit::dpi::PhysicalSize;
 
-use crate::{prelude::*, render_assets::RenderAssets, ui::prelude::*, ui::text::TextBuffer};
+use crate::{
+    event::event_handler::EventReader,
+    prelude::*,
+    render_assets::RenderAssets,
+    ui::{prelude::*, text::TextBuffer},
+};
 
 use super::build_temp::{TempNode, nodes_to_temp_graph};
 
 /// Post update system to compute ui nodes and update their transforms
-pub fn compute_nodes_and_transforms(ctx: &mut SystemsContext, mut q: Query<()>) {
-    let mut root_temp_nodes = nodes_to_temp_graph(ctx, &mut q);
+pub fn compute_nodes_and_transforms(
+    mut q: Query<()>,
+
+    world: &mut World,
+    event_reader: EventReader,
+    mut font_system: ResMut<FontSystem>,
+    mut text_buffers: ResMut<RenderAssets<TextBuffer>>,
+) {
+    let mut root_temp_nodes = nodes_to_temp_graph(event_reader, &mut q);
 
     if root_temp_nodes.is_empty() {
         return;
     }
 
-    let mut font_system = ctx.resources.get_mut::<FontSystem>();
-    let mut text_buffers = ctx.resources.get_mut::<RenderAssets<TextBuffer>>();
-    resolve_z_index(ctx, &mut text_buffers, &mut root_temp_nodes, &mut 0);
+    resolve_z_index(world, &mut text_buffers, &mut root_temp_nodes, &mut 0);
 
-    let screen_width = ctx.renderer.size().width as f32;
-    let screen_height = ctx.renderer.size().height as f32;
+    let window_size = ctx.renderer.size();
+    let screen_width = window_size.width as f32;
+    let screen_height = window_size.height as f32;
 
     for node in &mut root_temp_nodes {
-        node.measure_intrinsic_size(ctx);
+        node.measure_intrinsic_size(window_size);
         node.compute_percent_size(screen_width, screen_height);
         node.compute_auto_size();
         node.compute_percent_size(screen_width, screen_height); // recompute after auto size
 
-        node.apply_constraints(ctx, None);
-        node.compute_gaps(ctx);
+        node.apply_constraints(window_size, None);
+        node.compute_gaps(window_size);
         node.resolve_text_wrap(&mut font_system);
         node.fit_auto_size();
 
@@ -45,7 +57,7 @@ pub fn compute_nodes_and_transforms(ctx: &mut SystemsContext, mut q: Query<()>) 
 /// # Important
 /// When setting z_index on text, it will recreate the text buffer render asset with new metadata.
 fn resolve_z_index(
-    ctx: &mut SystemsContext,
+    world: &mut World,
     text_buffers: &mut RenderAssets<TextBuffer>,
     nodes: &mut Vec<TempNode>,
     layer: &mut usize,
@@ -60,21 +72,21 @@ fn resolve_z_index(
             // simply remove the render asset, to recreate it with the new metadata, since buffer
             // does not have a `set_attrs` method, bufferlines do, but it gets reset
             text_buffers.remove_by_entity(node.id, &**text);
-            let text_rae = text_buffers.get_by_entity(node.id, &**text, ctx);
+            let text_rae = text_buffers.get_by_entity(node.id, &**text, world);
             node.text_rae = Some(text_rae);
         }
 
         node.computed.z_index = *layer as i32;
         *layer += 1;
 
-        resolve_z_index(ctx, text_buffers, &mut node.children, layer);
+        resolve_z_index(world, text_buffers, &mut node.children, layer);
     }
 }
 
 impl TempNode<'_> {
     /// Measures the intrinsic size of the node, and sets the computed content size
     /// Traversal: BOTTOM UP
-    fn measure_intrinsic_size(&mut self, ctx: &mut SystemsContext) {
+    fn measure_intrinsic_size(&mut self, window_size: PhysicalSize<u32>) {
         let mut total_width = 0.0;
         let mut total_height = 0.0;
         let mut total_base_width = 0.0;
@@ -84,7 +96,7 @@ impl TempNode<'_> {
         let mut max_base_width = 0.0f32;
 
         for child in &mut self.children {
-            child.measure_intrinsic_size(ctx);
+            child.measure_intrinsic_size(window_size);
 
             total_width += child.computed.width.total;
             total_height += child.computed.height.total;
@@ -111,7 +123,7 @@ impl TempNode<'_> {
                 (Display::Grid, _) => unimplemented!("Grid auto size"),
             }
         } else {
-            let val = self.node.width.compute_val(0.0, ctx);
+            let val = self.node.width.compute_val(0.0, window_size);
             (val, val)
         };
 
@@ -129,7 +141,7 @@ impl TempNode<'_> {
                 (Display::Grid, _) => unimplemented!("Grid auto size"),
             }
         } else {
-            self.node.height.compute_val(0.0, ctx)
+            self.node.height.compute_val(0.0, window_size)
         };
 
         self.computed.width.set(width);
@@ -198,7 +210,7 @@ impl TempNode<'_> {
     }
 
     /// Computes min / max values for one node
-    fn compute_min_max(&mut self, ctx: &mut SystemsContext, parent: Option<*mut TempNode>) {
+    fn compute_min_max(&mut self, window_size: PhysicalSize<u32>, parent: Option<*mut TempNode>) {
         let (parent_content_width, parent_content_height) = if let Some(parent) = parent {
             let parent = unsafe { &mut *parent };
             (
@@ -206,14 +218,16 @@ impl TempNode<'_> {
                 parent.computed.height.content,
             )
         } else {
-            let size = ctx.renderer.size();
-            (size.width as f32, size.height as f32)
+            (window_size.width as f32, window_size.height as f32)
         };
 
-        self.computed.min_width = self.node.min_width.compute_val(parent_content_width, ctx);
-        self.computed.max_width = self.node.max_width.compute_val(parent_content_width, ctx);
-        self.computed.min_height = self.node.min_height.compute_val(parent_content_height, ctx);
-        self.computed.max_height = self.node.max_height.compute_val(parent_content_height, ctx);
+        let ws = window_size;
+        let pcw = parent_content_width;
+        let pch = parent_content_height;
+        self.computed.min_width = self.node.min_width.compute_val(pcw, ws);
+        self.computed.max_width = self.node.max_width.compute_val(pcw, ws);
+        self.computed.min_height = self.node.min_height.compute_val(pch, ws);
+        self.computed.max_height = self.node.max_height.compute_val(pch, ws);
 
         if self.node.max_width == Val::Auto {
             self.computed.max_width = f32::INFINITY;
@@ -240,18 +254,23 @@ impl TempNode<'_> {
     }
 
     /// Computes the box sizing for one node
-    fn compute_box_sizing(&mut self, ctx: &mut SystemsContext, parent: Option<*mut TempNode>) {
+    fn compute_box_sizing(
+        &mut self,
+        window_size: PhysicalSize<u32>,
+        parent: Option<*mut TempNode>,
+    ) {
         let parent_content_width = if let Some(parent) = parent {
             let parent = unsafe { &mut *parent };
             parent.computed.width.content
         } else {
-            let size = ctx.renderer.size();
-            size.width as f32
+            window_size.width as f32
         };
 
-        let padding = self.node.padding.compute_rect(parent_content_width, ctx);
-        let border = self.node.border.compute_rect(parent_content_width, ctx);
-        let margin = self.node.margin.compute_rect(parent_content_width, ctx);
+        let ws = window_size;
+        let pcw = parent_content_width;
+        let padding = self.node.padding.compute_rect(pcw, ws);
+        let border = self.node.border.compute_rect(pcw, ws);
+        let margin = self.node.margin.compute_rect(pcw, ws);
 
         self.computed.padding = padding;
         self.computed.border = border;
@@ -304,7 +323,7 @@ impl TempNode<'_> {
 
     /// Computes the row and column gaps
     /// Traversal: BOTTOM UP
-    fn compute_gaps(&mut self, ctx: &mut SystemsContext) {
+    fn compute_gaps(&mut self, window_size: PhysicalSize<u32>) {
         let mut total_width_diff = 0.0;
         let mut max_width_diff: f32 = 0.0;
         let mut total_height_diff = 0.0;
@@ -314,7 +333,7 @@ impl TempNode<'_> {
             let original_width = child.computed.width.content;
             let original_height = child.computed.height.content;
 
-            child.compute_gaps(ctx);
+            child.compute_gaps(window_size);
 
             let width_diff = child.computed.width.content - original_width;
             let height_diff = child.computed.height.content - original_height;
@@ -355,11 +374,11 @@ impl TempNode<'_> {
             self.computed.column_gap = self
                 .node
                 .column_gap
-                .compute_val(self.computed.width.content, ctx);
+                .compute_val(self.computed.width.content, window_size);
             self.computed.row_gap = self
                 .node
                 .row_gap
-                .compute_val(self.computed.height.content, ctx);
+                .compute_val(self.computed.height.content, window_size);
         }
         if self.node.display == Display::Grid || self.node.is_flex_row() {
             self.computed.base_width +=
@@ -398,12 +417,12 @@ impl TempNode<'_> {
     /// Applies min / max constraints, computes box sizing.
     /// In addition to that it also resolves the text color.
     /// Traversal: TOP DOWN
-    fn apply_constraints(&mut self, ctx: &mut SystemsContext, parent: Option<*mut TempNode>) {
-        self.compute_min_max(ctx, parent);
-        self.compute_box_sizing(ctx, parent);
+    fn apply_constraints(&mut self, window_size: PhysicalSize<u32>, parent: Option<*mut TempNode>) {
+        self.compute_min_max(window_size, parent);
+        self.compute_box_sizing(window_size, parent);
 
         for child in &mut self.children {
-            child.apply_constraints(ctx, parent);
+            child.apply_constraints(window_size, parent);
 
             // text color
             child.computed.color = child.node.color.unwrap_or(self.computed.color);

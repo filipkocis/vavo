@@ -1,5 +1,6 @@
 use std::fmt::Debug;
 
+use crate::event::event_handler::EventReader;
 use crate::prelude::*;
 use crate::render_assets::RenderAssetEntry;
 use crate::ui::image::UiImage;
@@ -32,7 +33,10 @@ impl Debug for TempNode<'_> {
 
 /// Returns temp nodes with populated children, or empty if zero nodes were updated.
 /// Runs on `Changed<Node | Text | UiImage | Transform>` filters, or `WindowEvent::Resized` event
-pub fn nodes_to_temp_graph<'a>(ctx: &mut SystemsContext, q: &mut Query<()>) -> Vec<TempNode<'a>> {
+pub fn nodes_to_temp_graph<'a>(
+    event_reader: EventReader,
+    q: &mut Query<()>
+) -> Vec<TempNode<'a>> {
     let mut check_updated = q.cast::<
         EntityId,
         (
@@ -43,7 +47,7 @@ pub fn nodes_to_temp_graph<'a>(ctx: &mut SystemsContext, q: &mut Query<()>) -> V
 
     // if zero nodes where updated and window has not been resized,
     // do not run and return empty
-    if check_updated.iter_mut().is_empty() && !has_resized(ctx) {
+    if check_updated.iter_mut().is_empty() && !has_resized(&event_reader) {
         return Vec::new();
     }
 
