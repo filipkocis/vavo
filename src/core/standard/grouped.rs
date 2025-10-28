@@ -32,12 +32,15 @@ impl GroupedInstances {
     /// Should be called before rendering and set as a resource.
     pub fn generate(
         ctx: &mut SystemsContext,
-        mut query: Query<(&Handle<Material>, &Handle<Mesh>, &GlobalTransform)>,
+        mut query: Query<(&Handle<Material>, &Handle<Mesh>, &GlobalTransform, &Visibility)>,
     ) -> Self {
         // Prepare sorted storage
         let mut transforms = Vec::new();
         let mut sorted = Vec::<(&Handle<Material>, &Handle<Mesh>, &GlobalTransform)>::new();
-        for (mat, mesh, global_transform) in query.iter_mut() {
+        for (mat, mesh, global_transform, visibility) in query.iter_mut() {
+            if !visibility.is_visible() {
+                continue;
+            }
             sorted.push((mat, mesh, global_transform));
         }
 

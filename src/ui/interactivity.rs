@@ -23,6 +23,7 @@ pub enum Interaction {
 pub fn ui_interaction_update(
     mouse_inputs: Res<Input<MouseButton>>,
     event_reader: EventReader,
+    window: Res<Window>,
     mut query: Query<(
         EntityId,
         &Node,
@@ -51,10 +52,11 @@ pub fn ui_interaction_update(
         .collect();
 
     // new interactions
-    let (new_interactions, keep) = match get_interactions(mouse_inputs, event_reader, &nodes) {
-        Some(interactions) => interactions,
-        None => return,
-    };
+    let (new_interactions, keep) =
+        match get_interactions(mouse_inputs, event_reader, window, &nodes) {
+            Some(interactions) => interactions,
+            None => return,
+        };
 
     interactions.extend(new_interactions);
     interactions.retain(|id, _| !keep.contains(id)); // remove keepers, so they are not updated
@@ -73,6 +75,7 @@ pub fn ui_interaction_update(
 fn get_interactions(
     mouse_inputs: Res<Input<MouseButton>>,
     event_reader: EventReader,
+    window: Res<Window>,
     nodes: &[(
         EntityId,
         &Node,
@@ -95,7 +98,7 @@ fn get_interactions(
     let is_pressed = mouse_inputs.pressed(MouseButton::Left);
     let just_pressed = mouse_inputs.just_pressed(MouseButton::Left);
 
-    let cursor_position = match ctx.renderer.cursor_position() {
+    let cursor_position = match window.cursor_position() {
         Some(position) => position,
         // cursor is outside of the window, so reset interactions
         None => return Some((vec![], vec![])),

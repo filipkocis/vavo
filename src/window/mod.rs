@@ -12,8 +12,22 @@ pub(crate) use state::*;
 /// [WindowConfig](config::WindowConfig).
 #[derive(crate::macros::Resource, Default, Debug, Clone)]
 pub struct Window {
-    pub size: winit::dpi::PhysicalSize<u32>,
-    pub cursor_position: Option<glam::Vec2>,
+    pub(crate) size: winit::dpi::PhysicalSize<u32>,
+    pub(crate) cursor_position: Option<glam::Vec2>,
+}
+
+impl Window {
+    /// Returns the current size of the window in physical pixels.
+    #[inline]
+    pub fn size(&self) -> winit::dpi::PhysicalSize<u32> {
+        self.size
+    }
+
+    /// Returns the current cursor position within the window.
+    #[inline]
+    pub fn cursor_position(&self) -> Option<glam::Vec2> {
+        self.cursor_position
+    }
 }
 
 pub mod prelude {

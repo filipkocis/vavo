@@ -12,7 +12,11 @@ use super::{
 };
 
 use super::text::TextBuffer;
-use crate::{prelude::*, renderer::newtype::RenderQueue, ui::prelude::*};
+use crate::{
+    prelude::*,
+    renderer::newtype::{RenderQueue, RenderSurfaceConfiguration},
+    ui::prelude::*,
+};
 use crate::{render_assets::RenderAssets, renderer::newtype::RenderDevice};
 
 /// System to initialize new UI nodes, it adds Transform and ComputedNode components
@@ -42,7 +46,7 @@ pub fn initialize_button_ui_nodes(
 fn insert_ui_text_resources(world: &mut World) {
     let device = world.resources.get::<RenderDevice>();
     let queue = world.resources.get::<RenderQueue>();
-    let swapchain_format = ctx.renderer.config().format;
+    let swapchain_format = world.resources.get::<RenderSurfaceConfiguration>().format;
 
     let font_system = FontSystem::new();
     let swash_cache = SwashCache::new();

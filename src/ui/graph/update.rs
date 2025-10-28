@@ -12,8 +12,12 @@ use crate::ui::{graph::storage::UiTransformStorage, mesh::*, prelude::*, text::T
 
 /// System to update the glyphon text viewport resolution.
 /// Runs only if the window size has changed.
-pub fn update_glyphon_viewport(mut viewport: ResMut<Viewport>, queue: Res<RenderQueue>) {
-    let size = ctx.renderer.size();
+pub fn update_glyphon_viewport(
+    mut viewport: ResMut<Viewport>,
+    queue: Res<RenderQueue>,
+    window: Res<Window>,
+) {
+    let size = window.size();
 
     viewport.update(
         &queue,
@@ -69,7 +73,7 @@ pub fn update_ui_mesh_and_transforms(
     world: &mut World,
     event_reader: EventReader,
 
-    changed_query: Query<
+    mut changed_query: Query<
         EntityId,
         (
             With<Transform>,
@@ -80,7 +84,7 @@ pub fn update_ui_mesh_and_transforms(
         ),
     >,
 
-    nodes_query: Query<(
+    mut nodes_query: Query<(
         EntityId,
         &GlobalTransform,
         &Node,
@@ -318,5 +322,5 @@ pub fn update_ui_mesh_and_transforms(
         .unwrap();
 
     // update transform storage with ui nodes
-    ui_transform_storage.update(&ui_transforms, ui_transforms.len(), ctx);
+    ui_transform_storage.update(&ui_transforms, ui_transforms.len(), &device, &queue);
 }

@@ -19,6 +19,7 @@ pub fn compute_nodes_and_transforms(
     event_reader: EventReader,
     mut font_system: ResMut<FontSystem>,
     mut text_buffers: ResMut<RenderAssets<TextBuffer>>,
+    window: Res<Window>,
 ) {
     let mut root_temp_nodes = nodes_to_temp_graph(event_reader, &mut q);
 
@@ -28,7 +29,7 @@ pub fn compute_nodes_and_transforms(
 
     resolve_z_index(world, &mut text_buffers, &mut root_temp_nodes, &mut 0);
 
-    let window_size = ctx.renderer.size();
+    let window_size = window.size();
     let screen_width = window_size.width as f32;
     let screen_height = window_size.height as f32;
 

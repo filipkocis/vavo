@@ -19,6 +19,7 @@ pub use super::{
         Commands, GraphSystem, IntoSystem, IntoSystemCondition, System, SystemStage, SystemsContext,
     },
     wgpu::{self},
+    window::prelude::*,
     winit::{self},
 };
 
