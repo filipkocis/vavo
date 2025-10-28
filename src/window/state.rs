@@ -14,8 +14,7 @@ pub struct AppState {
     pub adapter: RenderAdapter,
     pub device: RenderDevice,
     pub queue: RenderQueue,
-
-    pub config: wgpu::SurfaceConfiguration,
+    pub config: RenderSurfaceConfiguration,
 
     pub size: PhysicalSize<u32>,
     pub cursor_position: Option<Vec2>,
@@ -44,6 +43,7 @@ impl AppState {
         let adapter = RenderAdapter::new(adapter);
         let device = RenderDevice::new(device);
         let queue = RenderQueue::new(queue);
+        let config = RenderSurfaceConfiguration::new(config);
 
         Self {
             instance,
@@ -68,17 +68,9 @@ impl AppState {
         resources.insert(self.adapter.clone_wrapped());
         resources.insert(self.device.clone_wrapped());
         resources.insert(self.queue.clone_wrapped());
+        resources.insert(self.config.clone_wrapped());
+
     }
-
-    // #[inline]
-    // pub fn window(&self) -> &Arc<Window> {
-    //     &self.window
-    // }
-
-    // #[inline]
-    // pub fn size(&self) -> &PhysicalSize<u32> {
-    //     &self.size
-    // }
 
     /// Resize the surface and reconfigue it
     pub fn resize(&mut self, new_size: PhysicalSize<u32>) {

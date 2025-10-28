@@ -70,6 +70,12 @@ define_render_newtype!(
 );
 
 define_render_newtype!(
+    RenderSurfaceConfiguration,
+    wgpu::SurfaceConfiguration,
+    "Newtype wrapper for [`wgpu::SurfaceConfiguration`]. Mutations to the inner configuration will not affect the actual surface, this is purely for retrieving configuration data."
+);
+
+define_render_newtype!(
     RenderAdapter,
     wgpu::Adapter,
     "Newtype wrapper for [`wgpu::Adapter`]."
