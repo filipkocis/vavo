@@ -31,7 +31,10 @@ impl<'a> AppHandler<'a> {
     }
 
     pub fn resize(&mut self, new_size: PhysicalSize<u32>) {
-        self.state.as_mut().unwrap().resize(new_size);
+        self.state
+            .as_mut()
+            .unwrap()
+            .resize(new_size, &mut self.app.world.resources);
         self.app.resize(new_size);
     }
 }
@@ -79,7 +82,7 @@ impl<'a> ApplicationHandler for AppHandler<'a> {
     }
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, id: WindowId, event: WindowEvent) {
-        if id != self.state.as_ref().unwrap().window.id() {
+        if id != self.state.as_ref().unwrap().window().id() {
             return;
         }
 
@@ -109,7 +112,10 @@ impl<'a> ApplicationHandler for AppHandler<'a> {
             WindowEvent::CursorMoved { position, .. } => {
                 let position = Vec2::new(position.x as f32, position.y as f32);
                 self.app.create_event(CursorMoved { position });
-                self.state.as_mut().unwrap().cursor_position = Some(position);
+                self.state
+                    .as_mut()
+                    .unwrap()
+                    .update_cursor_position(Some(position), &mut self.app.world.resources);
             }
 
             WindowEvent::Resized(physical_size) => self.resize(physical_size),
@@ -140,6 +146,6 @@ impl<'a> ApplicationHandler for AppHandler<'a> {
     }
 
     fn about_to_wait(&mut self, _: &ActiveEventLoop) {
-        self.state.as_ref().unwrap().window.request_redraw();
+        self.state.as_ref().unwrap().window().request_redraw();
     }
 }

@@ -7,17 +7,17 @@ use winit::{dpi::PhysicalSize, window::Window};
 use crate::{prelude::Resources, renderer::newtype::*};
 
 /// Holds Window - GPU state for the application. Used by the AppHandler
-pub struct AppState {
-    pub instance: RenderInstance,
-    pub surface: RenderSurface,
-    pub window: RenderWindow,
-    pub adapter: RenderAdapter,
-    pub device: RenderDevice,
-    pub queue: RenderQueue,
-    pub config: RenderSurfaceConfiguration,
+pub(crate) struct AppState {
+    instance: RenderInstance,
+    surface: RenderSurface,
+    window: RenderWindow,
+    adapter: RenderAdapter,
+    device: RenderDevice,
+    queue: RenderQueue,
+    config: RenderSurfaceConfiguration,
 
-    pub size: PhysicalSize<u32>,
-    pub cursor_position: Option<Vec2>,
+    size: PhysicalSize<u32>,
+    cursor_position: Option<Vec2>,
 }
 
 impl AppState {
@@ -70,19 +70,46 @@ impl AppState {
         resources.insert(self.queue.clone_wrapped());
         resources.insert(self.config.clone_wrapped());
 
+        let mut window = crate::prelude::Window::default();
+        window.size = self.size;
+        window.cursor_position = self.cursor_position;
+        resources.insert(window);
+    }
+
+    /// Get a reference to the winit window
+    #[inline]
+    pub(crate) fn window(&self) -> &RenderWindow {
+        &self.window
     }
 
     /// Resize the surface and reconfigue it
-    pub fn resize(&mut self, new_size: PhysicalSize<u32>) {
+    #[inline]
+    pub fn resize(&mut self, new_size: PhysicalSize<u32>, resources: &mut Resources) {
         self.size = new_size;
 
         self.config.width = new_size.width;
         self.config.height = new_size.height;
 
+        let mut window = resources.get_mut::<crate::prelude::Window>();
+        window.size = new_size;
+        let mut config = resources.get_mut::<RenderSurfaceConfiguration>();
+        config.width = new_size.width;
+        config.height = new_size.height;
+
         self.reconfigure();
     }
 
+    /// Update the cursor position
+    #[inline]
+    pub fn update_cursor_position(&mut self, position: Option<Vec2>, resources: &mut Resources) {
+        self.cursor_position = position;
+
+        let mut window = resources.get_mut::<crate::prelude::Window>();
+        window.cursor_position = position;
+    }
+
     /// Reconfigure the surface with the current config
+    #[inline]
     pub fn reconfigure(&self) {
         self.surface.configure(&self.device, &self.config);
     }
