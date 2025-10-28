@@ -13,9 +13,7 @@ pub struct StandardPipeline {
 
 impl StandardPipeline {
     pub fn new(handle: RenderHandle<Pipeline>) -> Self {
-        Self {
-            handle,
-        }
+        Self { handle }
     }
 }
 
@@ -115,7 +113,10 @@ impl PipelineBuilder {
     ///
     /// # Note
     /// Default is an empty slice
-    pub fn set_vertex_buffer_layouts(mut self, layouts: Vec<wgpu::VertexBufferLayout<'static>>) -> Self {
+    pub fn set_vertex_buffer_layouts(
+        mut self,
+        layouts: Vec<wgpu::VertexBufferLayout<'static>>,
+    ) -> Self {
         self.vertex_buffer_layouts = layouts;
         self
     }
@@ -159,7 +160,6 @@ impl PipelineBuilder {
         self
     }
 
-
     /// Set texture format for pipeline's depth stencil
     ///
     /// # Note
@@ -174,7 +174,7 @@ impl PipelineBuilder {
         }
         self
     }
-    
+
     // /// Set primitive topology for the pipeline
     // ///
     // /// # Note
@@ -184,13 +184,13 @@ impl PipelineBuilder {
     //     self
     // }
 
-    /// Overrides primitive state for the pipeline, for default values see [`Self::default_primitive_state`] 
+    /// Overrides primitive state for the pipeline, for default values see [`Self::default_primitive_state`]
     pub fn set_primitive_state(mut self, primitive_state: wgpu::PrimitiveState) -> Self {
         self.primitive_state = primitive_state;
         self
     }
 
-    /// Overrides depth stencil state for the pipeline, for default values see [`Self::default_depth_stencil`] 
+    /// Overrides depth stencil state for the pipeline, for default values see [`Self::default_depth_stencil`]
     pub fn set_depth_stencil(mut self, depth_stencil: Option<wgpu::DepthStencilState>) -> Self {
         self.depth_stencil = depth_stencil;
         self
@@ -202,12 +202,26 @@ impl PipelineBuilder {
         self
     }
 
-    fn load_shader<'a>(&self, label_entry: &Option<(String, String)>, shader_loader: &'a ShaderLoader) -> (&'a wgpu::ShaderModule, String) {
+    fn load_shader<'a>(
+        &self,
+        label_entry: &Option<(String, String)>,
+        shader_loader: &'a ShaderLoader,
+    ) -> (&'a wgpu::ShaderModule, String) {
         self.load_shader_maybe(label_entry, shader_loader)
-            .unwrap_or_else(|| panic!("{} shader for {} not set", label_entry.as_ref().unwrap().0, self.label))
+            .unwrap_or_else(|| {
+                panic!(
+                    "{} shader for {} not set",
+                    label_entry.as_ref().unwrap().0,
+                    self.label
+                )
+            })
     }
 
-    fn load_shader_maybe<'a>(&self, label_entry: &Option<(String, String)>, shader_loader: &'a ShaderLoader) -> Option<(&'a wgpu::ShaderModule, String)> {
+    fn load_shader_maybe<'a>(
+        &self,
+        label_entry: &Option<(String, String)>,
+        shader_loader: &'a ShaderLoader,
+    ) -> Option<(&'a wgpu::ShaderModule, String)> {
         if let Some((label, entry)) = label_entry {
             let shader_module = shader_loader.get(label);
             Some((&shader_module.module, entry.to_string()))
@@ -229,7 +243,7 @@ impl PipelineBuilder {
         let layout = self.bind_group_layouts.as_ref().map(|layouts| {
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some(&format!("{}_layout", self.label)),
-                bind_group_layouts: &layouts.iter().collect::<Vec<_>>(), 
+                bind_group_layouts: &layouts.iter().collect::<Vec<_>>(),
                 push_constant_ranges: &self.push_constant_ranges,
             })
         });
@@ -244,12 +258,14 @@ impl PipelineBuilder {
                 buffers: self.vertex_buffer_layouts.as_ref(),
                 compilation_options: Default::default(),
             },
-            fragment: fragment_maybe.as_ref().map(|(module, entry)| wgpu::FragmentState {
-                module,
-                entry_point: Some(entry),
-                targets: &self.color_targets,
-                compilation_options: Default::default(),
-            }),
+            fragment: fragment_maybe
+                .as_ref()
+                .map(|(module, entry)| wgpu::FragmentState {
+                    module,
+                    entry_point: Some(entry),
+                    targets: &self.color_targets,
+                    compilation_options: Default::default(),
+                }),
             primitive: self.primitive_state,
             depth_stencil: self.depth_stencil.clone(),
             multisample: wgpu::MultisampleState::default(),
@@ -258,7 +274,7 @@ impl PipelineBuilder {
         };
 
         Pipeline {
-            inner: device.create_render_pipeline(&pipeline_desc)
+            inner: device.create_render_pipeline(&pipeline_desc),
         }
     }
 }
