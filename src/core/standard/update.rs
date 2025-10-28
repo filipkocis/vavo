@@ -1,10 +1,16 @@
 use winit::event::WindowEvent;
 
-use crate::{prelude::*, render_assets::*};
+use crate::{
+    event::event_handler::EventReader, prelude::*, render_assets::*, renderer::newtype::RenderQueue,
+};
 
 /// Internal system that updates active camera buffers with changed projection and transform.
 pub fn update_camera_buffers(
-    ctx: &mut SystemsContext,
+    world: &mut World,
+    mut buffers: ResMut<RenderAssets<Buffer>>,
+    event_reader: EventReader,
+    queue: Res<RenderQueue>,
+
     mut query: Query<
         (EntityId, &Camera, &Projection, &GlobalTransform),
         (
@@ -13,9 +19,7 @@ pub fn update_camera_buffers(
         ),
     >,
 ) {
-    let mut buffers = ctx.resources.get_mut::<RenderAssets<Buffer>>();
-    let resize_event = ctx
-        .event_reader
+    let resize_event = event_reader
         .read::<WindowEvent>()
         .into_iter()
         .filter_map(|e| {
@@ -39,7 +43,7 @@ pub fn update_camera_buffers(
             continue;
         }
 
-        let camera_buffer = buffers.get_by_entity(id, camera, ctx);
+        let camera_buffer = buffers.get_by_entity(id, camera, world);
         let camera_buffer_data = Camera::get_buffer_data(projection, global_transform);
 
         let camera_buffer = camera_buffer
@@ -48,12 +52,12 @@ pub fn update_camera_buffers(
             .expect("Camera buffer should be an uniform buffer");
         let data = bytemuck::cast_slice(&camera_buffer_data);
 
-        ctx.renderer.queue().write_buffer(camera_buffer, 0, data);
+        queue.write_buffer(camera_buffer, 0, data);
     }
 }
 
 /// Internal system that updates global transforms of entities with changed local transforms.
-pub fn update_global_transforms(_: &mut SystemsContext, mut q: Query<()>) {
+pub fn update_global_transforms(mut q: Query<()>) {
     // update root entities
     let mut query =
         q.cast::<(&mut GlobalTransform, &Transform), (Changed<Transform>, Without<Parent>)>();

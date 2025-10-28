@@ -1,4 +1,7 @@
-use crate::{prelude::Image, render_assets::IntoRenderAsset, system::SystemsContext};
+use crate::{
+    prelude::{Image, World},
+    render_assets::IntoRenderAsset,
+};
 
 /// Single texture array with a sampler
 pub struct ShadowMapArray {
@@ -8,7 +11,7 @@ pub struct ShadowMapArray {
 }
 
 impl ShadowMapArray {
-    pub fn new(ctx: &mut SystemsContext, size: wgpu::Extent3d) -> Self {
+    pub fn new(world: &mut World, size: wgpu::Extent3d) -> Self {
         let image = Image {
             data: Vec::new(),
             size,
@@ -37,7 +40,7 @@ impl ShadowMapArray {
             }),
         };
 
-        let texture = image.create_render_asset(ctx, None);
+        let texture = image.create_render_asset(world, None);
 
         Self {
             size,
@@ -47,7 +50,7 @@ impl ShadowMapArray {
     }
 
     /// Resize the texture array to n layers. Panics if `n == 0`
-    pub fn resize(&mut self, ctx: &mut SystemsContext, layers: u32) {
+    pub fn resize(&mut self, world: &mut World, layers: u32) {
         assert!(layers > 0);
 
         if layers == self.layers() {
@@ -55,7 +58,7 @@ impl ShadowMapArray {
         }
 
         self.size.depth_or_array_layers = layers;
-        let resized = Self::new(ctx, self.size);
+        let resized = Self::new(world, self.size);
 
         self.texture = resized.texture;
     }
