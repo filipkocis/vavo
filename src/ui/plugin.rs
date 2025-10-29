@@ -43,10 +43,13 @@ pub fn initialize_button_ui_nodes(
 }
 
 /// Inset necessary UI text resources to app
-fn insert_ui_text_resources(world: &mut World) {
-    let device = world.resources.get::<RenderDevice>();
-    let queue = world.resources.get::<RenderQueue>();
-    let swapchain_format = world.resources.get::<RenderSurfaceConfiguration>().format;
+fn insert_ui_text_resources(
+    mut commands: Commands,
+    device: Res<RenderDevice>,
+    queue: Res<RenderQueue>,
+    surface_config: Res<RenderSurfaceConfiguration>,
+) {
+    let swapchain_format = surface_config.format;
 
     let font_system = FontSystem::new();
     let swash_cache = SwashCache::new();
@@ -66,25 +69,28 @@ fn insert_ui_text_resources(world: &mut World) {
         }),
     );
 
-    world.resources.insert(font_system);
-    world.resources.insert(swash_cache);
-    world.resources.insert(viewport);
-    world.resources.insert(atlas);
-    world.resources.insert(text_renderer);
-    world.resources.insert(RenderAssets::<TextBuffer>::new());
+    commands
+        .insert_resource(font_system)
+        .insert_resource(swash_cache)
+        .insert_resource(viewport)
+        .insert_resource(atlas)
+        .insert_resource(text_renderer)
+        .insert_resource(RenderAssets::<TextBuffer>::new());
 }
 
 /// Inset necessary UI resources to app
-fn insert_ui_resources(world: &mut World) {
-    let node_transform_storage = UiTransformStorage::new(1, 32, world, wgpu::ShaderStages::VERTEX);
+fn insert_ui_resources(mut commands: Commands, device: Res<RenderDevice>) {
+    let node_transform_storage =
+        UiTransformStorage::new(1, 32, &device, wgpu::ShaderStages::VERTEX);
     let ui_mesh = UiMesh::new();
     let ui_mesh_transparent = UiMeshTransparent::new();
     let ui_mesh_images = UiMeshImages::new();
 
-    world.resources.insert(node_transform_storage);
-    world.resources.insert(ui_mesh);
-    world.resources.insert(ui_mesh_transparent);
-    world.resources.insert(ui_mesh_images);
+    commands
+        .insert_resource(node_transform_storage)
+        .insert_resource(ui_mesh)
+        .insert_resource(ui_mesh_transparent)
+        .insert_resource(ui_mesh_images);
 }
 
 pub struct UiPlugin;

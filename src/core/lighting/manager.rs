@@ -1,7 +1,7 @@
 use crate::{
     prelude::{Light, World},
     render_assets::{BindGroup, IntoRenderAsset},
-    system::SystemsContext,
+    renderer::newtype::{RenderDevice, RenderQueue},
 };
 
 use super::{LightStorage, ShadowMapArray};
@@ -23,16 +23,16 @@ impl LightAndShadowManager {
     pub const SPOT_SHADOW_MAP_SIZE: u32 = 1024;
     pub const SHADOW_MAP_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 
-    pub fn new(ctx: &mut SystemsContext) -> Self {
+    pub fn new(world: &mut World, device: &RenderDevice) -> Self {
         let storage = LightStorage::new(
             1,
             Self::LIGHT_SIZE,
-            ctx,
+            &device,
             wgpu::ShaderStages::VERTEX_FRAGMENT,
         );
 
         let directional_shadow_map = ShadowMapArray::new(
-            ctx,
+            world,
             wgpu::Extent3d {
                 width: Self::DIRECTIONAL_SHADOW_MAP_SIZE,
                 height: Self::DIRECTIONAL_SHADOW_MAP_SIZE,
@@ -41,7 +41,7 @@ impl LightAndShadowManager {
         );
 
         let point_shadow_map = ShadowMapArray::new(
-            ctx,
+            world,
             wgpu::Extent3d {
                 width: Self::POINT_SHADOW_MAP_SIZE,
                 height: Self::POINT_SHADOW_MAP_SIZE,
@@ -50,7 +50,7 @@ impl LightAndShadowManager {
         );
 
         let spot_shadow_map = ShadowMapArray::new(
-            ctx,
+            world,
             wgpu::Extent3d {
                 width: Self::SPOT_SHADOW_MAP_SIZE,
                 height: Self::SPOT_SHADOW_MAP_SIZE,
@@ -58,16 +58,13 @@ impl LightAndShadowManager {
             },
         );
 
-        let sampler = ctx
-            .renderer
-            .device()
-            .create_sampler(&wgpu::SamplerDescriptor {
-                label: Some("LightAndShadowManager Sampler"),
-                compare: Some(wgpu::CompareFunction::LessEqual),
-                mag_filter: wgpu::FilterMode::Linear,
-                min_filter: wgpu::FilterMode::Linear,
-                ..Default::default()
-            });
+        let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            label: Some("LightAndShadowManager Sampler"),
+            compare: Some(wgpu::CompareFunction::LessEqual),
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
+            ..Default::default()
+        });
 
         Self {
             storage,
@@ -80,7 +77,13 @@ impl LightAndShadowManager {
 
     /// Update the light storage and shadow maps to match the lights.
     /// Sets the shadow map index for each light.
-    pub fn update(&mut self, lights: &mut [Light], ctx: &mut SystemsContext) {
+    pub fn update(
+        &mut self,
+        lights: &mut [Light],
+        world: &mut World,
+        device: &RenderDevice,
+        queue: &RenderQueue,
+    ) {
         let mut directional_lights = 0u32;
         let mut point_lights = 0u32;
         let mut spot_lights = 0u32;
@@ -108,11 +111,12 @@ impl LightAndShadowManager {
         point_lights = point_lights.max(6);
         spot_lights = spot_lights.max(1);
 
-        self.directional_shadow_map.resize(ctx, directional_lights);
-        self.point_shadow_map.resize(ctx, point_lights);
-        self.spot_shadow_map.resize(ctx, spot_lights);
+        self.directional_shadow_map
+            .resize(world, directional_lights);
+        self.point_shadow_map.resize(world, point_lights);
+        self.spot_shadow_map.resize(world, spot_lights);
 
-        self.storage.update(lights, lights.len(), ctx);
+        self.storage.update(lights, lights.len(), &device, &queue);
     }
 
     /// Create a texture view for the shadow map of a given light.

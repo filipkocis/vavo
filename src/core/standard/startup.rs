@@ -1,4 +1,8 @@
-use crate::{prelude::*, render_assets::TransformStorage, renderer::newtype::RenderDevice};
+use crate::{
+    prelude::*,
+    render_assets::TransformStorage,
+    renderer::newtype::{RenderDevice, RenderSurfaceConfiguration, RenderWindow},
+};
 
 use super::{rendering::standard_main_node, shadows::standard_shadow_node};
 
@@ -9,10 +13,17 @@ pub fn add_render_resources(mut commands: Commands, device: Res<RenderDevice>) {
 }
 
 /// Startup system to register standard render graph
-pub fn register_standard_graph(ctx: &mut SystemsContext, _: Query<()>) {
+pub fn register_standard_graph(
+    device: Res<RenderDevice>,
+    mut shader_loader: ResMut<ShaderLoader>,
+    surface_config: Res<RenderSurfaceConfiguration>,
+    window: Res<RenderWindow>,
+
+    ctx: &mut SystemsContext,
+) {
     let graph = unsafe { &mut *ctx.graph };
 
-    let main_node = standard_main_node(ctx);
+    let main_node = standard_main_node(&device, &mut shader_loader, &surface_config, &window);
     graph.add(main_node);
 
     let shadow_node = standard_shadow_node(ctx);

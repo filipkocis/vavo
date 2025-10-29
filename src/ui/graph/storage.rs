@@ -1,14 +1,19 @@
 use std::ops::{Deref, DerefMut};
 
-use crate::{render_assets::Storage, system::SystemsContext};
+use crate::{render_assets::Storage, renderer::newtype::RenderDevice};
 
 #[derive(crate::macros::Resource)]
 /// Storage for UI node transform data
 pub struct UiTransformStorage(Storage);
 
 impl UiTransformStorage {
-    pub fn new(n: usize, size: usize, ctx: &mut SystemsContext, visibility: wgpu::ShaderStages) -> Self {
-        Self(Storage::new("node_transform", n, size, ctx, visibility))
+    pub fn new(
+        n: usize,
+        size: usize,
+        device: &RenderDevice,
+        visibility: wgpu::ShaderStages,
+    ) -> Self {
+        Self(Storage::new("node_transform", n, size, &device, visibility))
     }
 }
 

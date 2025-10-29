@@ -1,14 +1,19 @@
 use std::ops::{Deref, DerefMut};
 
-use crate::{render_assets::Storage, system::SystemsContext};
+use crate::{render_assets::Storage, renderer::newtype::RenderDevice};
 
 #[derive(crate::macros::Resource)]
 /// Storage for light data, used in the light manager
 pub struct LightStorage(Storage);
 
 impl LightStorage {
-    pub fn new(n: usize, size: usize, ctx: &mut SystemsContext, visibility: wgpu::ShaderStages) -> Self {
-        Self(Storage::new("light", n, size, ctx, visibility))
+    pub fn new(
+        n: usize,
+        size: usize,
+        device: &RenderDevice,
+        visibility: wgpu::ShaderStages,
+    ) -> Self {
+        Self(Storage::new("light", n, size, device, visibility))
     }
 }
 

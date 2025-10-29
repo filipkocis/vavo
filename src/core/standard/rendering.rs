@@ -5,18 +5,25 @@ use crate::{
     core::{graph::*, lighting::LightAndShadowManager},
     prelude::*,
     render_assets::*,
+    renderer::newtype::{RenderDevice, RenderSurfaceConfiguration, RenderWindow},
     system::CustomGraphSystem,
 };
 
 use super::grouped::GroupedInstances;
 
 /// Creates a node for standard main render pass
-pub fn standard_main_node(ctx: &mut SystemsContext) -> GraphNode {
+pub fn standard_main_node(
+    device: &RenderDevice,
+    mut shader_loader: &mut ShaderLoader,
+    surface_config: &RenderSurfaceConfiguration,
+    window: &RenderWindow,
+) -> GraphNode {
     // Create pipeline builder
-    let main_pipeline_builder = create_main_pipeline_builder(ctx);
+    let main_pipeline_builder =
+        create_main_pipeline_builder(&device, &mut shader_loader, &surface_config);
 
     // Create depth image
-    let size = ctx.renderer.window().inner_size();
+    let size = window.inner_size();
     let mut depth_image = Image::new_with_defaults(
         vec![],
         wgpu::Extent3d {
@@ -48,22 +55,21 @@ pub fn standard_main_node(ctx: &mut SystemsContext) -> GraphNode {
 }
 
 fn main_render_system(
+    world: &mut World,
+    mut buffers: ResMut<RenderAssets<Buffer>>,
+    mut bind_groups: ResMut<RenderAssets<BindGroup>>,
+    manager: Res<LightAndShadowManager>,
+    grouped: Res<GroupedInstances>,
+    transforms_storage: Res<TransformStorage>,
+
+    mut camera_query: Query<
+        (EntityId, &Camera),
+        (With<Transform>, With<Projection>, With<Camera3D>),
+    >,
+
     graph_ctx: CustomRenderGraphContext,
-    ctx: &mut SystemsContext,
-    mut query: Query<()>,
 ) {
-    // Render assets
-    let mut buffers = ctx.resources.get_mut::<RenderAssets<Buffer>>();
-    let mut bind_groups = ctx.resources.get_mut::<RenderAssets<BindGroup>>();
-
-    // Resources
-    let manager = ctx.resources.get::<LightAndShadowManager>();
-    let grouped = ctx.resources.get::<GroupedInstances>();
-    let transforms_storage = ctx.resources.get::<TransformStorage>();
-
     // Camera
-    let mut camera_query =
-        query.cast::<(EntityId, &Camera), (With<Transform>, With<Projection>, With<Camera3D>)>();
     let (active_camera_id, active_camera) = match camera_query
         .iter_mut()
         .into_iter()
@@ -74,7 +80,7 @@ fn main_render_system(
         Some(camera) => camera,
         None => return,
     };
-    let camera_bind_group = bind_groups.get_by_entity(active_camera_id, active_camera, ctx);
+    let camera_bind_group = bind_groups.get_by_entity(active_camera_id, active_camera, world);
 
     // Create render pass
     let encoder = ctx.renderer.encoder().inner;
@@ -119,7 +125,7 @@ fn main_render_system(
     );
 
     // TODO: currently we have to regen every time, because manager views got updated
-    let manager_bind_group = bind_groups.get_by_resource(&manager, ctx, true);
+    let manager_bind_group = bind_groups.get_by_resource(&manager, world, true);
 
     // Set bind groups
     render_pass.set_bind_group(1, transforms_storage.bind_group(), &[]);
@@ -138,13 +144,13 @@ fn main_render_system(
 
         // bind material
         if last_material != Some(material) {
-            let material_bind_group = bind_groups.get_by_handle(material, ctx);
+            let material_bind_group = bind_groups.get_by_handle(material, world);
             render_pass.set_bind_group(0, &*material_bind_group, &[]);
             last_material = Some(material);
         }
 
         // set vertex buffer with mesh
-        let mesh_buffer = buffers.get_by_handle(mesh, ctx);
+        let mesh_buffer = buffers.get_by_handle(mesh, world);
         if last_mesh != Some(mesh) {
             let Some(vertex_buffer) = mesh_buffer.vertex.as_ref() else {
                 continue;
@@ -166,10 +172,11 @@ fn main_render_system(
 }
 
 // TODO: add a better way to generate/get bind group layouts
-fn create_main_pipeline_builder(ctx: &mut SystemsContext) -> PipelineBuilder {
-    let device = ctx.renderer.device();
-    let color_format = ctx.renderer.config().format;
-
+fn create_main_pipeline_builder(
+    device: &RenderDevice,
+    shader_loader: &mut ShaderLoader,
+    surface_config: &RenderSurfaceConfiguration,
+) -> PipelineBuilder {
     // Material bind group layout for texture and uniform buffer
     let material_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
         label: Some("material_bind_group_layout"),
@@ -311,8 +318,7 @@ fn create_main_pipeline_builder(ctx: &mut SystemsContext) -> PipelineBuilder {
     });
 
     // Load shader modules
-    ctx.resources
-        .get_mut::<ShaderLoader>()
+    shader_loader
         .load("main", include_str!("../../shaders/shader.wgsl"), device)
         .expect("Shader with label 'main' already exists");
 
@@ -327,7 +333,7 @@ fn create_main_pipeline_builder(ctx: &mut SystemsContext) -> PipelineBuilder {
         .set_vertex_buffer_layouts(vec![Mesh::vertex_descriptor()])
         .set_vertex_shader("main", "vs_main")
         .set_fragment_shader("main", "fs_main")
-        .add_color_format(color_format)
+        .add_color_format(surface_config.format)
         .set_depth_format(wgpu::TextureFormat::Depth32Float)
         .set_push_constant_ranges(vec![wgpu::PushConstantRange {
             stages: wgpu::ShaderStages::FRAGMENT,
