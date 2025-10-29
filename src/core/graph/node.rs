@@ -1,6 +1,10 @@
 use winit::dpi::PhysicalSize;
 
-use crate::{palette, render_assets::pipeline::PipelineBuilder, system::{CustomGraphSystem, GraphSystem, SystemsContext}};
+use crate::{
+    palette,
+    render_assets::pipeline::PipelineBuilder,
+    system::{CustomGraphSystem, GraphSystem, SystemsContext},
+};
 
 use super::{NodeColorTarget, NodeData, NodeDepthTarget};
 
@@ -60,7 +64,7 @@ impl GraphNode {
         self.data.needs_regen = false;
     }
 
-    /// Resize the node images, currently only owned depth target is resized, 
+    /// Resize the node images, currently only owned depth target is resized,
     /// and only if color target is surface
     pub(crate) fn resize(&mut self, size: &PhysicalSize<u32>) {
         if !matches!(self.color_target, NodeColorTarget::Surface) {
@@ -174,11 +178,19 @@ impl GraphNodeBuilder {
     }
 
     pub fn build(mut self) -> GraphNode {
-        let err = |field: &str| format!("Field '{}' for '{}' graph node is required", field, self.name);
-        
+        let err = |field: &str| {
+            format!(
+                "Field '{}' for '{}' graph node is required",
+                field, self.name
+            )
+        };
+
         if self.custom_system.is_some() {
             let name = format!("CLEARED_{}", self.name);
-            self.system = Some(GraphSystem::new(&name, |_, _, _: crate::prelude::Query<()>| {}));
+            self.system = Some(GraphSystem::new(
+                &name,
+                |_, _, _: crate::prelude::Query<()>| {},
+            ));
             self.depth_ops = None;
 
             if self.color_target.is_none() {
@@ -192,11 +204,17 @@ impl GraphNodeBuilder {
 
         GraphNode {
             name: self.name.clone(),
-            pipeline_builder: self.pipeline_builder.unwrap_or_else(|| panic!("{}", err("PipelineBuilder"))),
+            pipeline_builder: self
+                .pipeline_builder
+                .unwrap_or_else(|| panic!("{}", err("PipelineBuilder"))),
             system: self.system.unwrap_or_else(|| panic!("{}", err("System"))),
             custom_system: self.custom_system,
-            color_target: self.color_target.unwrap_or_else(|| panic!("{}", err("ColorTarget"))),
-            depth_target: self.depth_target.unwrap_or_else(|| panic!("{}", err("DepthTarget"))),
+            color_target: self
+                .color_target
+                .unwrap_or_else(|| panic!("{}", err("ColorTarget"))),
+            depth_target: self
+                .depth_target
+                .unwrap_or_else(|| panic!("{}", err("DepthTarget"))),
             color_ops: self.color_ops,
             depth_ops: self.depth_ops,
             after: self.after,
