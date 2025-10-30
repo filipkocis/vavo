@@ -52,7 +52,6 @@ impl AppState {
             adapter,
             device,
             queue,
-
             config,
 
             size,

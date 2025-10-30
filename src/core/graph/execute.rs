@@ -4,7 +4,7 @@ use crate::{
     assets::ShaderLoader,
     core::graph::NodeColorTarget,
     prelude::World,
-    renderer::newtype::{RenderCommandEncoder, RenderDevice},
+    renderer::newtype::{RenderCommandEncoder, RenderDevice, RenderSurfaceTextureView},
     system::SystemsContext,
 };
 
@@ -52,12 +52,13 @@ impl<'a, 'b> RenderGraphContext<'a, 'b> {
 }
 
 impl RenderGraph {
-    pub(crate) fn execute(&mut self, ctx: &mut SystemsContext, world: &mut World) {
+    pub(crate) fn execute(&mut self, world: &mut World) {
         let self_raw = self as *mut _;
         let sorted = self.sorted.iter().map(|n| unsafe { &mut **n });
 
         let device = world.resources.get::<RenderDevice>();
         let mut shader_loader = world.resources.get_mut::<ShaderLoader>();
+        let surface_texture_view = world.resources.get::<RenderSurfaceTextureView>();
 
         for node in sorted {
             if node.data.needs_regen {
@@ -65,7 +66,7 @@ impl RenderGraph {
             }
 
             let node_raw = node as *mut GraphNode;
-            let color_attachment = self.get_color_attachment(node, ctx);
+            let color_attachment = self.get_color_attachment(node, &surface_texture_view);
             let depth_attachment = self.get_depth_attachment(node);
 
             if node.custom_system.is_some() {
@@ -112,7 +113,7 @@ impl RenderGraph {
     fn get_color_attachment<'a>(
         &self,
         node: &'a GraphNode,
-        ctx: &'a mut SystemsContext,
+        surface_texture_view: &'a RenderSurfaceTextureView,
     ) -> Option<wgpu::RenderPassColorAttachment<'a>> {
         let view = match node.data.color_target {
             Some(ref target_data) => match target_data {
@@ -121,7 +122,7 @@ impl RenderGraph {
             },
             None => match &node.color_target {
                 NodeColorTarget::None => return None,
-                NodeColorTarget::Surface => ctx.renderer.view(),
+                NodeColorTarget::Surface => surface_texture_view,
                 NodeColorTarget::Node(name) => {
                     let graph = self as *const RenderGraph;
                     let graph = unsafe { &*graph };
@@ -132,7 +133,7 @@ impl RenderGraph {
                             name, node.name
                         )
                     });
-                    let mut color_attachment = self.get_color_attachment(target_node, ctx)
+                    let mut color_attachment = self.get_color_attachment(target_node, surface_texture_view)
                             .unwrap_or_else(|| panic!("Node '{}' has no color attachment, but it is a color target for '{}'", name, node.name));
 
                     color_attachment.ops = node.color_ops;
