@@ -5,7 +5,6 @@ use crate::{
     core::graph::NodeColorTarget,
     prelude::World,
     renderer::newtype::{RenderCommandEncoder, RenderDevice, RenderSurfaceTextureView},
-    system::SystemsContext,
 };
 
 use super::{

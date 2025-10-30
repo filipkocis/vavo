@@ -3,7 +3,7 @@ use crate::{
     core::graph::RenderGraph,
     event::event_handler::{EventReader, EventWriter},
     prelude::{Component, EntityId, Mut, Ref, Res, ResMut, Resource, Tick, World},
-    query::{Query, RunQuery, filter::QueryFilter},
+    query::{Query, filter::QueryFilter},
     renderer::newtype::{RenderCommandEncoder, RenderDevice},
     system::{Commands, commands::CommandQueue},
 };
@@ -71,25 +71,25 @@ impl ParamInfo {
     }
 }
 
-pub type SystemExecFn = dyn FnMut(&mut World) + Send + Sync + 'static;
-pub struct SystemExec {
+pub type SystemExecFn<Output> = dyn FnMut(&mut World) -> Output + Send + Sync + 'static;
+pub struct SystemExec<Output = ()> {
     /// Function's parameters info
     pub params_info: Vec<ParamInfo>,
     /// Function's type info
     pub exec_info: TypeInfo,
     /// System execution function
-    exec: Box<SystemExecFn>,
+    exec: Box<SystemExecFn<Output>>,
     /// System apply function
-    apply: Box<SystemExecFn>,
+    apply: Box<SystemExecFn<()>>,
 }
 
-impl SystemExec {
+impl<Output> SystemExec<Output> {
     /// Create a new system execution from function `exec` and its type information
     pub fn new(
         params_info: Vec<ParamInfo>,
         exec_info: TypeInfo,
-        exec: Box<SystemExecFn>,
-        apply: Box<SystemExecFn>,
+        exec: Box<SystemExecFn<Output>>,
+        apply: Box<SystemExecFn<()>>,
     ) -> Self {
         Self {
             params_info,
@@ -101,8 +101,8 @@ impl SystemExec {
 
     /// Execute the system function
     #[inline]
-    pub fn run(&mut self, world: &mut World) {
-        (self.exec)(world);
+    pub fn run(&mut self, world: &mut World) -> Output {
+        (self.exec)(world)
     }
 
     /// Execute the system's apply function
@@ -129,12 +129,6 @@ impl System {
         self
     }
 
-    /// Returns tick of the last run
-    #[inline]
-    pub fn last_run(&self) -> Tick {
-        self.last_run
-    }
-
     /// Execute system if all conditions are met
     pub fn run(&mut self, world: &mut World) {
         // TODO: handle world tick overflow
@@ -148,11 +142,14 @@ impl System {
 
     /// Applies any changes to the world needed after system execution by system parameters.
     /// This is run on the main thread after all parallel systems have finished executing.
+    #[inline]
     pub fn apply(&mut self, world: &mut World) {
+        self.conditions.iter_mut().for_each(|c| c.exec.apply(world));
         self.exec.apply(world);
     }
 
     /// Check if all run conditions are satisfied
+    #[inline]
     fn satisfies_conditions(&mut self, world: &mut World) -> bool {
         self.conditions
             .iter_mut()
@@ -165,7 +162,8 @@ pub trait IntoSystem<P: SystemParam> {
     fn build(self) -> System;
 
     /// Add new run condition to the system
-    fn run_if(self, condition: impl IntoSystemCondition) -> System;
+    fn run_if<CP: SystemParam>(self, condition: impl IntoSystemCondition<CP>)
+    -> impl IntoSystem<P>;
 }
 
 impl<P: SystemParam> IntoSystem<P> for System {
@@ -175,7 +173,10 @@ impl<P: SystemParam> IntoSystem<P> for System {
     }
 
     #[inline]
-    fn run_if(self, condition: impl IntoSystemCondition) -> System {
+    fn run_if<CP: SystemParam>(
+        self,
+        condition: impl IntoSystemCondition<CP>,
+    ) -> impl IntoSystem<P> {
         self.internal_run_if(condition.build())
     }
 }
@@ -184,43 +185,30 @@ impl<P: SystemParam> IntoSystem<P> for System {
 //      System Condition       //
 // --------------------------- //
 
-type SystemConditionExecFn = dyn FnMut(&mut World) -> bool;
 pub struct SystemCondition {
-    type_name: &'static str,
-    type_id: TypeId,
+    /// Tick of the last run, or `0`
     last_run: Tick,
-    exec: Box<SystemConditionExecFn>,
+    /// Condition execution
+    exec: SystemExec<bool>,
 }
 
 impl SystemCondition {
-    /// Returns function's type name
-    #[inline]
-    pub fn type_name(&self) -> &'static str {
-        self.type_name
-    }
-
-    /// Returns function's type id
-    #[inline]
-    pub fn type_id(&self) -> TypeId {
-        self.type_id
-    }
-
     /// Execute the condition function
     #[inline]
     pub fn run(&mut self, world: &mut World) -> bool {
         world.tick.increment();
-        let result = (self.exec)(world);
+        let result = self.exec.run(world);
         self.last_run = *world.tick;
         result
     }
 }
 
-pub trait IntoSystemCondition {
+pub trait IntoSystemCondition<P: SystemParam> {
     /// Convert the function into a [`SystemCondition`]
     fn build(self) -> SystemCondition;
 }
 
-impl IntoSystemCondition for SystemCondition {
+impl<P: SystemParam> IntoSystemCondition<P> for SystemCondition {
     #[inline]
     fn build(self) -> SystemCondition {
         self
@@ -228,7 +216,7 @@ impl IntoSystemCondition for SystemCondition {
 }
 
 // --------------------------- //
-//      System FN impls        //
+//     System Params Impl      //
 // --------------------------- //
 
 pub trait IntoParamInfo {
@@ -537,6 +525,7 @@ fn param_info<T: 'static>(is_mutable: bool) -> Vec<ParamInfo> {
     )]
 }
 
+/// Recursive implementation of SystemParam for tuples of SystemParams
 macro_rules! impl_system_param_tuple {
     ($(($($param:ident),*)),*) => {
         $(
@@ -591,6 +580,10 @@ macro_rules! impl_system_param_tuple {
     }
 }
 
+// --------------------------- //
+//      System FN impls        //
+// --------------------------- //
+
 /// Check for borrow conflicts among system parameters, returning the first conflicting type.
 fn check_borrow_conflicts(params_info: &[ParamInfo]) -> Option<TypeInfo> {
     let mut seen = HashMap::<TypeId, bool>::new();
@@ -611,6 +604,30 @@ fn check_borrow_conflicts(params_info: &[ParamInfo]) -> Option<TypeInfo> {
     None
 }
 
+macro_rules! impl_into_system_condition {
+    ($(($($param:ident),*)),*) => {
+        $(
+            impl<$($param,)* F> IntoSystemCondition<($($param,)*)> for F
+            where
+                $($param: SystemParam,)*
+                F: FnMut($($param),*) -> bool + Send + Sync + 'static,
+            {
+                #[inline]
+                fn build(mut self) -> SystemCondition {
+                    #![allow(non_snake_case)]
+
+                    let exec = into_systems_impl_body!(self, ($($param),*) );
+
+                    SystemCondition {
+                        last_run: Tick::default(),
+                        exec,
+                    }
+                }
+            }
+        )*
+    }
+}
+
 macro_rules! impl_into_system {
     ($(($($param:ident),*)),*) => {
         $(
@@ -623,43 +640,7 @@ macro_rules! impl_into_system {
                 fn build(mut self) -> System {
                     #![allow(non_snake_case)]
 
-                    let params_info = <( $($param,)* )>::params_info();
-                    let exec_info = TypeInfo::new(type_name::<F>(), TypeId::of::<F>());
-
-                    if let Some(conflict) = check_borrow_conflicts(&params_info) {
-                        panic!(
-                            "System function '{}' has conflicting parameter accesses: {:?}",
-                            exec_info.type_name(),
-                            conflict.type_name(),
-                        );
-                    }
-
-                    // Initialize parameter states into a tuple
-                    $( let mut $param = $param::init_state(); )*
-
-                    // Safety: These are used within the 'apply' closure, which is on the main
-                    // thread after all systems have finished, so 'exec' will not be running
-                    #[allow(clippy::unused_unit, unused_mut, unused_unsafe)]
-                    let mut unsafe_states_copy = unsafe { ( $(&mut *(&mut $param as *mut _),)* ) };
-
-                    #[allow(unused_variables)]
-                    let exec_fn = Box::new(move |world: &mut World| {
-                        $(
-                            let $param = $param::extract(unsafe { world.reborrow() }, &mut $param);
-                        )*
-                        self($($param),*);
-                    });
-
-                    #[allow(unused_variables)]
-                    let apply_fn = Box::new(move |world: &mut World| {
-                        let ( $(ref mut $param,)* ) = unsafe_states_copy;
-
-                        $(
-                            $param::apply(unsafe { world.reborrow() }, $param);
-                        )*
-                    });
-
-                    let exec = SystemExec::new(params_info, exec_info, exec_fn, apply_fn);
+                    let exec = into_systems_impl_body!(self, ($($param),*) );
 
                     System {
                         last_run: Tick::default(),
@@ -669,7 +650,10 @@ macro_rules! impl_into_system {
                 }
 
                 #[inline]
-                fn run_if(self, condition: impl IntoSystemCondition) -> System {
+                fn run_if<CP: SystemParam>(
+                    self,
+                    condition: impl IntoSystemCondition<CP>
+                ) -> impl IntoSystem<($($param,)*)> {
                     self.build().internal_run_if(condition.build())
                 }
             }
@@ -677,44 +661,74 @@ macro_rules! impl_into_system {
     }
 }
 
-#[rustfmt::skip]
-impl_into_system!(
-    (),
-    (P1),
-    (P1, P2),
-    (P1, P2, P3),
-    (P1, P2, P3, P4),
-    (P1, P2, P3, P4, P5),
-    (P1, P2, P3, P4, P5, P6),
-    (P1, P2, P3, P4, P5, P6, P7),
-    (P1, P2, P3, P4, P5, P6, P7, P8),
-    (P1, P2, P3, P4, P5, P6, P7, P8, P9),
-    (P1, P2, P3, P4, P5, P6, P7, P8, P9, P10),
-    (P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11),
-    (P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12),
-    (P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13),
-    (P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P14),
-    (P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P14, P15),
-    (P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P14, P15, P16)
-);
+macro_rules! into_systems_impl_body {
+    ($self:ident, ($($param:ident),*)) => {{
+        let params_info = <( $($param,)* )>::params_info();
+        let exec_info = TypeInfo::new(type_name::<F>(), TypeId::of::<F>());
+
+        if let Some(conflict) = check_borrow_conflicts(&params_info) {
+            panic!(
+                "System function '{}' has conflicting parameter accesses: {:?}",
+                exec_info.type_name(),
+                conflict.type_name(),
+            );
+        }
+
+        // Initialize parameter states into a tuple
+        $( let mut $param = $param::init_state(); )*
+
+        // Safety: These are used within the 'apply' closure, which is on the main
+        // thread after all systems have finished, so 'exec' will not be running
+        #[allow(clippy::unused_unit, unused_mut, unused_unsafe)]
+        let mut unsafe_states_copy = unsafe { ( $(&mut *(&mut $param as *mut _),)* ) };
+
+        #[allow(unused_variables)]
+        let exec_fn = Box::new(move |world: &mut World| {
+            $(
+                let $param = $param::extract(unsafe { world.reborrow() }, &mut $param);
+            )*
+            $self($($param),*)
+        });
+
+        #[allow(unused_variables)]
+        let apply_fn = Box::new(move |world: &mut World| {
+            let ( $(ref mut $param,)* ) = unsafe_states_copy;
+
+            $(
+                $param::apply(unsafe { world.reborrow() }, $param);
+            )*
+        });
+
+        let exec = SystemExec::new(params_info, exec_info, exec_fn, apply_fn);
+        exec
+    }}
+}
 
 #[rustfmt::skip]
-impl_system_param_tuple!(
-    (),
-    (P1),
-    (P1, P2),
-    (P1, P2, P3),
-    (P1, P2, P3, P4),
-    (P1, P2, P3, P4, P5),
-    (P1, P2, P3, P4, P5, P6),
-    (P1, P2, P3, P4, P5, P6, P7),
-    (P1, P2, P3, P4, P5, P6, P7, P8),
-    (P1, P2, P3, P4, P5, P6, P7, P8, P9),
-    (P1, P2, P3, P4, P5, P6, P7, P8, P9, P10),
-    (P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11),
-    (P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12),
-    (P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13),
-    (P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P14),
-    (P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P14, P15),
-    (P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P14, P15, P16)
-);
+macro_rules! impl_macro_n_times {
+    ($macro:ident) => {
+        $macro!(
+            (),
+            (P1),
+            (P1, P2),
+            (P1, P2, P3),
+            (P1, P2, P3, P4),
+            (P1, P2, P3, P4, P5),
+            (P1, P2, P3, P4, P5, P6),
+            (P1, P2, P3, P4, P5, P6, P7),
+            (P1, P2, P3, P4, P5, P6, P7, P8),
+            (P1, P2, P3, P4, P5, P6, P7, P8, P9),
+            (P1, P2, P3, P4, P5, P6, P7, P8, P9, P10),
+            (P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11),
+            (P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12),
+            (P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13),
+            (P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P14),
+            (P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P14, P15),
+            (P1, P2, P3, P4, P5, P6, P7, P8, P9, P10, P11, P12, P13, P14, P15, P16)
+        );
+    };
+}
+
+impl_macro_n_times!(impl_system_param_tuple);
+impl_macro_n_times!(impl_into_system);
+impl_macro_n_times!(impl_into_system_condition);
