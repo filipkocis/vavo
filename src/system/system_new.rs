@@ -329,7 +329,7 @@ impl IntoParamInfo for &mut RenderCommandEncoder {
 
 /// State for Commands system parameter, implemented as a wrapper with Send + Sync
 #[derive(Default)]
-struct CommandsState(CommandQueue);
+pub struct CommandsState(CommandQueue);
 unsafe impl Send for CommandsState {}
 unsafe impl Sync for CommandsState {}
 
@@ -449,7 +449,7 @@ impl<R: Resource> IntoParamInfo for Option<ResMut<R>> {
     }
 }
 
-struct QueryCache; // Placeholder for query state
+pub struct QueryCache; // Placeholder for query state
 impl<T, F> SystemParam for Query<T, F>
 where
     F: QueryFilter,
@@ -675,12 +675,12 @@ macro_rules! into_systems_impl_body {
         }
 
         // Initialize parameter states into a tuple
-        $( let mut $param = $param::init_state(); )*
+        $( let mut $param = Box::new($param::init_state()); )*
 
         // Safety: These are used within the 'apply' closure, which is on the main
         // thread after all systems have finished, so 'exec' will not be running
         #[allow(clippy::unused_unit, unused_mut, unused_unsafe)]
-        let mut unsafe_states_copy = unsafe { ( $(&mut *(&mut $param as *mut _),)* ) };
+        let mut unsafe_states_copy = unsafe { ( $(&mut *(&mut *$param as *mut _),)* ) };
 
         #[allow(unused_variables)]
         let exec_fn = Box::new(move |world: &mut World| {
