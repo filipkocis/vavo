@@ -1,5 +1,6 @@
 use crate::{
     app::App,
+    core::graph::RenderGraph,
     event::event_handler::{EventReader, EventWriter},
     prelude::{Component, EntityId, Mut, Ref, Res, ResMut, Resource, Tick, World},
     query::{Query, RunQuery, filter::QueryFilter},
@@ -283,6 +284,20 @@ impl SystemParam for &mut App {
 impl IntoParamInfo for &mut App {
     fn params_info() -> Vec<ParamInfo> {
         param_info::<App>(true)
+    }
+}
+impl SystemParam for &mut RenderGraph {
+    type State = ();
+    #[inline]
+    fn extract(world: &mut World, _state: &mut Self::State) -> Self {
+        unsafe { world.reborrow().parent_app().render_graph() }
+    }
+    #[inline]
+    fn init_state() -> Self::State {}
+}
+impl IntoParamInfo for &mut RenderGraph {
+    fn params_info() -> Vec<ParamInfo> {
+        param_info::<RenderGraph>(true)
     }
 }
 

@@ -1,4 +1,5 @@
 use crate::{
+    core::graph::RenderGraph,
     prelude::*,
     render_assets::TransformStorage,
     renderer::newtype::{RenderDevice, RenderSurfaceConfiguration, RenderWindow},
@@ -14,18 +15,16 @@ pub fn add_render_resources(mut commands: Commands, device: Res<RenderDevice>) {
 
 /// Startup system to register standard render graph
 pub fn register_standard_graph(
-    app: &mut App,
+    graph: &mut RenderGraph,
+    world: &mut World,
     device: Res<RenderDevice>,
     mut shader_loader: ResMut<ShaderLoader>,
     surface_config: Res<RenderSurfaceConfiguration>,
     window: Res<RenderWindow>,
 ) {
-    // Safety: we are in a startup system
-    let graph = unsafe { app.reborrow().render_graph() };
-
     let main_node = standard_main_node(&device, &mut shader_loader, &surface_config, &window);
     graph.add(main_node);
 
-    let shadow_node = standard_shadow_node(&device, &mut shader_loader, &mut app.world);
+    let shadow_node = standard_shadow_node(&device, &mut shader_loader, world);
     graph.add(shadow_node);
 }
