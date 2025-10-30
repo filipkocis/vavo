@@ -146,50 +146,75 @@ impl Resources {
         self.system_last_run = last_run;
     }
 
-    /// Used by [Commands](crate::system::Commands) to insert resources
-    pub(crate) fn insert_resource_data(&mut self, type_id: TypeId, resource_data: ResourceData) {
-        self.resources.insert(type_id, resource_data);
-    }
-
     /// Check if a resource of type R exists in the world.
     #[inline]
     pub fn contains<R: Resource>(&self) -> bool {
-        self.resources.contains_key(&TypeId::of::<R>())
+        self.resources
+            .get(&TypeId::of::<R>())
+            .map_or(false, |entry| !entry.data.is_empty())
     }
 
     /// Insert new resource into the world.
     pub fn insert<R: Resource>(&mut self, resource: R) {
-        self.resources
-            .insert(TypeId::of::<R>(), ResourceData::new(resource, self.tick()));
+        let type_id = TypeId::of::<R>();
+        let tick = self.tick();
+
+        if let Some(entry) = self.resources.get_mut(&type_id) {
+            // Remove the old resource, and drop it
+            entry.data.clear();
+            entry.set_tick(tick);
+
+            let mut resource = ManuallyDrop::new(resource);
+            unsafe {
+                // Safety: resource is pushed and not used afterwards.
+                let ptr = OwnedPtr::new_ref(&mut resource);
+                // Safety: type and value are correct
+                entry.data.push(ptr);
+            }
+        } else {
+            self.resources
+                .insert(type_id, ResourceData::new(resource, tick));
+        }
     }
 
     /// Remove a resource from the world.
     pub fn remove(&mut self, type_id: TypeId) {
-        self.resources.remove(&type_id);
+        self.resources.get_mut(&type_id).map(|r| {
+            // Drop the resource
+            r.data.clear();
+        });
     }
 
     /// Get a resource by type, or `None` if it doesn't exist.
     pub fn try_get<R: Resource>(&self) -> Option<Res<R>> {
-        self.resources.get(&TypeId::of::<R>()).map(|r| {
+        self.resources.get(&TypeId::of::<R>()).and_then(|r| {
+            if r.data.is_empty() {
+                return None;
+            }
+
             let data = DataPtr::new(
-                // Safety: type is correct and index is always valid
+                // Safety: type is correct and index is valid
                 unsafe { r.data.get(0) },
                 r.get_ticks(self.tick(), self.system_last_run),
             );
-            Res(data, PhantomData)
+            Some(Res(data, PhantomData))
         })
     }
 
     /// Get a mutable resource by type, or `None` if it doesn't exist.
     pub fn try_get_mut<R: Resource>(&mut self) -> Option<ResMut<R>> {
         let current_tick = self.tick();
-        self.resources.get_mut(&TypeId::of::<R>()).map(|r| {
+        self.resources.get_mut(&TypeId::of::<R>()).and_then(|r| {
+            if r.data.is_empty() {
+                return None;
+            }
+
             let data = DataPtrMut::new(
-                // Safety: type is correct and index is always valid
+                // Safety: type is correct and index is valid
                 unsafe { r.data.get(0) },
                 r.get_ticks_mut(current_tick, self.system_last_run),
             );
-            ResMut(data, PhantomData)
+            Some(ResMut(data, PhantomData))
         })
     }
 

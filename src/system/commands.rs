@@ -4,8 +4,7 @@ use crate::{
     ecs::{
         entities::{Component, EntityId, tracking::EntityTracking},
         ptr::OwnedPtr,
-        resources::{Resource, ResourceData},
-        tick::Tick,
+        resources::{Resource},
         world::World,
     },
     math::{GlobalTransform, Transform},
@@ -14,7 +13,7 @@ use crate::{
 
 /// Command to be executed on the world.
 enum Command {
-    InsertResource(TypeId, ResourceData),
+    InsertResource(Box<dyn FnOnce(&mut World) + Send + Sync + 'static>),
     RemoveResource(TypeId),
     SpawnEntity(EntityId),
     DespawnEntity(EntityId),
@@ -220,10 +219,11 @@ impl<'t, 'q> Commands<'t, 'q> {
 
     /// Inserts or replaces a resource of type `R` in the world.
     pub fn insert_resource<R: Resource>(&mut self, resource: R) -> &mut Self {
-        let resource_data = ResourceData::new(resource, Tick::default());
-        let resource_type_id = TypeId::of::<R>();
+        let insert_closure = move |world: &mut World| {
+            world.resources.insert(resource);
+        };
 
-        self.queue(Command::InsertResource(resource_type_id, resource_data));
+        self.queue(Command::InsertResource(Box::new(insert_closure)));
         self
     }
 
@@ -276,9 +276,8 @@ impl CommandQueue {
     pub fn apply(&mut self, world: &mut World) {
         for command in self.internal.drain(..) {
             match command {
-                Command::InsertResource(type_id, mut resource_data) => {
-                    resource_data.set_tick(*world.tick);
-                    world.resources.insert_resource_data(type_id, resource_data);
+                Command::InsertResource(insert_closure) => {
+                    insert_closure(world);
                 }
                 Command::RemoveResource(type_id) => {
                     world.resources.remove(type_id);
