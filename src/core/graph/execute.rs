@@ -58,7 +58,6 @@ impl RenderGraph {
 
         let device = world.resources.get::<RenderDevice>();
         let mut shader_loader = world.resources.get_mut::<ShaderLoader>();
-        let mut encoder = world.resources.get_mut::<RenderCommandEncoder>();
 
         for node in sorted {
             if node.data.needs_regen {
@@ -84,6 +83,7 @@ impl RenderGraph {
                 continue;
             }
 
+            let mut encoder = RenderCommandEncoder::new(&device, node.name.as_str());
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some(&format!("{} render pass", node.name)),
                 color_attachments: &vec![color_attachment]

@@ -121,9 +121,60 @@ define_render_newtype!(
     "Newtype wrapper for [`wgpu::SurfaceTexture`]."
 );
 
-define_render_newtype!(
-    RenderCommandEncoder,
-    // has to be Arc to allow sharing between render systems
-    wgpu::CommandEncoder,
-    "Newtype wrapper for [`wgpu::CommandEncoder`]."
-);
+/// "Newtype wrapper for [`wgpu::CommandEncoder`]."
+#[derive(Debug)]
+pub struct RenderCommandEncoder(wgpu::CommandEncoder);
+impl RenderCommandEncoder {
+    /// Creates a new wrapper around the inner value
+    #[inline]
+    pub(crate) fn new(device: &RenderDevice, label: &str) -> Self {
+        let descriptor = wgpu::CommandEncoderDescriptor { label: Some(label) };
+        let encoder = device.create_command_encoder(&descriptor);
+        RenderCommandEncoder(encoder)
+    }
+
+    /// Consumes the wrapper and returns the inner value
+    #[inline]
+    pub(crate) fn unwrap(self) -> wgpu::CommandEncoder {
+        self.0
+    }
+}
+
+impl core::ops::Deref for RenderCommandEncoder {
+    type Target = wgpu::CommandEncoder;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl core::ops::DerefMut for RenderCommandEncoder {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+/// Newtype wrapper for a queue of [`wgpu::CommandBuffer`]s.
+#[derive(Debug)]
+pub struct RenderCommandQueue(Vec<wgpu::CommandBuffer>);
+impl RenderCommandQueue {
+    /// Creates a new empty command queue
+    #[inline]
+    pub(crate) fn new() -> Self {
+        Self(Vec::new())
+    }
+
+    /// Pushes a finished command encoder into the queue
+    #[inline]
+    pub(crate) fn push(&mut self, encoder: RenderCommandEncoder) {
+        self.0.push(encoder.unwrap().finish());
+    }
+
+    /// Consumes the queue and returns the inner vector of command buffers
+    #[inline]
+    pub(crate) fn drain(&mut self) -> impl Iterator<Item = wgpu::CommandBuffer> {
+        self.0.drain(..)
+    }
+}

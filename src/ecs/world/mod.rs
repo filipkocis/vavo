@@ -1,6 +1,7 @@
 use crate::app::App;
 use crate::prelude::EntityId;
 use crate::query::Query;
+use crate::renderer::newtype::RenderCommandQueue;
 use crate::system::commands::CommandQueue;
 
 use super::entities::Entities;
@@ -24,6 +25,7 @@ pub struct World {
 
     /// Main command queue for the world
     pub(crate) command_queue: CommandQueue,
+    pub(crate) render_command_queue: RenderCommandQueue,
 }
 
 impl Default for World {
@@ -37,6 +39,7 @@ impl Default for World {
             registry: ComponentsRegistry::new(),
             parent_app: std::ptr::null_mut(),
             command_queue: CommandQueue::new(),
+            render_command_queue: RenderCommandQueue::new(),
         };
 
         // Initialize entities

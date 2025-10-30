@@ -4,6 +4,7 @@ use crate::{
     event::event_handler::{EventReader, EventWriter},
     prelude::{Component, EntityId, Mut, Ref, Res, ResMut, Resource, Tick, World},
     query::{Query, RunQuery, filter::QueryFilter},
+    renderer::newtype::{RenderCommandEncoder, RenderDevice},
     system::{Commands, commands::CommandQueue},
 };
 use std::{
@@ -298,6 +299,43 @@ impl SystemParam for &mut RenderGraph {
 impl IntoParamInfo for &mut RenderGraph {
     fn params_info() -> Vec<ParamInfo> {
         param_info::<RenderGraph>(true)
+    }
+}
+impl SystemParam for &mut RenderCommandEncoder {
+    type State = Option<RenderCommandEncoder>;
+    #[inline]
+    fn extract(world: &mut World, state: &mut Self::State) -> Self {
+        debug_assert!(
+            state.is_none(),
+            "RenderCommandEncoder parameter state should be None on extract"
+        );
+
+        if state.is_none() {
+            let device = world.resources.get::<RenderDevice>();
+            // TODO: make label based on system name
+            *state = Some(RenderCommandEncoder::new(&device, "Render Encoder"));
+        }
+
+        // Reborrow to satisfy lifetime requirements
+        let state = unsafe { &mut *(state as *mut Self::State) };
+        unsafe { state.as_mut().unwrap_unchecked() }
+    }
+
+    #[inline]
+    fn apply(world: &mut World, state: &mut Self::State) {
+        if let Some(encoder) = state.take() {
+            world.render_command_queue.push(encoder);
+        }
+    }
+
+    #[inline]
+    fn init_state() -> Self::State {
+        None
+    }
+}
+impl IntoParamInfo for &mut RenderCommandEncoder {
+    fn params_info() -> Vec<ParamInfo> {
+        param_info::<RenderCommandEncoder>(false)
     }
 }
 
