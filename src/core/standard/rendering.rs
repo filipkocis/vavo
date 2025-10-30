@@ -5,7 +5,9 @@ use crate::{
     core::{graph::*, lighting::LightAndShadowManager},
     prelude::*,
     render_assets::*,
-    renderer::newtype::{RenderDevice, RenderSurfaceConfiguration, RenderWindow},
+    renderer::newtype::{
+        RenderCommandEncoder, RenderDevice, RenderSurfaceConfiguration, RenderWindow,
+    },
     system::CustomGraphSystem,
 };
 
@@ -56,6 +58,7 @@ pub fn standard_main_node(
 
 fn main_render_system(
     world: &mut World,
+    encoder: &mut RenderCommandEncoder,
     mut buffers: ResMut<RenderAssets<Buffer>>,
     mut bind_groups: ResMut<RenderAssets<BindGroup>>,
     manager: Res<LightAndShadowManager>,
@@ -83,8 +86,7 @@ fn main_render_system(
     let camera_bind_group = bind_groups.get_by_entity(active_camera_id, active_camera, world);
 
     // Create render pass
-    let encoder = ctx.renderer.encoder().inner;
-    let mut render_pass = unsafe { &mut *encoder }.begin_render_pass(&wgpu::RenderPassDescriptor {
+    let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
         label: Some("main render pass"),
         color_attachments: &[Some(wgpu::RenderPassColorAttachment {
             view: unsafe { &*graph_ctx.color_target.expect("main color target is None") },
