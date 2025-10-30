@@ -51,7 +51,7 @@ macro_rules! define_render_newtype {
         /// Clones the wrapper
         #[inline]
         pub(crate) fn clone_wrapped(&self) -> Self
-        where
+        where for<'a>
             $inner: Clone,
         {
             Self(self.0.clone())
@@ -71,14 +71,6 @@ define_render_newtype!(
     RenderInstance,
     wgpu::Instance,
     "Newtype wrapper for [`wgpu::Instance`].",
-    clone
-);
-
-define_render_newtype!(
-    RenderSurface,
-    // has to be Arc to allow sharing, even though it should only be used in one place
-    Arc<wgpu::Surface<'static>>,
-    "Newtype wrapper for [`wgpu::Surface`].",
     clone
 );
 
@@ -110,15 +102,22 @@ define_render_newtype!(
     clone
 );
 
-//
-//
-//
+define_render_newtype!(
+    RenderSurface,
+    wgpu::Surface<'static>,
+    "Newtype wrapper for [`wgpu::Surface`]."
+);
 
 define_render_newtype!(
     RenderSurfaceTexture,
-    // has to be Arc because this is not a handle, but an owned structure
-    Arc<wgpu::SurfaceTexture>,
+    wgpu::SurfaceTexture,
     "Newtype wrapper for [`wgpu::SurfaceTexture`]."
+);
+
+define_render_newtype!(
+    RenderSurfaceTextureView,
+    wgpu::TextureView,
+    "Newtype wrapper for [`wgpu::TextureView`], associated with a [`wgpu::SurfaceTexture`]."
 );
 
 /// "Newtype wrapper for [`wgpu::CommandEncoder`]."

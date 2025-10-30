@@ -186,8 +186,8 @@ impl Resources {
     }
 
     /// Remove a resource from the world.
-    pub fn remove<R: Resource>(&mut self, type_id: TypeId) -> Option<R> {
-        self.resources.get_mut(&type_id).and_then(|r| {
+    pub fn remove<R: Resource>(&mut self) -> Option<R> {
+        self.resources.get_mut(&TypeId::of::<R>()).and_then(|r| {
             if r.data.is_empty() {
                 return None;
             }

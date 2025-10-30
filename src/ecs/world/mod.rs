@@ -1,7 +1,7 @@
 use crate::app::App;
 use crate::prelude::EntityId;
 use crate::query::Query;
-use crate::renderer::newtype::RenderCommandQueue;
+use crate::renderer::newtype::{RenderCommandQueue, RenderQueue};
 use crate::system::commands::CommandQueue;
 
 use super::entities::Entities;
@@ -102,6 +102,13 @@ impl World {
     pub(crate) fn flush_commands(&mut self) {
         let world = unsafe { &mut *(self as *mut _) };
         self.command_queue.apply(world)
+    }
+
+    /// Flushes all queued render commands to the world
+    #[inline]
+    pub(crate) fn flush_render_commands(&mut self) {
+        let queue = self.resources.get_mut::<RenderQueue>();
+        queue.submit(self.render_command_queue.drain());
     }
 
     /// Reborrows the world as a mutable reference with a different lifetime.

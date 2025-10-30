@@ -252,19 +252,60 @@ impl App {
     }
 
     /// Render the app and run all render systems, and execute the render graph
-    pub(crate) fn render(&mut self, state: &mut AppState) -> Result<(), wgpu::SurfaceError> {
-        let mut context = RenderContext::new_render_context(state)?;
-        let mut queue = CommandQueue::default();
+    pub(crate) fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
+        // gives access to &mut AppState, command encoder, target (surface texture, texture view)
+        self.prepare_surface()?;
 
-        self.run_systems(SystemStage::PreRender, context.as_renderer(), &mut queue);
-        self.run_systems(SystemStage::Render, context.as_renderer(), &mut queue);
-        self.execute_render_graph(context.as_renderer(), &mut queue);
-        self.run_systems(SystemStage::PostRender, context.as_renderer(), &mut queue);
-        self.run_systems(SystemStage::FrameEnd, context.as_renderer(), &mut queue);
+        self.run_systems(SystemStage::PreRender);
+        self.run_systems(SystemStage::Render);
+
+        self.render_graph.execute(&mut self.world);
+        self.world.flush_commands();
+
+        self.run_systems(SystemStage::PostRender);
+        self.run_systems(SystemStage::FrameEnd);
 
         self.events.apply();
 
+        self.finish_surface();
         Ok(())
+    }
+
+    /// Prepare the surface resources for rendering (called at the beginning of render)
+    #[inline]
+    fn prepare_surface(&mut self) -> Result<(), wgpu::SurfaceError> {
+        let surface_config = self.world.resources.get::<RenderSurfaceConfiguration>();
+        let surface = self.world.resources.get::<RenderSurface>();
+
+        let surface_texture = surface.get_current_texture()?;
+        let surface_texture_view = surface_texture.texture.create_view(&TextureViewDescriptor {
+            label: Some("Surface Texture View"),
+            format: Some(surface_config.format),
+            ..Default::default()
+        });
+
+        let surface_texture = RenderSurfaceTexture::new(surface_texture);
+        let surface_texture_view = RenderSurfaceTextureView::new(surface_texture_view);
+
+        self.world.resources.insert(surface_texture);
+        self.world.resources.insert(surface_texture_view);
+
+        Ok(())
+    }
+
+    /// Finish rendering to the surface (called at the end of render)
+    #[inline]
+    fn finish_surface(&mut self) {
+        self.world.flush_render_commands();
+
+        let surface_texture = self
+            .world
+            .resources
+            .remove::<RenderSurfaceTexture>()
+            .expect("Surface texture should exist at this point");
+        surface_texture.unwrap().present();
+
+        self.world.resources.remove::<RenderSurfaceTextureView>();
     }
 
     /// Handle keyboard input

@@ -30,12 +30,21 @@ impl<'a> AppHandler<'a> {
         (event_loop, app)
     }
 
+    #[inline]
     pub fn resize(&mut self, new_size: PhysicalSize<u32>) {
         self.state
             .as_mut()
             .unwrap()
             .resize(new_size, &mut self.app.world.resources);
         self.app.resize(new_size);
+    }
+
+    #[inline]
+    pub fn reconfigure(&mut self) {
+        self.state
+            .as_mut()
+            .unwrap()
+            .reconfigure(&mut self.app.world.resources);
     }
 }
 
@@ -54,7 +63,7 @@ impl<'a> ApplicationHandler for AppHandler<'a> {
             config.post_apply(&window, event_loop);
         }
 
-        let state = AppState::new(window);
+        let mut state = AppState::new(window);
         state.apply_to_resources(&mut self.app.world.resources);
 
         if self.state.is_none() {
@@ -128,7 +137,7 @@ impl<'a> ApplicationHandler for AppHandler<'a> {
                         | wgpu::SurfaceError::Outdated
                         | wgpu::SurfaceError::Other => {
                             eprintln!("Surface Lost or Outdated");
-                            self.state.as_ref().unwrap().reconfigure();
+                            self.reconfigure();
                         }
                         wgpu::SurfaceError::OutOfMemory => {
                             eprintln!("Out Of Memory");
@@ -136,7 +145,7 @@ impl<'a> ApplicationHandler for AppHandler<'a> {
                         }
                         wgpu::SurfaceError::Timeout => {
                             eprintln!("Surface Timeout");
-                            self.state.as_ref().unwrap().reconfigure();
+                            self.reconfigure();
                         }
                     }
                 }

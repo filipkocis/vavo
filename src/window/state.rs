@@ -9,7 +9,7 @@ use crate::{prelude::Resources, renderer::newtype::*};
 /// Holds Window - GPU state for the application. Used by the AppHandler
 pub(crate) struct AppState {
     instance: RenderInstance,
-    surface: RenderSurface,
+    surface: Option<RenderSurface>,
     window: RenderWindow,
     adapter: RenderAdapter,
     device: RenderDevice,
@@ -38,7 +38,7 @@ impl AppState {
 
         // Wrap in shareable newtypes, second clone of these will be in Resources
         let instance = RenderInstance::new(instance);
-        let surface = RenderSurface::new(Arc::new(surface));
+        let surface = RenderSurface::new(surface);
         let window = RenderWindow::new(window);
         let adapter = RenderAdapter::new(adapter);
         let device = RenderDevice::new(device);
@@ -47,7 +47,7 @@ impl AppState {
 
         Self {
             instance,
-            surface,
+            surface: Some(surface),
             window,
             adapter,
             device,
@@ -60,9 +60,9 @@ impl AppState {
     }
 
     /// Insert all GPU resources into ECS resources
-    pub fn apply_to_resources(&self, resources: &mut Resources) {
+    pub fn apply_to_resources(&mut self, resources: &mut Resources) {
         resources.insert(self.instance.clone_wrapped());
-        resources.insert(self.surface.clone_wrapped());
+        resources.insert(self.surface.take().unwrap());
         resources.insert(self.window.clone_wrapped());
         resources.insert(self.adapter.clone_wrapped());
         resources.insert(self.device.clone_wrapped());
@@ -95,7 +95,7 @@ impl AppState {
         config.width = new_size.width;
         config.height = new_size.height;
 
-        self.reconfigure();
+        self.reconfigure(resources);
     }
 
     /// Update the cursor position
@@ -109,8 +109,9 @@ impl AppState {
 
     /// Reconfigure the surface with the current config
     #[inline]
-    pub fn reconfigure(&self) {
-        self.surface.configure(&self.device, &self.config);
+    pub fn reconfigure(&self, resources: &mut Resources) {
+        let surface = resources.get::<RenderSurface>();
+        surface.configure(&self.device, &self.config);
     }
 
     #[inline]
