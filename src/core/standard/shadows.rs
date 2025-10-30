@@ -5,7 +5,7 @@ use crate::{
     core::{graph::*, lighting::LightAndShadowManager},
     prelude::*,
     render_assets::*,
-    renderer::newtype::RenderDevice,
+    renderer::newtype::{RenderCommandEncoder, RenderDevice},
     system::CustomGraphSystem,
 };
 
@@ -37,20 +37,22 @@ pub fn standard_shadow_node(
 
 fn shadow_render_system(
     graph_ctx: CustomRenderGraphContext,
-    ctx: &mut SystemsContext,
-    _: Query<()>,
-) {
+
+    world: &mut World,
+    encoder: &mut RenderCommandEncoder,
+    materials: Res<Assets<Material>>,
+
     // Render assets
-    let mut buffers = ctx.resources.get_mut::<RenderAssets<Buffer>>();
+    mut buffers: ResMut<RenderAssets<Buffer>>,
 
     // Resources
-    let light_manager = ctx.resources.get::<LightAndShadowManager>();
-    let transforms_storage = ctx.resources.get::<TransformStorage>();
+    light_manager: Res<LightAndShadowManager>,
+    transforms_storage: Res<TransformStorage>,
 
     // Resources from preparation system
-    let grouped = ctx.resources.get::<GroupedInstances>();
-    let light_data = ctx.resources.get::<PreparedLightData>();
-
+    grouped: Res<GroupedInstances>,
+    light_data: Res<PreparedLightData>,
+) {
     // Get node's pipeline
     let pipeline = unsafe { &*graph_ctx.node }
         .data
@@ -75,7 +77,9 @@ fn shadow_render_system(
             &light_manager,
             pipeline,
             &mut buffers,
-            ctx,
+            encoder,
+            world,
+            &materials,
         );
     }
 }
@@ -88,11 +92,12 @@ fn per_light_render_pass(
     light_manager: &LightAndShadowManager,
     pipeline: &wgpu::RenderPipeline,
     buffers: &mut RenderAssets<Buffer>,
-    ctx: &mut SystemsContext,
+    encoder: &mut RenderCommandEncoder,
+    world: &mut World,
+    materials: &Assets<Material>,
 ) {
     // Create render pass with the correct layer in the shadow map
-    let encoder = ctx.renderer.encoder().inner;
-    let mut render_pass = unsafe { &mut *encoder }.begin_render_pass(&wgpu::RenderPassDescriptor {
+    let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
         label: Some("shadow render pass"),
         color_attachments: &[],
         depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
@@ -122,7 +127,6 @@ fn per_light_render_pass(
     );
 
     // Instanced draw loop
-    let materials = ctx.resources.get::<Assets<Material>>();
     let mut last_mesh = None;
     for group in &grouped.groups {
         let material = &group.material;
@@ -138,7 +142,7 @@ fn per_light_render_pass(
         }
 
         // set vertex buffer with mesh
-        let mesh_buffer = buffers.get_by_handle(mesh, ctx);
+        let mesh_buffer = buffers.get_by_handle(mesh, world);
         if last_mesh != Some(mesh) {
             let Some(vertex_buffer) = mesh_buffer.vertex.as_ref() else {
                 continue;
