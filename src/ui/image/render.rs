@@ -5,25 +5,30 @@ use crate::ui::{graph::storage::UiTransformStorage, mesh::UiMeshImages, prelude:
 
 pub fn ui_image_render_system(
     graph_ctx: RenderGraphContext,
-    ctx: &mut SystemsContext,
-    mut query: Query<&UiImage, With<Node>>,
-) {
-    // resources
-    let mut buffers = ctx.resources.get_mut::<RenderAssets<Buffer>>();
-    let mut bind_groups = ctx.resources.get_mut::<RenderAssets<BindGroup>>();
-    let ui_mesh_images = ctx.resources.get::<UiMeshImages>();
-    let ui_mesh_images_buffer = buffers.get_by_resource(&ui_mesh_images, ctx, true);
 
+    world: &mut World,
+    window: Res<Window>,
+
+    // resources
+    mut buffers: ResMut<RenderAssets<Buffer>>,
+    mut bind_groups: ResMut<RenderAssets<BindGroup>>,
+    ui_mesh_images: Res<UiMeshImages>,
+
+    // holds the transform of every ui node
+    ui_transforms: Res<UiTransformStorage>,
+
+    mut camera_query: Query<
+        (EntityId, &Camera),
+        (With<Transform>, With<Projection>, With<Camera3D>),
+    >,
+    mut ui_image_query: Query<&UiImage, With<Node>>,
+) {
+    let ui_mesh_images_buffer = buffers.get_by_resource(&ui_mesh_images, world, true);
     if ui_mesh_images_buffer.num_vertices == 0 {
         return;
     }
 
-    // holds the transform of every ui node
-    let ui_transforms = ctx.resources.get::<UiTransformStorage>();
-
     // find active camera
-    let mut camera_query =
-        query.cast::<(EntityId, &Camera), (With<Transform>, With<Projection>, With<Camera3D>)>();
     let active_camera = camera_query
         .iter_mut()
         .into_iter()
@@ -32,7 +37,7 @@ pub fn ui_image_render_system(
         .next();
     let camera_bind_group;
     if let Some((id, camera)) = active_camera {
-        camera_bind_group = bind_groups.get_by_entity(id, camera, ctx);
+        camera_bind_group = bind_groups.get_by_entity(id, camera, world);
     } else {
         return;
     }
@@ -58,7 +63,7 @@ pub fn ui_image_render_system(
     render_pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
 
     // push constants
-    let window_size = ctx.renderer.size();
+    let window_size = window.size();
     render_pass.set_push_constants(
         wgpu::ShaderStages::VERTEX,
         0,
@@ -67,10 +72,12 @@ pub fn ui_image_render_system(
 
     // loop through all ui nodes
     let mut current_indices = 0..6;
-    for entity_id in &ui_mesh_images.entity_ids {
+    for &entity_id in &ui_mesh_images.entity_ids {
         // get image
-        let image = query.get(*entity_id).expect("UiImage component not found");
-        let image_bind_group = bind_groups.get_by_entity(*entity_id, image, ctx);
+        let image = ui_image_query
+            .get(entity_id)
+            .expect("UiImage component not found");
+        let image_bind_group = bind_groups.get_by_entity(entity_id, image, world);
 
         // per entity bind group
         render_pass.set_bind_group(2, &*image_bind_group, &[]);

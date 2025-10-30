@@ -12,28 +12,34 @@ use super::storage::UiTransformStorage;
 /// Ui graph node rendering system
 pub fn ui_render_system(
     graph_ctx: CustomRenderGraphContext,
-    ctx: &mut SystemsContext,
-    mut query: Query<()>,
-) {
+
+    world: &mut World,
+    window: Res<Window>,
+
     // resources
-    let mut buffers = ctx.resources.get_mut::<RenderAssets<Buffer>>();
-    let mut bind_groups = ctx.resources.get_mut::<RenderAssets<BindGroup>>();
+    mut buffers: ResMut<RenderAssets<Buffer>>,
+    mut bind_groups: ResMut<RenderAssets<BindGroup>>,
+
     // text resources
-    let text_renderer = ctx.resources.get::<TextRenderer>();
-    let text_atlas = ctx.resources.get::<TextAtlas>();
-    let viewport = ctx.resources.get::<Viewport>();
+    text_renderer: Res<TextRenderer>,
+    text_atlas: Res<TextAtlas>,
+    viewport: Res<Viewport>,
 
     // holds the ui mesh - vertices and indices for every ui node
-    let ui_mesh = ctx.resources.get::<UiMesh>();
-    let ui_mesh_transparent = ctx.resources.get::<UiMeshTransparent>();
-    let ui_mesh = buffers.get_by_resource(&ui_mesh, ctx, true);
-    let ui_mesh_transparent = buffers.get_by_resource(&ui_mesh_transparent, ctx, true);
-
+    ui_mesh: Res<UiMesh>,
+    ui_mesh_transparent: Res<UiMeshTransparent>,
     // holds the transform of every ui node
-    let ui_transforms = ctx.resources.get::<UiTransformStorage>();
+    ui_transforms: Res<UiTransformStorage>,
 
-    let mut camera_query =
-        query.cast::<(EntityId, &Camera), (With<Transform>, With<Projection>, With<Camera3D>)>();
+    mut camera_query: Query<
+        (EntityId, &Camera),
+        (With<Transform>, With<Projection>, With<Camera3D>),
+    >,
+) {
+    let ui_mesh = buffers.get_by_resource(&ui_mesh, world, true);
+    let ui_mesh_transparent = buffers.get_by_resource(&ui_mesh_transparent, world, true);
+
+    // find active camera
     let active_camera = camera_query
         .iter_mut()
         .into_iter()
@@ -42,7 +48,7 @@ pub fn ui_render_system(
         .next();
     let camera_bind_group;
     if let Some((id, camera)) = active_camera {
-        camera_bind_group = bind_groups.get_by_entity(id, camera, ctx);
+        camera_bind_group = bind_groups.get_by_entity(id, camera, world);
     } else {
         return;
     }
@@ -88,7 +94,7 @@ pub fn ui_render_system(
         draw_ui_render_pass(
             &mut render_pass,
             pipeline,
-            ctx.renderer.size(),
+            window.size(),
             ui_transforms.bind_group(),
             &camera_bind_group,
             &ui_mesh,
@@ -113,7 +119,7 @@ pub fn ui_render_system(
     draw_ui_render_pass(
         &mut render_pass,
         pipeline,
-        ctx.renderer.size(),
+        window.size(),
         ui_transforms.bind_group(),
         &camera_bind_group,
         &ui_mesh_transparent,
