@@ -4,7 +4,7 @@ use crate::{
     ecs::{
         entities::{Component, EntityId, tracking::EntityTracking},
         ptr::OwnedPtr,
-        resources::{Resource},
+        resources::Resource,
         world::World,
     },
     math::{GlobalTransform, Transform},
@@ -280,7 +280,7 @@ impl CommandQueue {
                     insert_closure(world);
                 }
                 Command::RemoveResource(type_id) => {
-                    world.resources.remove(type_id);
+                    world.resources.remove_by_type(type_id);
                 }
                 Command::SpawnEntity(entity_id) => {
                     world.entities.spawn_entity(entity_id, Vec::new());

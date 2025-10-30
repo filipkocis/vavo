@@ -178,11 +178,31 @@ impl Resources {
     }
 
     /// Remove a resource from the world.
-    pub fn remove(&mut self, type_id: TypeId) {
+    pub fn remove_by_type(&mut self, type_id: TypeId) {
         self.resources.get_mut(&type_id).map(|r| {
             // Drop the resource
             r.data.clear();
         });
+    }
+
+    /// Remove a resource from the world.
+    pub fn remove<R: Resource>(&mut self, type_id: TypeId) -> Option<R> {
+        self.resources.get_mut(&type_id).and_then(|r| {
+            if r.data.is_empty() {
+                return None;
+            }
+            debug_assert_eq!(
+                r.data.len(),
+                1,
+                "ResourceData should only contain one resource"
+            );
+
+            // Safety: index is valid
+            let removed = unsafe { r.data.remove(0) };
+            // Safety: type is correct
+            let owned = unsafe { removed.read() };
+            Some(owned)
+        })
     }
 
     /// Get a resource by type, or `None` if it doesn't exist.
