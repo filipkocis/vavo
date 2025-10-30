@@ -168,13 +168,22 @@ impl App {
 
         ctx.commands.apply(&mut self.world);
 
-    /// Get a mutable reference to the render graph
+    /// Get a mutable reference to the render graph. Use [Self::reborrow] in combination with this.
     ///
     /// # Safety
     /// The render graph should only be accessed from startup systems to edit nodes in the grpah.
     #[inline]
     pub unsafe fn render_graph(&mut self) -> &mut RenderGraph {
         &mut self.render_graph
+    }
+
+    /// Reborrows the app as a mutable reference with a different lifetime.
+    ///
+    /// # Safety
+    /// This is unsafe because it can lead to aliasing mutable references if used improperly.
+    #[inline]
+    pub unsafe fn reborrow<'a, 'b>(&'a mut self) -> &'b mut App {
+        unsafe { &mut *(self as *mut App) }
     }
 
     fn execute_render_graph(&mut self, renderer: Renderer, queue: &mut CommandQueue) {

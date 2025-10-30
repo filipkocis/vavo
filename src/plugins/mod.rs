@@ -2,8 +2,9 @@ use crate::{
     app::{App, Plugin},
     audio::AudioPlugin,
     core::standard::{
+        grouped::generate_grouped_instances_system,
+        light_data::prepare_light_data_system,
         movement::movement_system,
-        prepare::graph_prerender_preparation_system,
         startup::{add_render_resources, register_standard_graph},
         update::{update_camera_buffers, update_global_transforms},
     },
@@ -49,7 +50,8 @@ impl Plugin for RenderPlugin {
             .add_startup_system(register_standard_graph)
             .register_system(update_global_transforms, SystemStage::Last)
             .register_system(update_camera_buffers, SystemStage::PreRender)
-            .register_system(graph_prerender_preparation_system, SystemStage::PreRender);
+            .register_system(prepare_light_data_system, SystemStage::PreRender)
+            .register_system(generate_grouped_instances_system, SystemStage::PreRender);
     }
 }
 
