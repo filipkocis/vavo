@@ -24,8 +24,24 @@ enum Command {
     RemoveChild(EntityId, EntityId),
 }
 
+impl std::fmt::Debug for Command {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::InsertResource(..) => write!(f, "Command::InsertResource"),
+            Self::RemoveResource(..) => write!(f, "Command::RemoveResource"),
+            Self::SpawnEntity(..) => write!(f, "Command::SpawnEntity"),
+            Self::DespawnEntity(..) => write!(f, "Command::DespawnEntity"),
+            Self::DespawnEntityRecursive(..) => write!(f, "Command::DespawnEntityRecursive"),
+            Self::InsertComponent(..) => write!(f, "Command::InsertComponent"),
+            Self::RemoveComponent(..) => write!(f, "Command::RemoveComponent"),
+            Self::AddChild(..) => write!(f, "Command::AddChild"),
+            Self::RemoveChild(..) => write!(f, "Command::RemoveChild"),
+        }
+    }
+}
+
 /// Internal queue of [commands](Commands).
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct CommandQueue {
     internal: Vec<Command>,
 }
@@ -267,9 +283,22 @@ impl CommandQueue {
         Self::default()
     }
 
+    /// Returns the number of queued commands.
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.internal.len()
+    }
+
+    /// Returns true if there are no queued commands.
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.internal.is_empty()
+    }
+
     /// Extends the command queue with another command queue.
+    #[inline]
     pub fn extend(&mut self, other: &mut CommandQueue) {
-        self.internal.extend(other.internal.drain(..));
+        self.internal.append(&mut other.internal);
     }
 
     /// Applies all queued commands to the world.
