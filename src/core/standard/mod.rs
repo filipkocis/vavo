@@ -1,9 +1,9 @@
-pub mod rendering;
-pub mod update;
-pub mod movement;
-pub mod shadows;
 pub mod atlas;
 pub mod grouped;
-pub mod prepare;
 pub mod light_data;
+pub mod movement;
+pub mod rendering;
+pub mod shadows;
+pub mod skybox;
 pub mod startup;
+pub mod update;
