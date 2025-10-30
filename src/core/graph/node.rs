@@ -1,8 +1,11 @@
 use winit::dpi::PhysicalSize;
 
 use crate::{
+    assets::ShaderLoader,
     palette,
+    prelude::World,
     render_assets::pipeline::PipelineBuilder,
+    renderer::newtype::RenderDevice,
     system::{CustomGraphSystem, GraphSystem, SystemsContext},
 };
 
@@ -56,10 +59,16 @@ impl GraphNode {
     }
 
     /// Populates the node data with the necessary data, or replaces it with new data
-    pub fn generate_data(&mut self, ctx: &mut SystemsContext) {
-        self.data.generate_pipeline(ctx, &self.pipeline_builder);
-        self.data.generate_color_target(ctx, &self.color_target);
-        self.data.generate_depth_target(ctx, &self.depth_target);
+    pub fn generate_data(
+        &mut self,
+        world: &mut World,
+        device: &RenderDevice,
+        shader_loader: &mut ShaderLoader,
+    ) {
+        self.data
+            .generate_pipeline(device, shader_loader, &self.pipeline_builder);
+        self.data.generate_color_target(world, &self.color_target);
+        self.data.generate_depth_target(world, &self.depth_target);
 
         self.data.needs_regen = false;
     }

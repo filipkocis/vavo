@@ -1,6 +1,12 @@
 use wgpu::RenderPass;
 
-use crate::{core::graph::NodeColorTarget, ecs::entities::Entities, system::SystemsContext};
+use crate::{
+    assets::ShaderLoader,
+    core::graph::NodeColorTarget,
+    prelude::World,
+    renderer::newtype::{RenderCommandEncoder, RenderDevice},
+    system::SystemsContext,
+};
 
 use super::{
     GraphNode, NodeDepthTarget, RenderGraph,
@@ -46,17 +52,18 @@ impl<'a, 'b> RenderGraphContext<'a, 'b> {
 }
 
 impl RenderGraph {
-    pub(crate) fn execute(&mut self, ctx: &mut SystemsContext, entities: &mut Entities) {
+    pub(crate) fn execute(&mut self, ctx: &mut SystemsContext, world: &mut World) {
         let self_raw = self as *mut _;
         let sorted = self.sorted.iter().map(|n| unsafe { &mut **n });
 
+        let device = world.resources.get::<RenderDevice>();
+        let mut shader_loader = world.resources.get_mut::<ShaderLoader>();
+        let mut encoder = world.resources.get_mut::<RenderCommandEncoder>();
+
         for node in sorted {
             if node.data.needs_regen {
-                node.generate_data(ctx);
+                node.generate_data(world, &device, &mut shader_loader);
             }
-
-            // SAFETY: Since encoder is derived from ctx, we just bypass the borrow checker
-            let encoder = unsafe { &mut *ctx.renderer.encoder().inner };
 
             let node_raw = node as *mut GraphNode;
             let color_attachment = self.get_color_attachment(node, ctx);
@@ -73,7 +80,7 @@ impl RenderGraph {
                 node.custom_system
                     .as_mut()
                     .unwrap()
-                    .run(graph_ctx, ctx, entities);
+                    .run(graph_ctx, ctx, &mut world.entities);
                 continue;
             }
 
@@ -98,7 +105,7 @@ impl RenderGraph {
 
             let graph_ctx = RenderGraphContext::new(&mut render_pass, node_raw, self_raw);
 
-            node.system.run(graph_ctx, ctx, entities);
+            node.system.run(graph_ctx, ctx, &mut world.entities);
         }
     }
 
