@@ -1,23 +1,19 @@
-use crate::prelude::*;
 use crate::core::graph::*;
+use crate::prelude::*;
 use crate::render_assets::{BindGroup, Buffer, RenderAssets};
-use crate::ui::{
-    prelude::*,
-    graph::storage::UiTransformStorage,
-    mesh::UiMeshImages,
-};
+use crate::ui::{graph::storage::UiTransformStorage, mesh::UiMeshImages, prelude::*};
 
 pub fn ui_image_render_system(
-    graph_ctx: RenderGraphContext, 
+    graph_ctx: RenderGraphContext,
     ctx: &mut SystemsContext,
-    mut query: Query<&UiImage, With<Node>>
+    mut query: Query<&UiImage, With<Node>>,
 ) {
     // resources
     let mut buffers = ctx.resources.get_mut::<RenderAssets<Buffer>>();
     let mut bind_groups = ctx.resources.get_mut::<RenderAssets<BindGroup>>();
-    let ui_mesh_images = ctx.resources.get::<UiMeshImages>();  
+    let ui_mesh_images = ctx.resources.get::<UiMeshImages>();
     let ui_mesh_images_buffer = buffers.get_by_resource(&ui_mesh_images, ctx, true);
-    
+
     if ui_mesh_images_buffer.num_vertices == 0 {
         return;
     }
@@ -26,8 +22,14 @@ pub fn ui_image_render_system(
     let ui_transforms = ctx.resources.get::<UiTransformStorage>();
 
     // find active camera
-    let mut camera_query = query.cast::<(EntityId, &Camera), (With<Transform>, With<Projection>, With<Camera3D>)>(); 
-    let active_camera = camera_query.iter_mut().into_iter().filter(|(_, c)| c.active).take(1).next();
+    let mut camera_query =
+        query.cast::<(EntityId, &Camera), (With<Transform>, With<Projection>, With<Camera3D>)>();
+    let active_camera = camera_query
+        .iter_mut()
+        .into_iter()
+        .filter(|(_, c)| c.active)
+        .take(1)
+        .next();
     let camera_bind_group;
     if let Some((id, camera)) = active_camera {
         camera_bind_group = bind_groups.get_by_entity(id, camera, ctx);
@@ -36,8 +38,14 @@ pub fn ui_image_render_system(
     }
 
     // extract buffers
-    let vertex_buffer = ui_mesh_images_buffer.vertex.as_ref().expect("UiMeshImages buffer should have a vertex buffer");
-    let index_buffer = ui_mesh_images_buffer.index.as_ref().expect("UiMeshImages buffer should have an index buffer");
+    let vertex_buffer = ui_mesh_images_buffer
+        .vertex
+        .as_ref()
+        .expect("UiMeshImages buffer should have a vertex buffer");
+    let index_buffer = ui_mesh_images_buffer
+        .index
+        .as_ref()
+        .expect("UiMeshImages buffer should have an index buffer");
 
     let render_pass = graph_ctx.pass;
 
@@ -51,10 +59,11 @@ pub fn ui_image_render_system(
 
     // push constants
     let window_size = ctx.renderer.size();
-    render_pass.set_push_constants(wgpu::ShaderStages::VERTEX, 0, bytemuck::cast_slice(&[
-        (window_size.width as f32),
-        (window_size.height as f32)
-    ]));
+    render_pass.set_push_constants(
+        wgpu::ShaderStages::VERTEX,
+        0,
+        bytemuck::cast_slice(&[(window_size.width as f32), (window_size.height as f32)]),
+    );
 
     // loop through all ui nodes
     let mut current_indices = 0..6;
@@ -67,7 +76,7 @@ pub fn ui_image_render_system(
         render_pass.set_bind_group(2, &*image_bind_group, &[]);
 
         // draw
-        render_pass.draw_indexed(current_indices.clone(), 0, 0..1); 
+        render_pass.draw_indexed(current_indices.clone(), 0, 0..1);
 
         // move to next rect
         current_indices.start = current_indices.end;
