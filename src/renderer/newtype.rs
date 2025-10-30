@@ -2,7 +2,7 @@
 use std::sync::Arc;
 
 macro_rules! define_render_newtype {
-    ($name:ident, $inner:ty, $doc:expr) => {
+    ($name:ident, $inner:ty, $doc:expr $(, $clone:ident)?) => {
         #[doc = $doc]
         #[derive(Debug, crate::macros::Resource)]
         pub struct $name($inner);
@@ -26,11 +26,8 @@ macro_rules! define_render_newtype {
                 std::mem::replace(&mut self.0, inner)
             }
 
-            /// Clones the wrapper
-            #[inline]
-            pub(crate) fn clone_wrapped(&self) -> Self {
-                Self(self.0.clone())
-            }
+            // Expand clone method if specified
+            define_render_newtype!(@maybe_clone $inner $(, $clone)?);
         }
 
         impl core::ops::Deref for $name {
@@ -47,50 +44,70 @@ macro_rules! define_render_newtype {
             }
         }
     };
+
+    // clone helper arm
+    (@maybe_clone $inner:ty) => {};
+    (@maybe_clone $inner:ty, clone) => {
+        /// Clones the wrapper
+        #[inline]
+        pub(crate) fn clone_wrapped(&self) -> Self
+        where
+            $inner: Clone,
+        {
+            Self(self.0.clone())
+        }
+    };
 }
 
 define_render_newtype!(
     RenderWindow,
     // has to be Arc to allow sharing between systems
     Arc<winit::window::Window>,
-    "Newtype wrapper for [`winit::window::Window`]."
+    "Newtype wrapper for [`winit::window::Window`].",
+    clone
 );
 
 define_render_newtype!(
     RenderInstance,
     wgpu::Instance,
-    "Newtype wrapper for [`wgpu::Instance`]."
+    "Newtype wrapper for [`wgpu::Instance`].",
+    clone
 );
 
 define_render_newtype!(
     RenderSurface,
     // has to be Arc to allow sharing, even though it should only be used in one place
     Arc<wgpu::Surface<'static>>,
-    "Newtype wrapper for [`wgpu::Surface`]."
+    "Newtype wrapper for [`wgpu::Surface`].",
+    clone
 );
 
 define_render_newtype!(
     RenderSurfaceConfiguration,
     wgpu::SurfaceConfiguration,
-    "Newtype wrapper for [`wgpu::SurfaceConfiguration`]. Mutations to the inner configuration will not affect the actual surface, this is purely for retrieving configuration data."
+    "Newtype wrapper for [`wgpu::SurfaceConfiguration`]. Mutations to the inner configuration will not affect the actual surface, this is purely for retrieving configuration data.",
+    clone
 );
 
 define_render_newtype!(
     RenderAdapter,
     wgpu::Adapter,
-    "Newtype wrapper for [`wgpu::Adapter`]."
+    "Newtype wrapper for [`wgpu::Adapter`].",
+    clone
 );
 
 define_render_newtype!(
     RenderDevice,
     wgpu::Device,
-    "Newtype wrapper for [`wgpu::Device`]."
+    "Newtype wrapper for [`wgpu::Device`].",
+    clone
 );
 
 define_render_newtype!(
     RenderQueue,
     wgpu::Queue,
-    "Newtype wrapper for [`wgpu::Queue`]."
+    "Newtype wrapper for [`wgpu::Queue`].",
+    clone
 );
 
 //
@@ -107,6 +124,6 @@ define_render_newtype!(
 define_render_newtype!(
     RenderCommandEncoder,
     // has to be Arc to allow sharing between render systems
-    Arc<wgpu::CommandEncoder>,
+    wgpu::CommandEncoder,
     "Newtype wrapper for [`wgpu::CommandEncoder`]."
 );
