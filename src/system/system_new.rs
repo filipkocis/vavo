@@ -362,9 +362,8 @@ impl IntoParamInfo for Commands<'_, '_> {
 impl SystemParam for EventWriter<'_> {
     type State = ();
     #[inline]
-    fn extract(_world: &mut World, _state: &mut Self::State) -> Self {
-        todo!("world event writer extraction")
-        // world.events().writer()
+    fn extract(world: &mut World, _state: &mut Self::State) -> Self {
+        unsafe { world.reborrow().parent_app().events.handlers().1 }
     }
     #[inline]
     fn init_state() -> Self::State {}
@@ -377,9 +376,8 @@ impl IntoParamInfo for EventWriter<'_> {
 impl SystemParam for EventReader<'_> {
     type State = ();
     #[inline]
-    fn extract(_world: &mut World, _state: &mut Self::State) -> Self {
-        todo!("world event reader extraction")
-        // world.events().reader()
+    fn extract(world: &mut World, _state: &mut Self::State) -> Self {
+        unsafe { world.reborrow().parent_app().events.handlers().0 }
     }
     #[inline]
     fn init_state() -> Self::State {}

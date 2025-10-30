@@ -26,7 +26,7 @@ pub struct App {
     render_graph: RenderGraph,
 
     pub world: World,
-    events: Events,
+    pub(crate) events: Events,
 
     known_states: Vec<TypeId>,
     pub type_registry: ReflectTypeRegistry,
