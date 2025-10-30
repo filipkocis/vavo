@@ -5,19 +5,24 @@ use crate::{
     core::{graph::*, lighting::LightAndShadowManager},
     prelude::*,
     render_assets::*,
+    renderer::newtype::RenderDevice,
     system::CustomGraphSystem,
 };
 
 use super::{grouped::GroupedInstances, light_data::PreparedLightData};
 
 /// Creates a node for standard shadow pass
-pub fn standard_shadow_node(ctx: &mut SystemsContext) -> GraphNode {
+pub fn standard_shadow_node(
+    device: &RenderDevice,
+    shader_loader: &mut ShaderLoader,
+    world: &mut World,
+) -> GraphNode {
     // Create pipeline builder
-    let shadow_pipeline_builder = create_shadow_pipeline_builder(ctx);
+    let shadow_pipeline_builder = create_shadow_pipeline_builder(&device, shader_loader);
 
     // Create light and shadow manager
-    let manager = LightAndShadowManager::new(ctx);
-    ctx.resources.insert(manager);
+    let manager = LightAndShadowManager::new(world, &device);
+    world.resources.insert(manager);
 
     // Create graph node
     GraphNodeBuilder::new("shadow")
@@ -154,9 +159,10 @@ fn per_light_render_pass(
     }
 }
 
-fn create_shadow_pipeline_builder(ctx: &mut SystemsContext) -> PipelineBuilder {
-    let device = ctx.renderer.device();
-
+fn create_shadow_pipeline_builder(
+    device: &RenderDevice,
+    shader_loader: &mut ShaderLoader,
+) -> PipelineBuilder {
     // Transform bind group layout for storage buffer
     let transforms_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
         label: Some("transforms_bind_group_layout"),
@@ -188,8 +194,7 @@ fn create_shadow_pipeline_builder(ctx: &mut SystemsContext) -> PipelineBuilder {
     });
 
     // Load shader modules
-    ctx.resources
-        .get_mut::<ShaderLoader>()
+    shader_loader
         .load("shadow", include_str!("../../shaders/shadow.wgsl"), device)
         .expect("Shader with label 'shadow' already exists");
 

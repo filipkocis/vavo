@@ -14,6 +14,7 @@ pub fn add_render_resources(mut commands: Commands, device: Res<RenderDevice>) {
 
 /// Startup system to register standard render graph
 pub fn register_standard_graph(
+    world: &mut World,
     device: Res<RenderDevice>,
     mut shader_loader: ResMut<ShaderLoader>,
     surface_config: Res<RenderSurfaceConfiguration>,
@@ -26,6 +27,6 @@ pub fn register_standard_graph(
     let main_node = standard_main_node(&device, &mut shader_loader, &surface_config, &window);
     graph.add(main_node);
 
-    let shadow_node = standard_shadow_node(ctx);
+    let shadow_node = standard_shadow_node(&device, &mut shader_loader, world);
     graph.add(shadow_node);
 }
