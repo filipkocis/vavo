@@ -3,7 +3,7 @@ use std::{any::TypeId, collections::HashMap, ops::Deref, sync::Arc};
 use crate::{
     assets::{Asset, Assets, Handle},
     ecs::{entities::EntityId, resources::Resource},
-    prelude::{Component, Res, World},
+    prelude::{Component, Res, ResMut, World},
 };
 
 use super::{RenderAsset, RenderHandle};
@@ -41,8 +41,8 @@ struct AssetHandleId(TypeId, u64);
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct EntityComponentId(EntityId, TypeId);
 
-impl<R: Resource> From<&Res<R>> for ResourceId {
-    fn from(_: &Res<R>) -> Self {
+impl<R: Resource> From<&R> for ResourceId {
+    fn from(_: &R) -> Self {
         ResourceId(TypeId::of::<R>())
     }
 }
@@ -154,6 +154,30 @@ impl<RA: RenderAsset> RenderAssets<RA> {
     pub fn get_by_resource<R>(
         &mut self,
         resource: &Res<R>,
+        world: &mut World,
+        replace: bool,
+    ) -> RenderAssetEntry<RA>
+    where
+        R: Resource + IntoRenderAsset<RA>,
+    {
+        self.get_by_resource_internal(resource.deref(), world, replace)
+    }
+
+    pub fn get_by_resource_mut<R>(
+        &mut self,
+        resource: &ResMut<R>,
+        world: &mut World,
+        replace: bool,
+    ) -> RenderAssetEntry<RA>
+    where
+        R: Resource + IntoRenderAsset<RA>,
+    {
+        self.get_by_resource_internal(resource.deref(), world, replace)
+    }
+
+    fn get_by_resource_internal<R>(
+        &mut self,
+        resource: &R,
         world: &mut World,
         replace: bool,
     ) -> RenderAssetEntry<RA>
