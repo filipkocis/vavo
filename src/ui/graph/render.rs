@@ -12,7 +12,7 @@ use super::storage::UiTransformStorage;
 
 /// Ui graph node rendering system
 pub fn ui_render_system(
-    graph_ctx: CustomRenderGraphContext,
+    graph_ctx: Res<RenderContext>,
 
     world: &mut World,
     encoder: &mut RenderCommandEncoder,

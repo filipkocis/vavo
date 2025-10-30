@@ -21,7 +21,7 @@ pub struct World {
     /// Needed for systems that require access to fields only available in App.
     /// TODO: This will be removed in the future once those fields are available through other
     /// means, such as resource wrappers.
-    parent_app: *mut App,
+    pub(crate) parent_app: *mut App,
 
     /// Main command queue for the world
     pub(crate) command_queue: CommandQueue,

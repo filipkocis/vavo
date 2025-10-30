@@ -4,7 +4,7 @@ use crate::render_assets::{BindGroup, Buffer, RenderAssets};
 use crate::ui::{graph::storage::UiTransformStorage, mesh::UiMeshImages, prelude::*};
 
 pub fn ui_image_render_system(
-    graph_ctx: RenderGraphContext,
+    graph_ctx: Res<RenderContext>,
 
     world: &mut World,
     window: Res<Window>,
@@ -52,7 +52,7 @@ pub fn ui_image_render_system(
         .as_ref()
         .expect("UiMeshImages buffer should have an index buffer");
 
-    let render_pass = graph_ctx.pass;
+    let render_pass = unsafe { &mut *graph_ctx.pass };
 
     // bind groups
     render_pass.set_bind_group(0, ui_transforms.bind_group(), &[]);

@@ -6,7 +6,6 @@ use crate::{
     prelude::*,
     render_assets::*,
     renderer::newtype::{RenderCommandEncoder, RenderDevice},
-    system::CustomGraphSystem,
 };
 
 use super::{grouped::GroupedInstances, light_data::PreparedLightData};
@@ -27,16 +26,17 @@ pub fn standard_shadow_node(
     // Create graph node
     GraphNodeBuilder::new("shadow")
         .set_pipeline(shadow_pipeline_builder)
-        .set_custom_system(CustomGraphSystem::new(
-            "shadow_render_system",
-            shadow_render_system,
-        ))
+        .set_custom_system(shadow_render_system)
+        // .set_custom_system(CustomGraphSystem::new(
+        //     "shadow_render_system",
+        //     shadow_render_system,
+        // ))
         .run_before("main")
         .build()
 }
 
 fn shadow_render_system(
-    graph_ctx: CustomRenderGraphContext,
+    graph_ctx: Res<RenderContext>,
 
     world: &mut World,
     encoder: &mut RenderCommandEncoder,

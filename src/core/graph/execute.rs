@@ -12,52 +12,70 @@ use super::{
     data::{ColorTargetData, DepthTargetData},
 };
 
-/// Same as `RenderGraphContext`, but without a render_pass, used for custom render systems.
-/// It provides preprocessed color and depth targets.
+/// Extremely unsafe version of old `RenderGraphContext`, temporary solution for render systems.
+/// This data is stored in resources. TODO: refactor the whole render graph execution system
 ///
-/// # Note
-/// When implementing custom render systems, you should be careful with the lifetimes and raw
-/// pointer usage.
-pub struct CustomRenderGraphContext {
+/// # Safety
+/// NOT SAFE AT ALL, use with extreme caution!
+///
+/// In custom render systems, valid fields are:
+/// - `node` - pointer to the current node
+/// - `color_target` - pointer to the color target view, if any
+/// - `depth_target` - pointer to the depth target view, if any
+///
+/// In standard render systems, valid fields are:
+/// - `pass` - pointer to the current render pass
+/// - `node` - pointer to the current node
+#[derive(Default, Clone, crate::macros::Resource)]
+pub struct RenderContext {
+    /// Current render pass, should be used to issue draw calls etc.
+    pub pass: *mut RenderPass<'static>,
     /// Lifetime is tied to graph
     pub node: *mut GraphNode,
-    /// Graph containing the node
-    pub graph: *const RenderGraph,
     /// Lifetime is tied to the node
     pub color_target: Option<*const wgpu::TextureView>,
     /// Lifetime is tied to the node
     pub depth_target: Option<*const wgpu::TextureView>,
 }
+// # Safety
+// As unsafe as it gets
+unsafe impl Send for RenderContext {}
+unsafe impl Sync for RenderContext {}
 
-pub struct RenderGraphContext<'a, 'b> {
-    /// Current render pass, should be used to issue draw calls etc.
-    pub pass: &'b mut RenderPass<'a>,
-    /// Unsafe raw pointer to the node currently being executed, should not be used or modified unless you are sure what
-    /// you are doing.
-    pub node: *mut GraphNode,
-    /// Unsafe raw pointer to render graph from which this context was derived, should not be used or modified unless you are sure what
-    /// you are doing.
-    pub graph: *mut RenderGraph,
-}
-
-impl<'a, 'b> RenderGraphContext<'a, 'b> {
-    pub fn new(
-        pass: &'b mut RenderPass<'a>,
+impl RenderContext {
+    #[inline]
+    pub fn update_custom(
+        &mut self,
         node: *mut GraphNode,
-        graph: *mut RenderGraph,
-    ) -> Self {
-        Self { pass, node, graph }
+        color_target: Option<*const wgpu::TextureView>,
+        depth_target: Option<*const wgpu::TextureView>,
+    ) {
+        self.node = node;
+        self.color_target = color_target;
+        self.depth_target = depth_target;
+    }
+
+    #[inline]
+    pub fn update_standard(&mut self, pass: *mut RenderPass<'static>, node: *mut GraphNode) {
+        self.pass = pass;
+        self.node = node;
+        self.color_target = None;
+        self.depth_target = None;
     }
 }
 
 impl RenderGraph {
     pub(crate) fn execute(&mut self, world: &mut World) {
-        let self_raw = self as *mut _;
         let sorted = self.sorted.iter().map(|n| unsafe { &mut **n });
 
         let device = world.resources.get::<RenderDevice>();
         let mut shader_loader = world.resources.get_mut::<ShaderLoader>();
         let surface_texture_view = world.resources.get::<RenderSurfaceTextureView>();
+
+        if !world.resources.contains::<RenderContext>() {
+            world.resources.insert(RenderContext::default())
+        }
+        let mut render_context = world.resources.get_mut::<RenderContext>();
 
         for node in sorted {
             if node.data.needs_regen {
@@ -69,24 +87,23 @@ impl RenderGraph {
             let depth_attachment = self.get_depth_attachment(node);
 
             if node.custom_system.is_some() {
-                let graph_ctx = CustomRenderGraphContext {
-                    node: node_raw,
-                    graph: self,
-                    color_target: color_attachment.as_ref().map(|x| x.view as *const _),
-                    depth_target: depth_attachment.as_ref().map(|x| x.view as *const _),
-                };
+                render_context.update_custom(
+                    node_raw,
+                    color_attachment.as_ref().map(|x| x.view as *const _),
+                    depth_attachment.as_ref().map(|x| x.view as *const _),
+                );
 
-                node.custom_system
-                    .as_mut()
-                    .unwrap()
-                    .run(graph_ctx, ctx, &mut world.entities);
+                let custom_system = node.custom_system.as_mut().unwrap();
+                custom_system.run(world);
+                custom_system.apply(world);
                 continue;
             }
 
             let mut encoder = RenderCommandEncoder::new(&device, node.name.as_str());
+            let encoder = unsafe { &mut *(&mut encoder as *mut RenderCommandEncoder) };
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some(&format!("{} render pass", node.name)),
-                color_attachments: &vec![color_attachment]
+                color_attachments: &[color_attachment]
                     .into_iter()
                     .filter(|x| x.is_some())
                     .collect::<Vec<_>>(),
@@ -103,9 +120,9 @@ impl RenderGraph {
                     .render_pipeline(),
             );
 
-            let graph_ctx = RenderGraphContext::new(&mut render_pass, node_raw, self_raw);
-
-            node.system.run(graph_ctx, ctx, &mut world.entities);
+            render_context.update_standard(&mut render_pass, node_raw);
+            node.system.run(world);
+            node.system.apply(world);
         }
     }
 

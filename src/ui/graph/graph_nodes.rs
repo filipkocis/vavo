@@ -1,7 +1,6 @@
 use crate::core::graph::*;
 use crate::prelude::*;
 use crate::renderer::newtype::{RenderDevice, RenderSurfaceConfiguration};
-use crate::system::CustomGraphSystem;
 use crate::ui::image::render::ui_image_render_system;
 
 use super::pipeline::{create_ui_image_pipeline_builder, create_ui_pipeline_builder};
@@ -33,7 +32,8 @@ fn ui_node(
     // Create graph node
     GraphNodeBuilder::new("ui")
         .set_pipeline(ui_pipeline_builder)
-        .set_custom_system(CustomGraphSystem::new("ui_render_system", ui_render_system))
+        // .set_custom_system(CustomGraphSystem::new("ui_render_system", ui_render_system))
+        .set_custom_system(ui_render_system)
         .set_color_target(NodeColorTarget::Surface)
         .set_depth_target(NodeDepthTarget::Node("ui_image".to_string()))
         .run_after("ui_image")
@@ -53,10 +53,11 @@ fn ui_image_node(
     // Create graph node
     GraphNodeBuilder::new("ui_image")
         .set_pipeline(ui_pipeline_builder)
-        .set_system(GraphSystem::new(
-            "ui_image_render_system",
-            ui_image_render_system,
-        ))
+        .set_system(ui_image_render_system)
+        // .set_system(GraphSystem::new(
+        //     "ui_image_render_system",
+        //     ui_image_render_system,
+        // ))
         .set_color_target(NodeColorTarget::Surface)
         .set_depth_target(NodeDepthTarget::Node("main".to_string()))
         .set_color_ops(wgpu::Operations {

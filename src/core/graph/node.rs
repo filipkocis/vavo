@@ -3,10 +3,10 @@ use winit::dpi::PhysicalSize;
 use crate::{
     assets::ShaderLoader,
     palette,
-    prelude::World,
+    prelude::{IntoSystem, World},
     render_assets::pipeline::PipelineBuilder,
     renderer::newtype::RenderDevice,
-    system::{CustomGraphSystem, GraphSystem, SystemsContext},
+    system::system_new::{System, SystemParam},
 };
 
 use super::{NodeColorTarget, NodeData, NodeDepthTarget};
@@ -16,8 +16,8 @@ use super::{NodeColorTarget, NodeData, NodeDepthTarget};
 pub struct GraphNode {
     pub name: String,
     pub pipeline_builder: PipelineBuilder,
-    pub system: GraphSystem,
-    pub custom_system: Option<CustomGraphSystem>,
+    pub system: System,
+    pub custom_system: Option<System>,
     pub color_target: NodeColorTarget,
     pub depth_target: NodeDepthTarget,
     pub color_ops: wgpu::Operations<wgpu::Color>,
@@ -33,7 +33,7 @@ impl GraphNode {
     pub fn new(
         name: &str,
         pipeline_builder: PipelineBuilder,
-        system: GraphSystem,
+        system: System,
         color_target: NodeColorTarget,
         depth_target: NodeDepthTarget,
     ) -> Self {
@@ -98,8 +98,8 @@ impl GraphNode {
 pub struct GraphNodeBuilder {
     name: String,
     pipeline_builder: Option<PipelineBuilder>,
-    system: Option<GraphSystem>,
-    custom_system: Option<CustomGraphSystem>,
+    system: Option<System>,
+    custom_system: Option<System>,
     color_target: Option<NodeColorTarget>,
     depth_target: Option<NodeDepthTarget>,
     color_ops: wgpu::Operations<wgpu::Color>,
@@ -135,16 +135,21 @@ impl GraphNodeBuilder {
         self
     }
 
-    pub fn set_system(mut self, system: GraphSystem) -> Self {
-        self.system = Some(system);
+    // pub fn set_system(mut self, system: GraphSystem) -> Self {
+    pub fn set_system<Params: SystemParam>(mut self, system: impl IntoSystem<Params>) -> Self {
+        self.system = Some(system.build());
         self
     }
 
     /// Setting a custom system will clear the depth_ops and replace the system with
     /// an empty system. It will keep the color and depth target, if not specified they will be set
     /// to `NodeTarget::None`.
-    pub fn set_custom_system(mut self, custom_system: CustomGraphSystem) -> Self {
-        self.custom_system = Some(custom_system);
+    // pub fn set_custom_system(mut self, custom_system: CustomGraphSystem) -> Self {
+    pub fn set_custom_system<Params: SystemParam>(
+        mut self,
+        custom_system: impl IntoSystem<Params>,
+    ) -> Self {
+        self.custom_system = Some(custom_system.build());
         self
     }
 
@@ -196,10 +201,7 @@ impl GraphNodeBuilder {
 
         if self.custom_system.is_some() {
             let name = format!("CLEARED_{}", self.name);
-            self.system = Some(GraphSystem::new(
-                &name,
-                |_, _, _: crate::prelude::Query<()>| {},
-            ));
+            self.system = Some((|| {}).build());
             self.depth_ops = None;
 
             if self.color_target.is_none() {

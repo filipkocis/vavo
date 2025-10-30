@@ -8,7 +8,6 @@ use crate::{
     renderer::newtype::{
         RenderCommandEncoder, RenderDevice, RenderSurfaceConfiguration, RenderWindow,
     },
-    system::CustomGraphSystem,
 };
 
 use super::grouped::GroupedInstances;
@@ -47,10 +46,11 @@ pub fn standard_main_node(
 
     GraphNodeBuilder::new("main")
         .set_pipeline(main_pipeline_builder)
-        .set_custom_system(CustomGraphSystem::new(
-            "main_render_system",
-            main_render_system,
-        ))
+        .set_custom_system(main_render_system)
+        // .set_custom_system(CustomGraphSystem::new(
+        //     "main_render_system",
+        //     main_render_system,
+        // ))
         .set_color_target(NodeColorTarget::Surface)
         .set_depth_target(NodeDepthTarget::Owned(depth_image))
         .build()
@@ -70,7 +70,7 @@ fn main_render_system(
         (With<Transform>, With<Projection>, With<Camera3D>),
     >,
 
-    graph_ctx: CustomRenderGraphContext,
+    graph_ctx: Res<RenderContext>,
 ) {
     // Camera
     let (active_camera_id, active_camera) = match camera_query
