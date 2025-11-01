@@ -381,6 +381,43 @@ impl BlobVec {
         unsafe { self.get_slice_raw_mut(start, end) }
     }
 
+    /// Append another blob to this one.
+    ///
+    /// # Safety
+    /// Caller must ensure both blobs are of the same type
+    pub unsafe fn append(&mut self, other: &mut BlobVec) {
+        debug_assert!(
+            self.layout == other.layout,
+            "Cannot append BlobVec with different layouts"
+        );
+
+        let other_len = other.len();
+        if other_len == 0 {
+            return;
+        }
+
+        // Reserve space for other blob
+        self.reserve(other_len);
+
+        // Copy elements from other blob
+        let start_ptr = unsafe { other.get_raw(0) };
+        let dst_ptr = unsafe { self.get_raw(self.len) };
+        unsafe {
+            std::ptr::copy_nonoverlapping(
+                start_ptr.as_ptr(),
+                dst_ptr.as_ptr(),
+                // We multiply by layout size because T is type-erased
+                other_len * self.layout.size(),
+            );
+        }
+
+        // Update length
+        self.len += other_len;
+
+        // Clear the other blob without dropping its elements
+        other.len = 0;
+    }
+
     /// Clear the blob
     pub fn clear(&mut self) {
         if self.len == 0 {
