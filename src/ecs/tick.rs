@@ -74,6 +74,12 @@ impl TickStamp {
     pub fn last_run(&self) -> u64 {
         self.last_run.get()
     }
+
+    /// Sets the last run tick.
+    #[inline]
+    pub(crate) fn set_last_run(&mut self, tick: Tick) {
+        self.last_run = tick;
+    }
 }
 
 /// A struct that holds mutable timestamps for Changed and Added filters
@@ -124,5 +130,11 @@ impl TickStampMut {
     #[inline]
     pub fn mark_changed(&mut self) {
         unsafe { *self.changed = self.current };
+    }
+
+    /// Sets the last run tick.
+    #[inline]
+    pub(crate) fn set_last_run(&mut self, tick: Tick) {
+        self.last_run = tick;
     }
 }

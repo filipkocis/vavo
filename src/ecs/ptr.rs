@@ -1,6 +1,9 @@
 use std::{marker::PhantomData, mem::ManuallyDrop, ptr::NonNull};
 
-use crate::ecs::tick::{TickStamp, TickStampMut};
+use crate::{
+    ecs::tick::{TickStamp, TickStampMut},
+    prelude::Tick,
+};
 
 #[repr(transparent)]
 #[derive(Debug)]
@@ -150,6 +153,12 @@ impl DataPtr {
     pub fn stamp(&self) -> &TickStamp {
         &self.stamp
     }
+
+    /// Sets the last run tick.
+    #[inline]
+    pub(crate) fn set_last_run(&mut self, tick: Tick) {
+        self.stamp.set_last_run(tick);
+    }
 }
 
 impl DataPtrMut {
@@ -175,5 +184,11 @@ impl DataPtrMut {
     #[inline]
     pub fn stamp(&self) -> &TickStampMut {
         &self.stamp
+    }
+
+    /// Sets the last run tick.
+    #[inline]
+    pub(crate) fn set_last_run(&mut self, tick: Tick) {
+        self.stamp.set_last_run(tick);
     }
 }

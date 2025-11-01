@@ -71,7 +71,27 @@ impl ParamInfo {
     }
 }
 
-pub type SystemExecFn<Output> = dyn FnMut(&mut World) -> Output + Send + Sync + 'static;
+/// Per-system data passed to systems during execution.
+/// Stores things like last run tick, system name, profiling info, etc.
+pub struct SystemContext<'a> {
+    pub last_run: &'a Tick,
+    pub params_info: &'a [ParamInfo],
+    pub exec_info: &'a TypeInfo,
+}
+impl<'a> SystemContext<'a> {
+    /// Create new system context
+    #[inline]
+    pub fn new(last_run: &'a Tick, params_info: &'a [ParamInfo], exec_info: &'a TypeInfo) -> Self {
+        Self {
+            last_run,
+            params_info,
+            exec_info,
+        }
+    }
+}
+
+pub type SystemExecFn<Output> =
+    dyn FnMut(&mut World, SystemContext) -> Output + Send + Sync + 'static;
 pub struct SystemExec<Output = ()> {
     /// Function's parameters info
     pub params_info: Vec<ParamInfo>,
@@ -101,14 +121,16 @@ impl<Output> SystemExec<Output> {
 
     /// Execute the system function
     #[inline]
-    pub fn run(&mut self, world: &mut World) -> Output {
-        (self.exec)(world)
+    pub fn run(&mut self, world: &mut World, last_run: &Tick) -> Output {
+        let context = SystemContext::new(last_run, &self.params_info, &self.exec_info);
+        (self.exec)(world, context)
     }
 
     /// Execute the system's apply function
     #[inline]
-    pub fn apply(&mut self, world: &mut World) {
-        (self.apply)(world);
+    pub fn apply(&mut self, world: &mut World, last_run: &Tick) {
+        let context = SystemContext::new(last_run, &self.params_info, &self.exec_info);
+        (self.apply)(world, context);
     }
 }
 
@@ -135,7 +157,7 @@ impl System {
         if self.satisfies_conditions(world) {
             // Increment must come first to ensure `system.last_run < world.tick`
             world.tick.increment();
-            self.exec.run(world);
+            self.exec.run(world, &self.last_run);
             self.last_run = *world.tick;
         }
     }
@@ -144,8 +166,8 @@ impl System {
     /// This is run on the main thread after all parallel systems have finished executing.
     #[inline]
     pub fn apply(&mut self, world: &mut World) {
-        self.conditions.iter_mut().for_each(|c| c.exec.apply(world));
-        self.exec.apply(world);
+        self.conditions.iter_mut().for_each(|c| c.apply(world));
+        self.exec.apply(world, &self.last_run);
     }
 
     /// Check if all run conditions are satisfied
@@ -197,9 +219,15 @@ impl SystemCondition {
     #[inline]
     pub fn run(&mut self, world: &mut World) -> bool {
         world.tick.increment();
-        let result = self.exec.run(world);
+        let result = self.exec.run(world, &self.last_run);
         self.last_run = *world.tick;
         result
+    }
+
+    /// Applies any changes to the world needed after condition execution by system parameters.
+    #[inline]
+    pub fn apply(&mut self, world: &mut World) {
+        self.exec.apply(world, &self.last_run);
     }
 }
 
@@ -231,11 +259,11 @@ pub trait SystemParam: IntoParamInfo {
     type State: Send + Sync + 'static;
 
     /// Extract the parameter from the world.
-    fn extract(world: &mut World, state: &mut Self::State) -> Self;
+    fn extract(world: &mut World, state: &mut Self::State, context: &SystemContext) -> Self;
 
     /// Apply any changes to the world after system execution on the main thread.
     #[inline]
-    fn apply(_world: &mut World, _state: &mut Self::State) {}
+    fn apply(_world: &mut World, _state: &mut Self::State, _context: &SystemContext) {}
 
     /// Initialize the parameter state.
     fn init_state() -> Self::State;
@@ -250,7 +278,7 @@ pub trait SystemParam: IntoParamInfo {
 impl SystemParam for &mut World {
     type State = ();
     #[inline]
-    fn extract(world: &mut World, _state: &mut Self::State) -> Self {
+    fn extract(world: &mut World, _state: &mut Self::State, _context: &SystemContext) -> Self {
         unsafe { world.reborrow() }
     }
     #[inline]
@@ -264,7 +292,7 @@ impl IntoParamInfo for &mut World {
 impl SystemParam for &mut App {
     type State = ();
     #[inline]
-    fn extract(world: &mut World, _state: &mut Self::State) -> Self {
+    fn extract(world: &mut World, _state: &mut Self::State, _context: &SystemContext) -> Self {
         unsafe { world.reborrow().parent_app() }
     }
     #[inline]
@@ -278,7 +306,7 @@ impl IntoParamInfo for &mut App {
 impl SystemParam for &mut RenderGraph {
     type State = ();
     #[inline]
-    fn extract(world: &mut World, _state: &mut Self::State) -> Self {
+    fn extract(world: &mut World, _state: &mut Self::State, _context: &SystemContext) -> Self {
         unsafe { world.reborrow().parent_app().render_graph() }
     }
     #[inline]
@@ -292,7 +320,7 @@ impl IntoParamInfo for &mut RenderGraph {
 impl SystemParam for &mut RenderCommandEncoder {
     type State = Option<RenderCommandEncoder>;
     #[inline]
-    fn extract(world: &mut World, state: &mut Self::State) -> Self {
+    fn extract(world: &mut World, state: &mut Self::State, _context: &SystemContext) -> Self {
         debug_assert!(
             state.is_none(),
             "RenderCommandEncoder parameter state should be None on extract"
@@ -310,7 +338,7 @@ impl SystemParam for &mut RenderCommandEncoder {
     }
 
     #[inline]
-    fn apply(world: &mut World, state: &mut Self::State) {
+    fn apply(world: &mut World, state: &mut Self::State, _context: &SystemContext) {
         if let Some(encoder) = state.take() {
             world.render_command_queue.push(encoder);
         }
@@ -336,7 +364,7 @@ unsafe impl Sync for CommandsState {}
 impl SystemParam for Commands<'_, '_> {
     type State = CommandsState;
     #[inline]
-    fn extract(world: &mut World, state: &mut Self::State) -> Self {
+    fn extract(world: &mut World, state: &mut Self::State, _context: &SystemContext) -> Self {
         // Reborrow to satisfy lifetime requirements
         let world = unsafe { world.reborrow() };
         let state = unsafe { &mut *(state as *mut Self::State) };
@@ -345,7 +373,7 @@ impl SystemParam for Commands<'_, '_> {
     }
 
     #[inline]
-    fn apply(world: &mut World, state: &mut Self::State) {
+    fn apply(world: &mut World, state: &mut Self::State, _context: &SystemContext) {
         world.command_queue.extend(&mut state.0);
     }
 
@@ -362,7 +390,7 @@ impl IntoParamInfo for Commands<'_, '_> {
 impl SystemParam for EventWriter<'_> {
     type State = ();
     #[inline]
-    fn extract(world: &mut World, _state: &mut Self::State) -> Self {
+    fn extract(world: &mut World, _state: &mut Self::State, _context: &SystemContext) -> Self {
         unsafe { world.reborrow().parent_app().events.handlers().1 }
     }
     #[inline]
@@ -376,7 +404,7 @@ impl IntoParamInfo for EventWriter<'_> {
 impl SystemParam for EventReader<'_> {
     type State = ();
     #[inline]
-    fn extract(world: &mut World, _state: &mut Self::State) -> Self {
+    fn extract(world: &mut World, _state: &mut Self::State, _context: &SystemContext) -> Self {
         unsafe { world.reborrow().parent_app().events.handlers().0 }
     }
     #[inline]
@@ -391,8 +419,10 @@ impl IntoParamInfo for EventReader<'_> {
 impl<R: Resource> SystemParam for Res<R> {
     type State = ();
     #[inline]
-    fn extract(world: &mut World, _state: &mut Self::State) -> Self {
-        world.resources.get()
+    fn extract(world: &mut World, _state: &mut Self::State, context: &SystemContext) -> Self {
+        let mut res = world.resources.get::<R>();
+        res.0.set_last_run(*context.last_run);
+        res
     }
     #[inline]
     fn init_state() -> Self::State {}
@@ -406,8 +436,10 @@ impl<R: Resource> IntoParamInfo for Res<R> {
 impl<R: Resource> SystemParam for ResMut<R> {
     type State = ();
     #[inline]
-    fn extract(world: &mut World, _state: &mut Self::State) -> Self {
-        world.resources.get_mut()
+    fn extract(world: &mut World, _state: &mut Self::State, context: &SystemContext) -> Self {
+        let mut res_mut = world.resources.get_mut::<R>();
+        res_mut.0.set_last_run(*context.last_run);
+        res_mut
     }
     #[inline]
     fn init_state() -> Self::State {}
@@ -420,8 +452,12 @@ impl<R: Resource> IntoParamInfo for ResMut<R> {
 impl<R: Resource> SystemParam for Option<Res<R>> {
     type State = ();
     #[inline]
-    fn extract(world: &mut World, _state: &mut Self::State) -> Self {
-        world.resources.try_get()
+    fn extract(world: &mut World, _state: &mut Self::State, context: &SystemContext) -> Self {
+        let mut option_res = world.resources.try_get::<R>();
+        if let Some(res) = option_res.as_mut() {
+            res.0.set_last_run(*context.last_run);
+        }
+        option_res
     }
     #[inline]
     fn init_state() -> Self::State {}
@@ -435,8 +471,12 @@ impl<R: Resource> IntoParamInfo for Option<Res<R>> {
 impl<R: Resource> SystemParam for Option<ResMut<R>> {
     type State = ();
     #[inline]
-    fn extract(world: &mut World, _state: &mut Self::State) -> Self {
-        world.resources.try_get_mut()
+    fn extract(world: &mut World, _state: &mut Self::State, context: &SystemContext) -> Self {
+        let mut option_res_mut = world.resources.try_get_mut::<R>();
+        if let Some(res_mut) = option_res_mut.as_mut() {
+            res_mut.0.set_last_run(*context.last_run);
+        }
+        option_res_mut
     }
     #[inline]
     fn init_state() -> Self::State {}
@@ -456,8 +496,8 @@ where
     type State = QueryCache; // Placeholder for query state
 
     #[inline]
-    fn extract(world: &mut World, _state: &mut Self::State) -> Self {
-        world.query_filtered::<T, F>()
+    fn extract(world: &mut World, _state: &mut Self::State, context: &SystemContext) -> Self {
+        Query::new(&mut world.entities, *context.last_run)
     }
 
     #[inline]
@@ -535,14 +575,14 @@ macro_rules! impl_system_param_tuple {
 
                 #[allow(unused_variables)]
                 #[inline]
-                fn extract(world: &mut World, state: &mut Self::State) -> Self {
+                fn extract(world: &mut World, state: &mut Self::State, context: &SystemContext) -> Self {
                     #[allow(non_snake_case)]
                     let ($($param,)*) = state;
 
                     #[allow(clippy::unused_unit)]
                     (
                         $(
-                            $param::extract(unsafe { world.reborrow() }, $param ),
+                            $param::extract(unsafe { world.reborrow() }, $param, context ),
                         )*
                     )
                 }
@@ -681,19 +721,19 @@ macro_rules! into_systems_impl_body {
         let mut unsafe_states_copy = unsafe { ( $(&mut *(&mut *$param as *mut _),)* ) };
 
         #[allow(unused_variables)]
-        let exec_fn = Box::new(move |world: &mut World| {
+        let exec_fn = Box::new(move |world: &mut World, context: SystemContext| {
             $(
-                let $param = $param::extract(unsafe { world.reborrow() }, &mut $param);
+                let $param = $param::extract(unsafe { world.reborrow() }, &mut $param, &context);
             )*
             $self($($param),*)
         });
 
         #[allow(unused_variables)]
-        let apply_fn = Box::new(move |world: &mut World| {
+        let apply_fn = Box::new(move |world: &mut World, context: SystemContext| {
             let ( $(ref mut $param,)* ) = unsafe_states_copy;
 
             $(
-                $param::apply(unsafe { world.reborrow() }, $param);
+                $param::apply(unsafe { world.reborrow() }, $param, &context);
             )*
         });
 

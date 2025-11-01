@@ -116,7 +116,6 @@ impl<R: Resource> DerefMut for ResMut<R> {
 pub struct Resources {
     resources: HashMap<TypeId, ResourceData>,
     current_tick: *const Tick,
-    system_last_run: Tick,
 }
 
 impl Resources {
@@ -140,18 +139,12 @@ impl Resources {
         unsafe { *self.current_tick }
     }
 
-    /// Sets the `last_run` tick
-    #[inline]
-    pub(crate) fn set_system_last_run(&mut self, last_run: Tick) {
-        self.system_last_run = last_run;
-    }
-
     /// Check if a resource of type R exists in the world.
     #[inline]
     pub fn contains<R: Resource>(&self) -> bool {
         self.resources
             .get(&TypeId::of::<R>())
-            .map_or(false, |entry| !entry.data.is_empty())
+            .is_some_and(|entry| !entry.data.is_empty())
     }
 
     /// Insert new resource into the world.
@@ -179,10 +172,10 @@ impl Resources {
 
     /// Remove a resource from the world.
     pub fn remove_by_type(&mut self, type_id: TypeId) {
-        self.resources.get_mut(&type_id).map(|r| {
+        if let Some(r) = self.resources.get_mut(&type_id) {
             // Drop the resource
             r.data.clear();
-        });
+        };
     }
 
     /// Remove a resource from the world.
@@ -212,10 +205,11 @@ impl Resources {
                 return None;
             }
 
+            let current_tick = self.tick();
             let data = DataPtr::new(
                 // Safety: type is correct and index is valid
                 unsafe { r.data.get(0) },
-                r.get_ticks(self.tick(), self.system_last_run),
+                r.get_ticks(current_tick, current_tick),
             );
             Some(Res(data, PhantomData))
         })
@@ -232,7 +226,7 @@ impl Resources {
             let data = DataPtrMut::new(
                 // Safety: type is correct and index is valid
                 unsafe { r.data.get(0) },
-                r.get_ticks_mut(current_tick, self.system_last_run),
+                r.get_ticks_mut(current_tick, current_tick),
             );
             Some(ResMut(data, PhantomData))
         })
