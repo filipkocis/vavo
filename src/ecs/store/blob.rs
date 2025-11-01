@@ -2,7 +2,7 @@ use std::{
     alloc::{self, Layout},
     mem::needs_drop,
     num::NonZero,
-    ptr::{drop_in_place, NonNull},
+    ptr::{NonNull, drop_in_place},
 };
 
 use crate::ecs::ptr::{OwnedPtr, UntypedPtr};
@@ -199,7 +199,7 @@ impl BlobVec {
 
     #[inline]
     /// Push a new element to the blob.
-    /// New capacity can be greater than `isize::MAX`
+    /// New capacity can't be greater than `isize::MAX`
     /// Value must be valid and can't be pointing to the blob
     unsafe fn push_raw(&mut self, value: NonNull<u8>) {
         self.reserve(1);
@@ -212,7 +212,6 @@ impl BlobVec {
 
     #[inline]
     /// Set a element at index `i` to the given `value`. Index must be valid.
-    /// New capacity can be greater than `isize::MAX`
     /// Value must be valid and can't be pointing to the blob
     unsafe fn set_raw(&mut self, value: NonNull<u8>, i: usize) {
         let dst = unsafe { self.get_raw(i) };
@@ -267,7 +266,7 @@ impl BlobVec {
     /// Validate a slice range
     #[inline]
     fn validate_slice_range(&self, start: usize, end: usize) {
-        debug_assert!(start < end, "Start index must be less than end index");
+        debug_assert!(start <= end, "Start index must be <= to end index");
         debug_assert!(start <= self.len, "Start index out of bounds");
         debug_assert!(end <= self.len, "End index out of bounds");
     }
@@ -396,6 +395,11 @@ impl BlobVec {
     /// Caller must ensure the range is valid and within bounds.
     unsafe fn clear_range(&mut self, start: usize, end: usize) {
         debug_assert!(start < end, "Start index must be less than end index");
+        debug_assert!(start <= self.len, "Start index out of bounds");
+        debug_assert!(end <= self.len, "End index out of bounds");
+
+        // TODO: if end is not self.len, we should shift elements down
+        debug_assert!(end == self.len, "Only clearing to the end is supported");
 
         if let Some(drop_fn) = self.drop {
             for i in start..end {
@@ -405,6 +409,7 @@ impl BlobVec {
             }
         }
 
+        // self.len -= end - start;
         self.len = start;
     }
 
