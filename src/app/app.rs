@@ -7,9 +7,11 @@ use winit::keyboard::PhysicalKey;
 use crate::core::graph::RenderGraph;
 use crate::prelude::{FixedTime, Resource};
 use crate::reflect::{Reflect, registry::ReflectTypeRegistry};
-use crate::system::commands::CommandQueue;
-use crate::system::{Commands, IntoSystem, SystemHandler, SystemStage, SystemsContext};
-use crate::window::{AppHandler, AppState, RenderContext, Renderer};
+use crate::renderer::newtype::{
+    RenderSurface, RenderSurfaceConfiguration, RenderSurfaceTexture, RenderSurfaceTextureView,
+};
+use crate::system::{IntoSystem, SystemHandler, SystemParam, SystemStage};
+use crate::window::AppHandler;
 
 use crate::ecs::state::{NextState, State, States, systems::apply_state_transition};
 use crate::ecs::world::World;
@@ -278,11 +280,14 @@ impl App {
         let surface = self.world.resources.get::<RenderSurface>();
 
         let surface_texture = surface.get_current_texture()?;
-        let surface_texture_view = surface_texture.texture.create_view(&TextureViewDescriptor {
-            label: Some("Surface Texture View"),
-            format: Some(surface_config.format),
-            ..Default::default()
-        });
+        let surface_texture_view =
+            surface_texture
+                .texture
+                .create_view(&wgpu::TextureViewDescriptor {
+                    label: Some("Surface Texture View"),
+                    format: Some(surface_config.format),
+                    ..Default::default()
+                });
 
         let surface_texture = RenderSurfaceTexture::new(surface_texture);
         let surface_texture_view = RenderSurfaceTextureView::new(surface_texture_view);

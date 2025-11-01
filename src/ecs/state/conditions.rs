@@ -3,7 +3,7 @@ use std::time::Duration;
 use crate::{
     event::event_handler::EventReader,
     prelude::*,
-    system::system_new::{IntoSystemCondition, SystemParam},
+    system::{IntoSystemCondition, SystemParam},
 };
 
 /// Creates a [Condition](IntoSystemCondition) which evaluates to true if the current state is

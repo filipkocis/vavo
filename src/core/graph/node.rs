@@ -6,7 +6,7 @@ use crate::{
     prelude::{IntoSystem, World},
     render_assets::pipeline::PipelineBuilder,
     renderer::newtype::RenderDevice,
-    system::system_new::{System, SystemParam},
+    system::{System, SystemParam},
 };
 
 use super::{NodeColorTarget, NodeData, NodeDepthTarget};
