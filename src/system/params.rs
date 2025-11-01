@@ -137,35 +137,85 @@ pub trait SystemParam: IntoParamInfo {
     }
 }
 
-impl SystemParam for &mut World {
-    type State = ();
-    #[inline]
-    fn extract(world: &mut World, _state: &mut Self::State, _context: &SystemContext) -> Self {
-        unsafe { world.reborrow() }
-    }
-    #[inline]
-    fn init_state() -> Self::State {}
+/// Macro to implement [`SystemParam`] for stateless system parameters with only extract logic
+macro_rules! impl_stateless_system_param {
+    ($for:ty, $world:ident, $extract:expr) => {
+        impl SystemParam for $for {
+            type State = ();
+
+            #[inline]
+            fn extract(
+                $world: &mut World,
+                _state: &mut Self::State,
+                _context: &SystemContext,
+            ) -> Self {
+                $extract
+            }
+
+            #[inline]
+            fn init_state() -> Self::State {}
+        }
+    };
+
+    ($type:ident: $trait:ident, $for:ty, $world:ident, $context:ident, $extract:expr) => {
+        impl<$type: $trait> SystemParam for $for {
+            type State = ();
+
+            #[inline]
+            fn extract(
+                $world: &mut World,
+                _state: &mut Self::State,
+                $context: &SystemContext,
+            ) -> Self {
+                $extract
+            }
+
+            #[inline]
+            fn init_state() -> Self::State {}
+        }
+    };
 }
 
-impl SystemParam for &mut App {
-    type State = ();
-    #[inline]
-    fn extract(world: &mut World, _state: &mut Self::State, _context: &SystemContext) -> Self {
-        unsafe { world.reborrow().parent_app() }
-    }
-    #[inline]
-    fn init_state() -> Self::State {}
-}
+// Special app params
+impl_stateless_system_param!(&mut App, world, unsafe { world.reborrow().parent_app() });
+impl_stateless_system_param!(&mut World, world, unsafe { world.reborrow() });
+impl_stateless_system_param!(&mut RenderGraph, world, unsafe {
+    world.reborrow().parent_app().render_graph()
+});
 
-impl SystemParam for &mut RenderGraph {
-    type State = ();
-    #[inline]
-    fn extract(world: &mut World, _state: &mut Self::State, _context: &SystemContext) -> Self {
-        unsafe { world.reborrow().parent_app().render_graph() }
+// Special params
+impl_stateless_system_param!(EventReader<'_>, world, unsafe {
+    world.reborrow().parent_app().events.handlers().0
+});
+impl_stateless_system_param!(EventWriter<'_>, world, unsafe {
+    world.reborrow().parent_app().events.handlers().1
+});
+
+// Resources
+impl_stateless_system_param!(R: Resource, Res<R>, world, context, {
+    let mut res = world.resources.get::<R>();
+    res.0.set_last_run(*context.last_run);
+    res
+});
+impl_stateless_system_param!(R: Resource, ResMut<R>, world, context, {
+    let mut res_mut = world.resources.get_mut::<R>();
+    res_mut.0.set_last_run(*context.last_run);
+    res_mut
+});
+impl_stateless_system_param!(R: Resource, Option<Res<R>>, world, context, {
+    let mut option_res = world.resources.try_get::<R>();
+    if let Some(res) = option_res.as_mut() {
+        res.0.set_last_run(*context.last_run);
     }
-    #[inline]
-    fn init_state() -> Self::State {}
-}
+    option_res
+});
+impl_stateless_system_param!(R: Resource, Option<ResMut<R>>, world, context, {
+    let mut option_res_mut = world.resources.try_get_mut::<R>();
+    if let Some(res_mut) = option_res_mut.as_mut() {
+        res_mut.0.set_last_run(*context.last_run);
+    }
+    option_res_mut
+});
 
 impl SystemParam for &mut RenderCommandEncoder {
     type State = Option<RenderCommandEncoder>;
@@ -228,79 +278,8 @@ impl SystemParam for Commands<'_, '_> {
     }
 }
 
-impl SystemParam for EventWriter<'_> {
-    type State = ();
-    #[inline]
-    fn extract(world: &mut World, _state: &mut Self::State, _context: &SystemContext) -> Self {
-        unsafe { world.reborrow().parent_app().events.handlers().1 }
-    }
-    #[inline]
-    fn init_state() -> Self::State {}
-}
-
-impl SystemParam for EventReader<'_> {
-    type State = ();
-    #[inline]
-    fn extract(world: &mut World, _state: &mut Self::State, _context: &SystemContext) -> Self {
-        unsafe { world.reborrow().parent_app().events.handlers().0 }
-    }
-    #[inline]
-    fn init_state() -> Self::State {}
-}
-
-impl<R: Resource> SystemParam for Res<R> {
-    type State = ();
-    #[inline]
-    fn extract(world: &mut World, _state: &mut Self::State, context: &SystemContext) -> Self {
-        let mut res = world.resources.get::<R>();
-        res.0.set_last_run(*context.last_run);
-        res
-    }
-    #[inline]
-    fn init_state() -> Self::State {}
-}
-
-impl<R: Resource> SystemParam for ResMut<R> {
-    type State = ();
-    #[inline]
-    fn extract(world: &mut World, _state: &mut Self::State, context: &SystemContext) -> Self {
-        let mut res_mut = world.resources.get_mut::<R>();
-        res_mut.0.set_last_run(*context.last_run);
-        res_mut
-    }
-    #[inline]
-    fn init_state() -> Self::State {}
-}
-
-impl<R: Resource> SystemParam for Option<Res<R>> {
-    type State = ();
-    #[inline]
-    fn extract(world: &mut World, _state: &mut Self::State, context: &SystemContext) -> Self {
-        let mut option_res = world.resources.try_get::<R>();
-        if let Some(res) = option_res.as_mut() {
-            res.0.set_last_run(*context.last_run);
-        }
-        option_res
-    }
-    #[inline]
-    fn init_state() -> Self::State {}
-}
-
-impl<R: Resource> SystemParam for Option<ResMut<R>> {
-    type State = ();
-    #[inline]
-    fn extract(world: &mut World, _state: &mut Self::State, context: &SystemContext) -> Self {
-        let mut option_res_mut = world.resources.try_get_mut::<R>();
-        if let Some(res_mut) = option_res_mut.as_mut() {
-            res_mut.0.set_last_run(*context.last_run);
-        }
-        option_res_mut
-    }
-    #[inline]
-    fn init_state() -> Self::State {}
-}
-
 pub struct QueryCache; // Placeholder for query state
+
 impl<T, F> SystemParam for Query<T, F>
 where
     F: QueryFilter,
@@ -323,6 +302,7 @@ where
         QueryCache
     }
 }
+
 impl<T, F> IntoParamInfo for Query<T, F>
 where
     T: IntoParamInfo,
