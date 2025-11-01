@@ -1,16 +1,14 @@
 use glam::{EulerRot, Quat, Vec3};
 use winit::keyboard::KeyCode;
 
-use crate::{event::event_handler::EventReader, prelude::*};
+use crate::{event::EventReader, prelude::*};
 
 pub fn movement_system(
     time: Res<Time>,
     key_input: Res<Input<KeyCode>>,
-    event_reader: EventReader,
+    mouse_motion: EventReader<MouseMotion>,
     mut query: Query<(&mut Transform, &mut Projection, &Camera), With<Camera3D>>,
 ) {
-    let mouse_motion = event_reader.read::<MouseMotion>();
-
     // Camera translation
     let mut pos_dx = 0.0;
     let mut pos_dy = 0.0;
@@ -38,7 +36,7 @@ pub fn movement_system(
     let mut rot_dy = 0.0;
     let mut rot_dx = 0.0;
 
-    for motion in mouse_motion {
+    for motion in mouse_motion.read() {
         rot_dx -= motion.delta.x;
         rot_dy -= motion.delta.y;
     }

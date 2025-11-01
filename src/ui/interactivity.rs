@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use winit::event::MouseButton;
 
-use crate::{event::event_handler::EventReader, prelude::*, ui::prelude::*};
+use crate::{event::EventReader, prelude::*, ui::prelude::*};
 
 /// Marks an UI entity as interactive, enabling mouse events via `Interaction`
 #[derive(Component, Debug, Clone, Copy)]
@@ -22,7 +22,8 @@ pub enum Interaction {
 /// System to update UI interactions, runs in the First stage. So old computed values are used
 pub fn ui_interaction_update(
     mouse_inputs: Res<Input<MouseButton>>,
-    event_reader: EventReader,
+    input_events: EventReader<MouseInput>,
+    move_events: EventReader<CursorMoved>,
     window: Res<Window>,
     mut query: Query<(
         EntityId,
@@ -53,7 +54,7 @@ pub fn ui_interaction_update(
 
     // new interactions
     let (new_interactions, keep) =
-        match get_interactions(mouse_inputs, event_reader, window, &nodes) {
+        match get_interactions(mouse_inputs, input_events, move_events, window, &nodes) {
             Some(interactions) => interactions,
             None => return,
         };
@@ -74,7 +75,8 @@ pub fn ui_interaction_update(
 /// Get nodes with new interactions
 fn get_interactions(
     mouse_inputs: Res<Input<MouseButton>>,
-    event_reader: EventReader,
+    input_events: EventReader<MouseInput>,
+    move_events: EventReader<CursorMoved>,
     window: Res<Window>,
     nodes: &[(
         EntityId,
@@ -87,9 +89,6 @@ fn get_interactions(
     Vec<(EntityId, Interaction)>, // new
     Vec<EntityId>,                // keep
 )> {
-    let input_events = event_reader.read::<MouseInput>();
-    let move_events = event_reader.read::<CursorMoved>();
-
     if input_events.is_empty() && move_events.is_empty() {
         // no events to process
         return None;

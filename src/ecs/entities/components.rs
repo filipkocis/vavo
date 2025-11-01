@@ -9,7 +9,7 @@ use std::{
 use crate::{
     ecs::{
         ptr::{DataPtr, DataPtrMut, OwnedPtr, UntypedPtrLt},
-        store::blob::{new_option_drop_fn, BlobVec, DropFn},
+        store::blob::{BlobVec, DropFn, new_option_drop_fn},
         tick::{TickStamp, TickStampMut},
     },
     prelude::Tick,

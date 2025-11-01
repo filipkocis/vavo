@@ -1,7 +1,7 @@
 use crate::{
     app::App,
     core::graph::RenderGraph,
-    event::event_handler::{EventReader, EventWriter},
+    event::{Event, EventReader, EventWriter, Events},
     prelude::{Component, EntityId, Mut, Ref, Res, ResMut, Resource, World},
     query::{Query, filter::QueryFilter},
     renderer::newtype::{RenderCommandEncoder, RenderDevice},
@@ -75,11 +75,15 @@ pub trait IntoParamInfo {
 /// Macro to implement [`IntoParamInfo`] for single types
 macro_rules! impl_into_param_info {
     ($type:ident $(: $trait:ident)?, $for:ty, $is_mutable:expr) => {
+        impl_into_param_info!($type $(: $trait)?, $for, $is_mutable, $type);
+    };
+
+    ($type:ident $(: $trait:ident)?, $for:ty, $is_mutable:expr, $paramtype:ty) => {
         impl$(<$type : $trait>)? IntoParamInfo for $for {
             fn params_info() -> Vec<ParamInfo> {
                 vec![ParamInfo::new(
                     $is_mutable,
-                    TypeInfo::new(type_name::<$type>(), TypeId::of::<$type>()),
+                    TypeInfo::new(type_name::<$paramtype>(), TypeId::of::<$paramtype>()),
                 )]
             }
         }
@@ -94,8 +98,8 @@ impl_into_param_info!(RenderGraph, &mut RenderGraph, true);
 // Special params
 impl_into_param_info!(RenderCommandEncoder, &mut RenderCommandEncoder, false);
 impl_into_param_info!(Commands, Commands<'_, '_>, true);
-impl_into_param_info!(EventReader, EventReader<'_>, false);
-impl_into_param_info!(EventWriter, EventWriter<'_>, true);
+impl_into_param_info!(E: Event, EventReader<E>, false, Events<E>);
+impl_into_param_info!(E: Event, EventWriter<E>, true, Events<E>);
 
 // Resources
 impl_into_param_info!(R: Resource, Res<R>, false);
@@ -184,11 +188,13 @@ impl_stateless_system_param!(&mut RenderGraph, world, unsafe {
 });
 
 // Special params
-impl_stateless_system_param!(EventReader<'_>, world, unsafe {
-    world.reborrow().parent_app().events.handlers().0
+impl_stateless_system_param!(E: Event, EventReader<E>, world, _c, {
+    let events = world.resources.get::<Events<E>>();
+    EventReader::new(events)
 });
-impl_stateless_system_param!(EventWriter<'_>, world, unsafe {
-    world.reborrow().parent_app().events.handlers().1
+impl_stateless_system_param!(E: Event, EventWriter<E>, world, _c, {
+    let events = world.resources.get_mut::<Events<E>>();
+    EventWriter::new(events)
 });
 
 // Resources

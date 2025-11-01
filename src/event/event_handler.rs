@@ -1,56 +1,56 @@
-use std::marker::PhantomData;
+use crate::{
+    event::Event,
+    prelude::{Res, ResMut},
+};
 
 use super::Events;
 
-/// Event handler for sending new events
-pub struct EventWriter<'a> {
-    events: *mut Events,
-    _marker: PhantomData<&'a ()>,
+/// Event handler for writing new events
+pub struct EventWriter<E: Event> {
+    events: ResMut<Events<E>>,
 }
 
 /// Event handler for reading events
-pub struct EventReader<'a> {
-    events: *const Events,
-    _marker: PhantomData<&'a ()>,
+pub struct EventReader<E: Event> {
+    events: Res<Events<E>>,
 }
 
-impl<'a> EventWriter<'a> {
-    /// Send a new event
+impl<E: Event> EventWriter<E> {
+    /// Get a reader for reading events
     #[inline]
-    pub fn send<T: 'static>(&mut self, event: T) {
-        unsafe {
-            (*self.events).write(event);
-        }
+    pub(crate) fn new(events: ResMut<Events<E>>) -> EventWriter<E> {
+        EventWriter { events }
+    }
+
+    /// Write a new event
+    #[inline]
+    pub fn write(&mut self, event: E) {
+        self.events.write(event);
     }
 }
 
-impl<'a> EventReader<'a> {
-    /// Read all events of type T
+impl<E: Event> EventReader<E> {
+    /// Get a reader for reading events
     #[inline]
-    pub fn read<T: 'static>(&self) -> Vec<&T> {
-        unsafe { (*self.events).read() }
+    pub(crate) fn new(events: Res<Events<E>>) -> EventReader<E> {
+        EventReader { events }
     }
 
-    /// Check if any events of type T exist
+    /// Read all events of type E
     #[inline]
-    pub fn has_any<T: 'static>(&self) -> bool {
-        unsafe { (*self.events).has_any::<T>() }
+    pub fn read(&self) -> &[E] {
+        self.events.read()
     }
-}
 
-impl Events {
-    /// Wrap Events in read and write handlers
+    /// Check if any events of type E exist
     #[inline]
-    pub(crate) fn handlers<'a>(&'a mut self) -> (EventReader<'a>, EventWriter<'a>) {
-        let reader = EventReader {
-            events: self,
-            _marker: PhantomData,
-        };
-        let writer = EventWriter {
-            events: self,
-            _marker: PhantomData,
-        };
+    pub fn has_any(&self) -> bool {
+        !self.events.is_empty()
+    }
 
-        (reader, writer)
+    /// Check if no events of type E exist
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.events.is_empty()
     }
 }

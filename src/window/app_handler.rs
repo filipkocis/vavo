@@ -10,7 +10,7 @@ use winit::{
 
 use crate::{
     app::App,
-    event::events::{CursorMoved, MouseMotion, MouseWheel},
+    event::{CursorMoved, MouseMotion, MouseWheel},
 };
 
 use super::{AppState, config::WindowConfig};

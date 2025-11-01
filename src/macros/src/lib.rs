@@ -1,8 +1,8 @@
+use proc_macro::TokenStream;
+use proc_macro2::Span;
+use proc_macro_crate::{crate_name, FoundCrate};
 use quote::quote;
 use syn::{parse_macro_input, DeriveInput, Ident};
-use proc_macro::{TokenStream};
-use proc_macro2::{Span};
-use proc_macro_crate::{crate_name, FoundCrate};
 
 mod reflect;
 
@@ -31,7 +31,7 @@ pub fn derive_resource(item: proc_macro::TokenStream) -> TokenStream {
     let name = &input.ident;
     let generics = &input.generics;
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
-    
+
     let expanded = quote! {
         impl #impl_generics #path::ecs::resources::Resource for #name #ty_generics #where_clause {}
     };
@@ -46,7 +46,7 @@ pub fn derive_asset(item: proc_macro::TokenStream) -> TokenStream {
     let name = &input.ident;
     let generics = &input.generics;
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
-    
+
     let expanded = quote! {
         impl #impl_generics #path::assets::Asset for #name #ty_generics #where_clause {}
     };
@@ -61,7 +61,7 @@ pub fn derive_render_asset(item: proc_macro::TokenStream) -> TokenStream {
     let name = &input.ident;
     let generics = &input.generics;
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
-    
+
     let expanded = quote! {
         impl #impl_generics #path::render_assets::RenderAsset for #name #ty_generics #where_clause {}
     };
@@ -76,7 +76,7 @@ pub fn derive_states(item: proc_macro::TokenStream) -> TokenStream {
     let name = &input.ident;
     let generics = &input.generics;
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
-    
+
     let expanded = quote! {
         impl #impl_generics #path::ecs::state::States for #name #ty_generics #where_clause {}
     };
@@ -91,7 +91,7 @@ pub fn derive_component(item: proc_macro::TokenStream) -> TokenStream {
     let name = &input.ident;
     let generics = &input.generics;
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
-    
+
     let expanded = quote! {
         impl #impl_generics #path::ecs::entities::components::Component for #name #ty_generics #where_clause {}
     };
@@ -102,4 +102,19 @@ pub fn derive_component(item: proc_macro::TokenStream) -> TokenStream {
 #[proc_macro_derive(Reflect)]
 pub fn derive_reflect(item: proc_macro::TokenStream) -> TokenStream {
     reflect::derive_reflect_implementation(item)
+}
+
+#[proc_macro_derive(Event)]
+pub fn derive_event(item: proc_macro::TokenStream) -> TokenStream {
+    let path = resolve_path_name();
+    let input = parse_macro_input!(item as DeriveInput);
+    let name = &input.ident;
+    let generics = &input.generics;
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+
+    let expanded = quote! {
+        impl #impl_generics #path::event::Event for #name #ty_generics #where_clause {}
+    };
+
+    TokenStream::from(expanded)
 }

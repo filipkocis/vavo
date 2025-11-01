@@ -1,38 +1,38 @@
 use std::time::Duration;
 
 use crate::{
-    event::event_handler::EventReader,
+    event::EventReader,
     prelude::*,
     system::{IntoSystemCondition, SystemParam},
 };
 
 /// Creates a [Condition](IntoSystemCondition) which evaluates to true if the current state is
 /// exiting the provided `state`
-pub fn on_exit<S: States + 'static>(state: S) -> impl IntoSystemCondition<EventReader<'static>> {
-    let closure = move |event_reader: EventReader| {
-        event_reader
-            .read::<StateTransitionEvent<S>>()
-            .iter()
-            .any(|e| e.exiting(state))
+pub fn on_exit<S: States + 'static>(
+    state: S,
+) -> impl IntoSystemCondition<EventReader<StateTransitionEvent<S>>> {
+    let closure = move |transition_events: EventReader<StateTransitionEvent<S>>| {
+        transition_events.read().iter().any(|e| e.exiting(state))
     };
     closure.build()
 }
 
 /// Creates a  [Condition](IntoSystemCondition) which evaluates to true if the current state is
 /// entering the provided `state`
-pub fn on_enter<S: States + 'static>(state: S) -> impl IntoSystemCondition<EventReader<'static>> {
-    let closure = move |event_reader: EventReader| {
-        event_reader
-            .read::<StateTransitionEvent<S>>()
-            .iter()
-            .any(|e| e.entering(state))
+pub fn on_enter<S: States + 'static>(
+    state: S,
+) -> impl IntoSystemCondition<EventReader<StateTransitionEvent<S>>> {
+    let closure = move |trasition_events: EventReader<StateTransitionEvent<S>>| {
+        trasition_events.read().iter().any(|e| e.entering(state))
     };
     closure.build()
 }
 
 /// [Condition](IntoSystemCondition) which evaluates to true if any state transition event has occured
-pub fn on_transition<S: States + 'static>(event_reader: EventReader) -> bool {
-    event_reader.has_any::<StateTransitionEvent<S>>()
+pub fn on_transition<S: States + 'static>(
+    event_reader: EventReader<StateTransitionEvent<S>>,
+) -> bool {
+    event_reader.has_any()
 }
 
 /// Creates a [Condition](IntoSystemCondition) which evaluates to true if the current state is `state`
@@ -49,11 +49,6 @@ pub fn not_in_state<S: States + 'static>(
     closure.build()
 }
 
-#[derive(Debug, States, PartialEq, PartialOrd, Eq, Copy, Clone)]
-enum Statess {
-    Playing,
-}
-
 /// Creates a [Condition](IntoSystemCondition) which negates the result of the provided condition
 /// TODO: Because of the current implementation, it requires 'world' param, thus making the system
 /// where this is used not parallel. This should be changed in the future.
@@ -66,8 +61,8 @@ pub fn not<Params: SystemParam>(
 }
 
 /// [Condition](IntoSystemCondition) which evaluates to true if any events of type `E` have been sent
-pub fn on_event<E: 'static>(event_reader: EventReader) -> bool {
-    event_reader.has_any::<E>()
+pub fn on_event<E: Event>(event_reader: EventReader<E>) -> bool {
+    event_reader.has_any()
 }
 
 /// [Condition](IntoSystemCondition) which evaluates to true if resource `R` has changed, or false

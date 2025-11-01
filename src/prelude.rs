@@ -3,7 +3,7 @@ pub use super::{
     assets::{Asset, AssetLoader, Assets, Handle, ShaderLoader},
     audio::prelude::*,
     ecs::prelude::*,
-    event::events::{CursorMoved, KeyboardInput, MouseInput, MouseMotion, MouseWheel},
+    event::*,
     glam::{self, Mat4, Vec2, Vec3, Vec4},
     image::{self},
     input::{Input, KeyCode, MouseButton},

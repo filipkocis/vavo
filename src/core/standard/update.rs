@@ -1,14 +1,14 @@
 use winit::event::WindowEvent;
 
 use crate::{
-    event::event_handler::EventReader, prelude::*, render_assets::*, renderer::newtype::RenderQueue,
+    event::EventReader, prelude::*, render_assets::*, renderer::newtype::RenderQueue,
 };
 
 /// Internal system that updates active camera buffers with changed projection and transform.
 pub fn update_camera_buffers(
     world: &mut World,
     mut buffers: ResMut<RenderAssets<Buffer>>,
-    event_reader: EventReader,
+    window_events: EventReader<WindowEvent>,
     queue: Res<RenderQueue>,
 
     mut query: Query<
@@ -19,8 +19,7 @@ pub fn update_camera_buffers(
         ),
     >,
 ) {
-    let resize_event = event_reader
-        .read::<WindowEvent>()
+    let resize_event = window_events.read()
         .into_iter()
         .filter_map(|e| {
             if let WindowEvent::Resized(size) = e {

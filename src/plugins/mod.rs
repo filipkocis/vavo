@@ -8,6 +8,7 @@ use crate::{
         startup::{add_render_resources, register_standard_graph},
         update::{update_camera_buffers, update_global_transforms},
     },
+    event::plugin::EventPlugin,
     input::InputPlugin,
     prelude::{FixedTime, Time},
     reflect::ReflectionPlugin,
@@ -17,6 +18,7 @@ use crate::{
 };
 
 /// Default plugins which are necessary for the app to run, includes:
+/// - [`EventPlugin`]
 /// - [`RenderPlugin`]
 /// - [`TimePlugin`]
 /// - [`InputPlugin`]
@@ -28,7 +30,8 @@ pub struct DefaultPlugin;
 
 impl Plugin for DefaultPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugin(RenderPlugin)
+        app.add_plugin(EventPlugin)
+            .add_plugin(RenderPlugin)
             .add_plugin(TimePlugin)
             .add_plugin(InputPlugin)
             .add_plugin(UiPlugin)

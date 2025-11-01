@@ -3,7 +3,7 @@ use glyphon::FontSystem;
 use winit::dpi::PhysicalSize;
 
 use crate::{
-    event::event_handler::EventReader,
+    event::EventReader,
     prelude::*,
     render_assets::RenderAssets,
     ui::{prelude::*, text::TextBuffer},
@@ -16,12 +16,12 @@ pub fn compute_nodes_and_transforms(
     mut q: Query<()>,
 
     world: &mut World,
-    event_reader: EventReader,
+    window_events: EventReader<WindowEvent>,
     mut font_system: ResMut<FontSystem>,
     mut text_buffers: ResMut<RenderAssets<TextBuffer>>,
     window: Res<Window>,
 ) {
-    let mut root_temp_nodes = nodes_to_temp_graph(event_reader, &mut q);
+    let mut root_temp_nodes = nodes_to_temp_graph(window_events, &mut q);
 
     if root_temp_nodes.is_empty() {
         return;

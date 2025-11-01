@@ -1,6 +1,7 @@
 use super::States;
 
 /// Describes a state transition
+#[derive(crate::macros::Event, Debug)]
 pub struct StateTransitionEvent<S: States> {
     pub from: S,
     pub to: S,

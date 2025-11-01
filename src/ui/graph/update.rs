@@ -4,7 +4,7 @@ use glyphon::{
 };
 use winit::event::WindowEvent;
 
-use crate::event::event_handler::EventReader;
+use crate::event::EventReader;
 use crate::prelude::*;
 use crate::render_assets::RenderAssets;
 use crate::renderer::newtype::{RenderDevice, RenderQueue};
@@ -29,9 +29,9 @@ pub fn update_glyphon_viewport(
 }
 
 /// Utility function to check for a window resize event.
-pub fn has_resized(event_reader: &EventReader) -> bool {
-    event_reader
-        .read::<WindowEvent>()
+pub fn has_resized(window_events: &EventReader<WindowEvent>) -> bool {
+    window_events
+        .read()
         .iter()
         .any(|event| matches!(event, WindowEvent::Resized(_)))
 }
@@ -71,7 +71,7 @@ fn clear_text_renderer(world: &mut World, device: &RenderDevice, queue: &RenderQ
 /// Applies z-index to the z component of the global transfrom pushed to the transform storage.
 pub fn update_ui_mesh_and_transforms(
     world: &mut World,
-    event_reader: EventReader,
+    window_events: EventReader<WindowEvent>,
 
     mut changed_query: Query<
         EntityId,
@@ -108,7 +108,7 @@ pub fn update_ui_mesh_and_transforms(
     let ui_nodes = nodes_query.iter_mut();
 
     // return if nothing changed
-    let resized = has_resized(&event_reader);
+    let resized = has_resized(&window_events);
     if changed_len == 0 && !resized {
         // cleanup if all nodes were removed
         if ui_nodes.is_empty() && !ui_mesh.positions.is_empty() {

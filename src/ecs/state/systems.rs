@@ -1,12 +1,12 @@
-use crate::{event::event_handler::EventWriter, prelude::*};
+use crate::{event::EventWriter, prelude::*};
 
 use super::event::StateTransitionEvent;
 
 /// State transitioning system, one per state type. Used in the FrameEnd system stage.
-pub fn apply_state_transition<S: States + 'static>(
+pub fn apply_state_transition<S: States>(
     current_state: Option<ResMut<State<S>>>,
     next_state: Option<ResMut<NextState<S>>>,
-    mut event_writer: EventWriter,
+    mut transition_events: EventWriter<StateTransitionEvent<S>>,
 ) {
     // resource option
     let Some(mut next_state) = next_state else {
@@ -26,6 +26,11 @@ pub fn apply_state_transition<S: States + 'static>(
     }
 
     // queue event and update state
-    event_writer.send(StateTransitionEvent::new(current_state.get(), next_state));
+    transition_events.write(StateTransitionEvent::new(current_state.get(), next_state));
     current_state.update(next_state);
+}
+
+/// State transitioning system, one per state type. Used in the FrameEnd system stage.
+pub fn register_state_events<S: States>(app: &mut App) {
+    app.register_event::<StateTransitionEvent<S>>();
 }

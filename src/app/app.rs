@@ -5,6 +5,8 @@ use winit::event::ElementState;
 use winit::keyboard::PhysicalKey;
 
 use crate::core::graph::RenderGraph;
+use crate::ecs::state::systems::register_state_events;
+use crate::event::{Event, apply_events};
 use crate::prelude::{FixedTime, Resource};
 use crate::reflect::{Reflect, registry::ReflectTypeRegistry};
 use crate::renderer::newtype::{
@@ -15,10 +17,7 @@ use crate::window::AppHandler;
 
 use crate::ecs::state::{NextState, State, States, systems::apply_state_transition};
 use crate::ecs::world::World;
-use crate::event::{
-    Events,
-    events::{KeyboardInput, MouseInput},
-};
+use crate::event::{Events, KeyboardInput, MouseInput};
 
 use super::Plugin;
 use super::input::{Input, KeyCode, MouseButton};
@@ -28,9 +27,9 @@ pub struct App {
     render_graph: RenderGraph,
 
     pub world: World,
-    pub(crate) events: Events,
 
     known_states: Vec<TypeId>,
+    known_events: Vec<TypeId>,
     pub type_registry: ReflectTypeRegistry,
 }
 
@@ -41,8 +40,8 @@ impl App {
             system_handler: SystemHandler::new(),
             render_graph: RenderGraph::new(),
             world: World::new(),
-            events: Events::new(),
             known_states: Vec::new(),
+            known_events: Vec::new(),
             type_registry: ReflectTypeRegistry::new(),
         }
     }
@@ -55,6 +54,7 @@ impl App {
             self.world.resources.insert(state);
             self.world.resources.insert(NextState::<S>::new());
 
+            self.register_system(register_state_events::<S>, SystemStage::Startup);
             self.register_system(apply_state_transition::<S>, SystemStage::FrameEnd);
         } else {
             panic!("State 'State<{}>' already registered", type_name::<S>());
@@ -70,6 +70,21 @@ impl App {
     /// Add new state with a specified value to the app
     pub fn add_state<S: States>(&mut self, state: S) -> &mut Self {
         self.add_state_internal(State(state));
+        self
+    }
+
+    /// Register new event type to the app
+    pub fn register_event<E: Event>(&mut self) -> &mut Self {
+        let event_type = TypeId::of::<E>();
+        if !self.known_events.contains(&event_type) {
+            self.known_events.push(event_type);
+
+            self.world.resources.insert(Events::<E>::new());
+
+            self.register_system(apply_events::<E>, SystemStage::First);
+        } else {
+            panic!("Event '{}' already registered", type_name::<E>());
+        }
         self
     }
 
@@ -95,8 +110,9 @@ impl App {
     }
 
     /// Write event T to the event queue
-    pub fn create_event<T: 'static>(&mut self, event: T) {
-        self.events.write(event);
+    #[inline]
+    pub fn create_event<E: Event>(&mut self, event: E) {
+        self.world.resources.get_mut::<Events<E>>().write(event);
     }
 
     /// Add a system to the startup stage
@@ -267,8 +283,6 @@ impl App {
         self.run_systems(SystemStage::PostRender);
         self.run_systems(SystemStage::FrameEnd);
 
-        self.events.apply();
-
         self.finish_surface();
         Ok(())
     }
@@ -332,7 +346,7 @@ impl App {
             input.release(event.code);
         }
 
-        self.events.write_immediately(event);
+        self.create_event(event);
     }
 
     /// Handle mouse input
@@ -350,6 +364,6 @@ impl App {
             input.release(event.button);
         }
 
-        self.events.write_immediately(event);
+        self.create_event(event);
     }
 }
