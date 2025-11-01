@@ -72,6 +72,48 @@ pub trait IntoParamInfo {
     fn params_info() -> Vec<ParamInfo>;
 }
 
+/// Macro to implement [`IntoParamInfo`] for single types
+macro_rules! impl_into_param_info {
+    ($type:ident $(: $trait:ident)?, $for:ty, $is_mutable:expr) => {
+        impl$(<$type : $trait>)? IntoParamInfo for $for {
+            fn params_info() -> Vec<ParamInfo> {
+                vec![ParamInfo::new(
+                    $is_mutable,
+                    TypeInfo::new(type_name::<$type>(), TypeId::of::<$type>()),
+                )]
+            }
+        }
+    };
+}
+
+// Special app params
+impl_into_param_info!(App, &mut App, true);
+impl_into_param_info!(World, &mut World, true);
+impl_into_param_info!(RenderGraph, &mut RenderGraph, true);
+
+// Special params
+impl_into_param_info!(RenderCommandEncoder, &mut RenderCommandEncoder, false);
+impl_into_param_info!(Commands, Commands<'_, '_>, true);
+impl_into_param_info!(EventReader, EventReader<'_>, false);
+impl_into_param_info!(EventWriter, EventWriter<'_>, true);
+
+// Resources
+impl_into_param_info!(R: Resource, Res<R>, false);
+impl_into_param_info!(R: Resource, ResMut<R>, true);
+impl_into_param_info!(R: Resource, Option<Res<R>>, false);
+impl_into_param_info!(R: Resource, Option<ResMut<R>>, true);
+
+// Query components
+impl_into_param_info!(EntityId, EntityId, false);
+impl_into_param_info!(C: Component, &C, false);
+impl_into_param_info!(C: Component, &mut C, true);
+impl_into_param_info!(C: Component, Ref<'_, C>, false);
+impl_into_param_info!(C: Component, Mut<'_, C>, true);
+impl_into_param_info!(C: Component, Option<&C>, false);
+impl_into_param_info!(C: Component, Option<&mut C>, true);
+impl_into_param_info!(C: Component, Option<Ref<'_, C>>, false);
+impl_into_param_info!(C: Component, Option<Mut<'_, C>>, true);
+
 /// Any type that can be used as a system parameter (including tuples of parameters).
 /// Implemented for types which can be extracted from the world during system execution.
 pub trait SystemParam: IntoParamInfo {
@@ -104,11 +146,7 @@ impl SystemParam for &mut World {
     #[inline]
     fn init_state() -> Self::State {}
 }
-impl IntoParamInfo for &mut World {
-    fn params_info() -> Vec<ParamInfo> {
-        param_info::<World>(true)
-    }
-}
+
 impl SystemParam for &mut App {
     type State = ();
     #[inline]
@@ -118,11 +156,7 @@ impl SystemParam for &mut App {
     #[inline]
     fn init_state() -> Self::State {}
 }
-impl IntoParamInfo for &mut App {
-    fn params_info() -> Vec<ParamInfo> {
-        param_info::<App>(true)
-    }
-}
+
 impl SystemParam for &mut RenderGraph {
     type State = ();
     #[inline]
@@ -132,11 +166,7 @@ impl SystemParam for &mut RenderGraph {
     #[inline]
     fn init_state() -> Self::State {}
 }
-impl IntoParamInfo for &mut RenderGraph {
-    fn params_info() -> Vec<ParamInfo> {
-        param_info::<RenderGraph>(true)
-    }
-}
+
 impl SystemParam for &mut RenderCommandEncoder {
     type State = Option<RenderCommandEncoder>;
     #[inline]
@@ -169,11 +199,6 @@ impl SystemParam for &mut RenderCommandEncoder {
         None
     }
 }
-impl IntoParamInfo for &mut RenderCommandEncoder {
-    fn params_info() -> Vec<ParamInfo> {
-        param_info::<RenderCommandEncoder>(false)
-    }
-}
 
 /// State for [`Commands`] system parameter, implemented as a wrapper with Send + Sync
 #[derive(Default)]
@@ -202,11 +227,7 @@ impl SystemParam for Commands<'_, '_> {
         CommandsState::default()
     }
 }
-impl IntoParamInfo for Commands<'_, '_> {
-    fn params_info() -> Vec<ParamInfo> {
-        param_info::<Commands>(true)
-    }
-}
+
 impl SystemParam for EventWriter<'_> {
     type State = ();
     #[inline]
@@ -216,11 +237,7 @@ impl SystemParam for EventWriter<'_> {
     #[inline]
     fn init_state() -> Self::State {}
 }
-impl IntoParamInfo for EventWriter<'_> {
-    fn params_info() -> Vec<ParamInfo> {
-        param_info::<EventWriter>(true)
-    }
-}
+
 impl SystemParam for EventReader<'_> {
     type State = ();
     #[inline]
@@ -229,11 +246,6 @@ impl SystemParam for EventReader<'_> {
     }
     #[inline]
     fn init_state() -> Self::State {}
-}
-impl IntoParamInfo for EventReader<'_> {
-    fn params_info() -> Vec<ParamInfo> {
-        param_info::<EventReader>(true)
-    }
 }
 
 impl<R: Resource> SystemParam for Res<R> {
@@ -247,11 +259,6 @@ impl<R: Resource> SystemParam for Res<R> {
     #[inline]
     fn init_state() -> Self::State {}
 }
-impl<R: Resource> IntoParamInfo for Res<R> {
-    fn params_info() -> Vec<ParamInfo> {
-        param_info::<R>(false)
-    }
-}
 
 impl<R: Resource> SystemParam for ResMut<R> {
     type State = ();
@@ -264,11 +271,7 @@ impl<R: Resource> SystemParam for ResMut<R> {
     #[inline]
     fn init_state() -> Self::State {}
 }
-impl<R: Resource> IntoParamInfo for ResMut<R> {
-    fn params_info() -> Vec<ParamInfo> {
-        param_info::<R>(true)
-    }
-}
+
 impl<R: Resource> SystemParam for Option<Res<R>> {
     type State = ();
     #[inline]
@@ -281,11 +284,6 @@ impl<R: Resource> SystemParam for Option<Res<R>> {
     }
     #[inline]
     fn init_state() -> Self::State {}
-}
-impl<R: Resource> IntoParamInfo for Option<Res<R>> {
-    fn params_info() -> Vec<ParamInfo> {
-        param_info::<R>(false)
-    }
 }
 
 impl<R: Resource> SystemParam for Option<ResMut<R>> {
@@ -300,11 +298,6 @@ impl<R: Resource> SystemParam for Option<ResMut<R>> {
     }
     #[inline]
     fn init_state() -> Self::State {}
-}
-impl<R: Resource> IntoParamInfo for Option<ResMut<R>> {
-    fn params_info() -> Vec<ParamInfo> {
-        param_info::<R>(true)
-    }
 }
 
 pub struct QueryCache; // Placeholder for query state
@@ -338,49 +331,6 @@ where
     fn params_info() -> Vec<ParamInfo> {
         T::params_info()
     }
-}
-impl IntoParamInfo for EntityId {
-    fn params_info() -> Vec<ParamInfo> {
-        param_info::<EntityId>(false)
-    }
-}
-impl<C: Component> IntoParamInfo for &mut C {
-    fn params_info() -> Vec<ParamInfo> {
-        param_info::<C>(true)
-    }
-}
-impl<C: Component> IntoParamInfo for &C {
-    fn params_info() -> Vec<ParamInfo> {
-        param_info::<C>(false)
-    }
-}
-impl<C: Component> IntoParamInfo for Mut<'_, C> {
-    fn params_info() -> Vec<ParamInfo> {
-        param_info::<C>(true)
-    }
-}
-impl<C: Component> IntoParamInfo for Ref<'_, C> {
-    fn params_info() -> Vec<ParamInfo> {
-        param_info::<C>(false)
-    }
-}
-impl<C: Component> IntoParamInfo for Option<&mut C> {
-    fn params_info() -> Vec<ParamInfo> {
-        param_info::<C>(true)
-    }
-}
-impl<C: Component> IntoParamInfo for Option<&C> {
-    fn params_info() -> Vec<ParamInfo> {
-        param_info::<C>(false)
-    }
-}
-/// Helper function to create ParamInfo for a single type T
-#[inline]
-fn param_info<T: 'static>(is_mutable: bool) -> Vec<ParamInfo> {
-    vec![ParamInfo::new(
-        is_mutable,
-        TypeInfo::new(type_name::<T>(), TypeId::of::<T>()),
-    )]
 }
 
 /// Macros for implementing SystemParam for tuples of different sizes

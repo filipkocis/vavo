@@ -16,12 +16,14 @@ macro_rules! define_render_newtype {
 
             /// Consumes the wrapper and returns the inner value
             #[inline]
+            #[allow(dead_code)]
             pub(crate) fn unwrap(self) -> $inner {
                 self.0
             }
 
             /// Replaces the inner value, returning the old one
             #[inline]
+            #[allow(dead_code)]
             pub(crate) fn replace(&mut self, inner: $inner) -> $inner {
                 std::mem::replace(&mut self.0, inner)
             }
@@ -124,7 +126,7 @@ define_render_newtype!(
 #[derive(Debug)]
 pub struct RenderCommandEncoder(wgpu::CommandEncoder);
 impl RenderCommandEncoder {
-    /// Creates a new wrapper around the inner value
+    /// Creates a new command encoder with the given label
     #[inline]
     pub(crate) fn new(device: &RenderDevice, label: &str) -> Self {
         let descriptor = wgpu::CommandEncoderDescriptor { label: Some(label) };
