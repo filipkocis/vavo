@@ -44,7 +44,15 @@ unsafe impl Sync for RenderContext {}
 
 impl RenderContext {
     #[inline]
-    pub fn update_custom(
+    fn clear(&mut self) {
+        self.pass = std::ptr::null_mut();
+        self.node = std::ptr::null_mut();
+        self.color_target = None;
+        self.depth_target = None;
+    }
+
+    #[inline]
+    fn update_custom(
         &mut self,
         node: *mut GraphNode,
         color_target: Option<*const wgpu::TextureView>,
@@ -56,7 +64,7 @@ impl RenderContext {
     }
 
     #[inline]
-    pub fn update_standard(&mut self, pass: *mut RenderPass<'static>, node: *mut GraphNode) {
+    fn update_standard(&mut self, pass: *mut RenderPass<'static>, node: *mut GraphNode) {
         self.pass = pass;
         self.node = node;
         self.color_target = None;
@@ -100,8 +108,9 @@ impl RenderGraph {
             }
 
             let mut encoder = RenderCommandEncoder::new(&device, node.name.as_str());
-            let encoder = unsafe { &mut *(&mut encoder as *mut RenderCommandEncoder) };
-            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            // Safety: casting to static lifetime for the render context, dropped after use
+            let encoder_ptr = unsafe { &mut *(&mut encoder as *mut RenderCommandEncoder) };
+            let mut render_pass = encoder_ptr.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some(&format!("{} render pass", node.name)),
                 color_attachments: &[color_attachment]
                     .into_iter()
@@ -123,7 +132,12 @@ impl RenderGraph {
             render_context.update_standard(&mut render_pass, node_raw);
             node.system.run(world);
             node.system.apply(world);
+
+            drop(render_pass);
+            world.render_command_queue.push(encoder);
         }
+
+        render_context.clear();
     }
 
     fn get_color_attachment<'a>(
