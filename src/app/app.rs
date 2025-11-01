@@ -116,28 +116,34 @@ impl App {
     }
 
     /// Add a system to the startup stage
-    pub fn add_startup_system<T, F>(&mut self, system: impl IntoSystem<T, F>) -> &mut Self {
-        let system = system.system();
+    pub fn add_startup_system<Params: SystemParam>(
+        &mut self,
+        system: impl IntoSystem<Params>,
+    ) -> &mut Self {
+        let system = system.build();
         self.system_handler
             .register_system(system, SystemStage::Startup);
         self
     }
 
     /// Add a system to the update stage
-    pub fn add_system<T, F>(&mut self, system: impl IntoSystem<T, F>) -> &mut Self {
-        let system = system.system();
+    pub fn add_system<Params: SystemParam>(
+        &mut self,
+        system: impl IntoSystem<Params>,
+    ) -> &mut Self {
+        let system = system.build();
         self.system_handler
             .register_system(system, SystemStage::Update);
         self
     }
 
     /// Register a system to a specific stage
-    pub fn register_system<T, F>(
+    pub fn register_system<Params: SystemParam>(
         &mut self,
-        system: impl IntoSystem<T, F>,
+        system: impl IntoSystem<Params>,
         stage: SystemStage,
     ) -> &mut Self {
-        let system = system.system();
+        let system = system.build();
         self.system_handler.register_system(system, stage);
         self
     }
@@ -148,43 +154,33 @@ impl App {
         self
     }
 
-    fn run_systems(&mut self, stage: SystemStage, renderer: Renderer, queue: &mut CommandQueue) {
-        let self_ptr = self as *mut App;
+    fn run_systems(&mut self, stage: SystemStage) {
         let systems = self.system_handler.get_systems(stage);
         if systems.is_empty() {
             return;
         }
 
-        let tracking = unsafe {
-            // Safety: Tracking is not accessible from system contexts
-            &mut (*(&mut self.world.entities.tracking as *mut _))
-        };
-        // let mut queue = CommandQueue::default();
-        let commands = Commands::new(tracking, queue);
-
-        let mut ctx = SystemsContext::new(
-            commands,
-            &mut self.world.resources,
-            &mut self.events,
-            renderer,
-            self_ptr,
-            &mut self.render_graph,
-        );
-
         let iterations = if stage.has_fixed_time() {
-            let mut fixed_time = ctx.resources.get_mut::<FixedTime>();
+            let mut fixed_time = self.world.resources.get_mut::<FixedTime>();
             fixed_time.iter()
         } else {
             1
         };
 
+        // will be parallel in the future
         for _ in 0..iterations {
             for system in systems.iter_mut() {
-                system.run(&mut ctx, &mut self.world.entities);
+                system.run(&mut self.world);
             }
         }
 
-        ctx.commands.apply(&mut self.world);
+        // runs on the main thread
+        for system in systems.iter_mut() {
+            system.apply(&mut self.world);
+        }
+
+        self.world.flush_commands();
+    }
 
     /// Get a mutable reference to the render graph. Use [Self::reborrow] in combination with this.
     ///
@@ -200,58 +196,34 @@ impl App {
     /// # Safety
     /// This is unsafe because it can lead to aliasing mutable references if used improperly.
     #[inline]
-    pub unsafe fn reborrow<'a, 'b>(&'a mut self) -> &'b mut App {
+    pub unsafe fn reborrow<'a>(&mut self) -> &'a mut App {
         unsafe { &mut *(self as *mut App) }
     }
 
-    fn execute_render_graph(&mut self, renderer: Renderer, queue: &mut CommandQueue) {
-        let tracking = unsafe {
-            // Safety: Tracking is not accessible from system contexts
-            &mut (*(&mut self.world.entities.tracking as *mut _))
-        };
-        let commands = Commands::new(tracking, queue);
-
-        let self_ptr = self as *mut App;
-        let mut ctx = SystemsContext::new(
-            commands,
-            &mut self.world.resources,
-            &mut self.events,
-            renderer,
-            self_ptr,
-            &mut self.render_graph,
-        );
-
-        self.render_graph
-            .execute(&mut ctx, &mut self.world.entities);
-
-        ctx.commands.apply(&mut self.world);
+    /// Initialize the app
+    fn initialize(&mut self) {
+        self.world.parent_app = self as *mut App;
     }
 
     /// Initialize the app and run all startup systems
-    pub(crate) fn startup(&mut self, state: &mut AppState) {
-        let mut context = RenderContext::new_update_context(state);
-        let mut queue = CommandQueue::default();
-
-        self.run_systems(SystemStage::PreStartup, context.as_renderer(), &mut queue);
-        self.run_systems(SystemStage::Startup, context.as_renderer(), &mut queue);
+    pub(crate) fn startup(&mut self) {
+        self.run_systems(SystemStage::PreStartup);
+        self.run_systems(SystemStage::Startup);
 
         self.system_handler.clear_systems(SystemStage::PreStartup);
         self.system_handler.clear_systems(SystemStage::Startup);
     }
 
     /// Update the app and run all update systems
-    pub(crate) fn update(&mut self, state: &mut AppState) {
-        let mut context = RenderContext::new_update_context(state);
-        let mut queue = CommandQueue::default();
-
+    pub(crate) fn update(&mut self) {
         self.world.update();
 
-        self.run_systems(SystemStage::First, context.as_renderer(), &mut queue);
-        self.run_systems(SystemStage::PreUpdate, context.as_renderer(), &mut queue);
-        self.run_systems(SystemStage::FixedUpdate, context.as_renderer(), &mut queue);
-        self.run_systems(SystemStage::Update, context.as_renderer(), &mut queue);
-        self.run_systems(SystemStage::PostUpdate, context.as_renderer(), &mut queue);
-        self.run_systems(SystemStage::Last, context.as_renderer(), &mut queue);
+        self.run_systems(SystemStage::First);
+        self.run_systems(SystemStage::PreUpdate);
+        self.run_systems(SystemStage::FixedUpdate);
+        self.run_systems(SystemStage::Update);
+        self.run_systems(SystemStage::PostUpdate);
+        self.run_systems(SystemStage::Last);
     }
 
     /// Resize the app
@@ -261,6 +233,7 @@ impl App {
 
     /// Run the app
     pub fn run(&mut self) {
+        self.initialize();
         let (event_loop, mut app) = AppHandler::init(self);
         event_loop.run_app(&mut app).unwrap();
 
@@ -271,7 +244,6 @@ impl App {
 
     /// Render the app and run all render systems, and execute the render graph
     pub(crate) fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
-        // gives access to &mut AppState, command encoder, target (surface texture, texture view)
         self.prepare_surface()?;
 
         self.run_systems(SystemStage::PreRender);
