@@ -105,10 +105,10 @@ impl Plugin for AudioPlugin {
             // TODO: it has to be in Last stage since thats when GlobalTransform gets updated, once
             // Changed<C> works with a frame delay, it can be moved to the update stage. For now
             // there is no other way of change detection
-            .register_system(update_spatial_listeners, SystemStage::Last)
-            .register_system(update_audio_tracks, SystemStage::Last)
-            .register_system(update_spatial_audio_tracks, SystemStage::Last)
-            .register_system(cleanup_audio_tracks, SystemStage::Last);
+            .register_system(update_spatial_listeners, phase::Last)
+            .register_system(update_audio_tracks, phase::Last)
+            .register_system(update_spatial_audio_tracks, phase::Last)
+            .register_system(cleanup_audio_tracks, phase::Last);
     }
 }
 

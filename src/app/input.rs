@@ -2,7 +2,7 @@ use std::{collections::HashSet, hash::Hash};
 
 pub use winit::{event::MouseButton, keyboard::KeyCode};
 
-use crate::{prelude::ResMut, system::SystemStage};
+use crate::{prelude::ResMut, system::phase};
 
 use super::{App, Plugin};
 
@@ -88,6 +88,6 @@ impl Plugin for InputPlugin {
         app.world.resources.insert(Input::<KeyCode>::new());
         app.world.resources.insert(Input::<MouseButton>::new());
 
-        app.register_system(clear_just_pressed_inputs, SystemStage::Last);
+        app.register_system(clear_just_pressed_inputs, phase::Last);
     }
 }

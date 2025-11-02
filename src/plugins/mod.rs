@@ -13,7 +13,7 @@ use crate::{
     prelude::{FixedTime, Time},
     reflect::ReflectionPlugin,
     renderer::culling::FrustumCullingPlugin,
-    system::SystemStage,
+    system::phase,
     ui::plugin::UiPlugin,
 };
 
@@ -51,10 +51,10 @@ impl Plugin for RenderPlugin {
     fn build(&self, app: &mut App) {
         app.add_startup_system(add_render_resources)
             .add_startup_system(register_standard_graph)
-            .register_system(update_global_transforms, SystemStage::Last)
-            .register_system(update_camera_buffers, SystemStage::PreRender)
-            .register_system(prepare_light_data_system, SystemStage::PreRender)
-            .register_system(generate_grouped_instances_system, SystemStage::PreRender);
+            .register_system(update_global_transforms, phase::Last)
+            .register_system(update_camera_buffers, phase::PreRender)
+            .register_system(prepare_light_data_system, phase::PreRender)
+            .register_system(generate_grouped_instances_system, phase::PreRender);
     }
 }
 

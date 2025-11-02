@@ -100,11 +100,11 @@ impl Plugin for UiPlugin {
         app.add_startup_system(insert_ui_resources)
             .add_startup_system(insert_ui_text_resources)
             .add_startup_system(register_ui_graph)
-            .register_system(ui_interaction_update, SystemStage::First)
-            .register_system(initialize_ui_nodes, SystemStage::PreUpdate)
-            .register_system(initialize_button_ui_nodes, SystemStage::PreUpdate)
-            .register_system(compute_nodes_and_transforms, SystemStage::PostUpdate)
-            .register_system(update_glyphon_viewport, SystemStage::PreRender)
-            .register_system(update_ui_mesh_and_transforms, SystemStage::PreRender);
+            .register_system(ui_interaction_update, phase::First)
+            .register_system(initialize_ui_nodes, phase::PreUpdate)
+            .register_system(initialize_button_ui_nodes, phase::PreUpdate)
+            .register_system(compute_nodes_and_transforms, phase::PostUpdate)
+            .register_system(update_glyphon_viewport, phase::PreRender)
+            .register_system(update_ui_mesh_and_transforms, phase::PreRender);
     }
 }

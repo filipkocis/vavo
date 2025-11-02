@@ -15,7 +15,7 @@ pub use super::{
     },
     reflect::Reflect,
     renderer::{Color, Face, Image, Material, Mesh, Meshable, Texture},
-    system::{Commands, IntoSystem, IntoSystemCondition, SystemStage},
+    system::{Commands, IntoSchedulerLocation, IntoSystem, IntoSystemCondition, layer, phase},
     wgpu::{self},
     window::prelude::*,
     winit::{self},

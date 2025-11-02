@@ -32,13 +32,13 @@ pub struct FrustumCullingPlugin;
 impl Plugin for FrustumCullingPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<FrustumCullingSettings>()
-            // These two use `commands.insert`, so we need them in separate stages to apply
-            .register_system(add_local_bounding_volume_system, SystemStage::PostUpdate)
-            .register_system(update_camera_frustum_system, SystemStage::Last)
+            // These two use `commands.insert`, so we need them in separate phases to apply
+            .register_system(add_local_bounding_volume_system, phase::PostUpdate)
+            .register_system(update_camera_frustum_system, phase::Last)
             // TODO: since GlobalTransform is updated in the Last stage we have to move them up, fix
             // this after Changed<T> acts differently, originally it was in the PostUpdate
-            .register_system(visibility_update_system, SystemStage::PreRender)
-            .register_system(frustum_visibility_update_system, SystemStage::PreRender);
+            .register_system(visibility_update_system, phase::PreRender)
+            .register_system(frustum_visibility_update_system, phase::PreRender);
     }
 }
 

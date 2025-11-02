@@ -2,7 +2,7 @@ use crate::{
     app::{App, Plugin},
     core::graph::RenderGraph,
     prelude::{Res, Time},
-    system::SystemStage,
+    system::phase,
 };
 
 /// QOL plugin to print the render graph topology
@@ -18,7 +18,7 @@ impl Plugin for DebugRenderGraphPlugin {
                     print_render_graph_topology(graph);
                 }
             },
-            SystemStage::Render,
+            phase::Render,
         );
     }
 }
