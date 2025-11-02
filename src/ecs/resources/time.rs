@@ -2,7 +2,7 @@ use crate::macros::Resource;
 use web_time::{Duration, Instant};
 
 /// Resource used for tracking time in the application
-#[derive(Resource)]
+#[derive(Resource, Debug, Clone)]
 pub struct Time {
     /// Current world tick / frame count
     tick: u64,
@@ -96,7 +96,7 @@ impl Time {
 
 /// Resource used for fixed time step updates. It will try to run the systems on average at a fixed
 /// rate, therefore it may run multiple times or zero times during udpate loop depending on the frame rate.
-#[derive(Resource)]
+#[derive(Resource, Debug, Clone)]
 pub struct FixedTime {
     time: Time,
     fixed_delta: f32,
