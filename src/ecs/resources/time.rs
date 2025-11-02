@@ -137,69 +137,156 @@ impl FixedTime {
     }
 }
 
+/// Variant of the [Timer]
+#[derive(Default, Clone, Copy, Debug)]
 pub enum TimerVariant {
+    /// Timer that runs once and then stops
+    #[default]
     Once,
+    /// Timer that repeats indefinitely
     Repeat,
+    /// Timer that repeats a fixed number of times
     RepeatN(u32),
 }
 
+/// Timer utility for tracking elapsed time, with different variatns. The timer needs to be
+/// manually updated each frame with the delta time or the timer won't progress.
+#[derive(Resource, Clone, Debug)]
 pub struct Timer {
-    elapsed: f32,
     duration: Duration,
     variant: TimerVariant,
+    elapsed: f32,
+    repeats: u32,
     just_finished: bool,
+    finished: bool,
 }
 
 impl Timer {
+    /// Create a new Timer
+    #[inline]
     pub fn new(duration: Duration, variant: TimerVariant) -> Self {
         Self {
-            elapsed: 0.0,
             duration,
             variant,
+            elapsed: 0.0,
+            repeats: 0,
             just_finished: false,
+            finished: false,
         }
+    }
+
+    /// Create a new one-shot Timer
+    #[inline]
+    pub fn once(duration: Duration) -> Self {
+        Self::new(duration, TimerVariant::Once)
+    }
+
+    /// Create a new repeating Timer
+    #[inline]
+    pub fn repeating(duration: Duration) -> Self {
+        Self::new(duration, TimerVariant::Repeat)
+    }
+
+    /// Create a new Timer that repeats N times
+    #[inline]
+    pub fn repeat_n(duration: Duration, n: u32) -> Self {
+        Self::new(duration, TimerVariant::RepeatN(n))
+    }
+
+    /// Returns the variant of the timer
+    #[inline]
+    pub fn variant(&self) -> TimerVariant {
+        self.variant
     }
 
     /// Total elapsed time since the timer started
     ///
     /// # Note
     /// Elapsed time is accumulated through `self.update(delta)` so it's not a completely accurate
-    /// way to measure time
+    /// way to measure time.
+    #[inline]
     pub fn elapsed(&self) -> Duration {
         Duration::from_secs_f32(self.elapsed)
     }
 
+    /// Resets the timer elapsed time to zero
+    #[inline]
     pub fn reset(&mut self) {
         self.elapsed = 0.0;
+        self.just_finished = false;
+        self.finished = false;
+        self.repeats = 0;
     }
 
+    /// Returns the number of repeats completed for [TimerVariant::RepeatN]
+    #[inline]
+    pub fn repeats(&self) -> u32 {
+        self.repeats
+    }
+
+    /// Returns the duration of the timer
+    #[inline]
+    pub fn duration(&self) -> Duration {
+        self.duration
+    }
+
+    /// Returns true if the timer has finished based on its variant, or if it has just finished. In
+    /// case of [TimerVariant::Repeat] this will never stay true.
+    #[inline]
     pub fn finished(&self) -> bool {
-        if self.just_finished {
+        // If fully finished or just finished
+        if self.finished || self.just_finished {
             return true;
         }
 
-        match self.variant {
-            TimerVariant::Once => self.elapsed() >= self.duration,
-            TimerVariant::Repeat => false,
-            TimerVariant::RepeatN(n) => self.elapsed() >= self.duration * n,
-        }
+        false
     }
 
-    /// Returns true if the last update caused the timer to finish
+    /// Returns true if the last update caused the timer to finish. This will only be true for one
+    /// update cycle after finishing.
+    #[inline]
     pub fn just_finished(&self) -> bool {
         self.just_finished
     }
 
+    /// Update the timer with the delta time in seconds. This will progress the timer.
+    #[inline]
     pub fn update(&mut self, delta: f32) {
-        if self.finished() {
-            self.just_finished = false;
+        self.just_finished = false;
+
+        if self.finished {
             return;
         }
 
         self.elapsed += delta;
 
-        if self.finished() {
+        if self.elapsed() >= self.duration {
             self.just_finished = true;
+
+            match self.variant {
+                TimerVariant::Once => {
+                    // Mark as fully finished
+                    self.finished = true;
+                    // Clamp elapsed to duration
+                    self.elapsed = self.duration.as_secs_f32();
+                }
+                TimerVariant::Repeat => {
+                    // Wrap around elapsed time
+                    self.elapsed = self.elapsed % self.duration.as_secs_f32();
+                }
+                TimerVariant::RepeatN(total) => {
+                    self.repeats += 1;
+                    if self.repeats >= total {
+                        // Mark as fully finished
+                        self.finished = true;
+                        // Clamp elapsed to duration
+                        self.elapsed = self.duration.as_secs_f32();
+                    } else {
+                        // Wrap around elapsed time
+                        self.elapsed = self.elapsed % self.duration.as_secs_f32();
+                    }
+                }
+            }
         }
     }
 }
