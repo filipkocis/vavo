@@ -6,9 +6,13 @@ mod params;
 mod scheduler;
 
 pub use commands::Commands;
+use conflict::ConflictChecker;
 pub use into::{IntoSystem, IntoSystemCondition};
 pub use params::{ParamInfo, SystemParam, TypeInfo};
-pub use scheduler::*;
+pub use scheduler::{
+    label::{layer, phase},
+    *,
+};
 
 use crate::prelude::{Tick, World};
 
