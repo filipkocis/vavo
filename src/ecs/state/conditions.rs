@@ -81,3 +81,15 @@ pub fn resource_added<R: Resource>(resource: Option<Res<R>>) -> bool {
 pub fn resource_exists<R: Resource>(resource: Option<Res<R>>) -> bool {
     resource.is_some()
 }
+
+/// Creates a [Condition](IntoSystemCondition) which evaluates to true in intervals of `duration`,
+/// but at most once per frame. If you want a smaller duration you might want to use the
+/// [FixedUpdate](phase::FixedUpdate) system phase instead.
+pub fn on_internval(duration: Duration) -> impl IntoSystemCondition<Res<Time>> {
+    let mut timer = Timer::repeating(duration);
+    let closure = move |time: Res<Time>| {
+        timer.update(time.delta());
+        timer.just_finished()
+    };
+    closure.build()
+}
