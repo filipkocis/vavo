@@ -1,24 +1,24 @@
+pub mod change_detection;
 pub mod entities;
 pub mod resources;
 pub mod state;
-pub mod world;
 pub mod tick;
-pub mod change_detection;
+pub mod world;
 
 pub mod ptr;
 pub mod store;
 
 pub mod prelude {
+    pub use super::change_detection::ChangeDetection;
     pub use super::entities::{
-        components::{Component, Ref, Mut},
-        relation::{Children, Parent},
         Entities, EntityId,
+        components::{Component, Mut, Ref},
+        relation::{Children, Parent},
     };
     pub use super::resources::{
-        FixedTime, Res, ResMut, Resource, Resources, Time, Timer, TimerVariant,
+        FixedTime, FpsCounter, Res, ResMut, Resource, Resources, Time, Timer, TimerVariant,
     };
-    pub use super::state::{conditions::*, NextState, State, StateTransitionEvent, States};
+    pub use super::state::{NextState, State, StateTransitionEvent, States, conditions::*};
     pub use super::tick::Tick;
     pub use super::world::World;
-    pub use super::change_detection::ChangeDetection;
 }

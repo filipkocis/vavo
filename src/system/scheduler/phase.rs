@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 
 use crate::{
-    prelude::World,
+    prelude::{FixedTime, World},
     system::{Layer, SchedulerChanges, System, SystemCondition, layer},
 };
 
@@ -9,9 +9,9 @@ use crate::{
 #[derive(Default, Debug)]
 pub enum PhaseExecutionType {
     /// Run systems sequentially (batches do not run in parallel)
+    #[default]
     Sequential,
     /// Run systems in parallel (where possible)
-    #[default]
     Parallel,
 }
 
@@ -24,7 +24,7 @@ pub enum PhaseExecutionPolicy {
     /// Run systems for a finite number of iterations, then they are removed from the scheduler
     Finite(usize),
     /// Run systems at a fixed timestap
-    FixedTimestep(f64),
+    FixedTimestep(FixedTime),
     /// Run systems based on a custom condition
     Custom(SystemCondition),
 }
@@ -47,9 +47,9 @@ impl PhaseExecutionPolicy {
     }
 
     #[inline]
-    fn get_fixed_timestep(&self) -> Option<f64> {
+    fn get_fixed_timestep(&mut self) -> Option<&mut FixedTime> {
         match self {
-            Self::FixedTimestep(timestep) => Some(*timestep),
+            Self::FixedTimestep(timestep) => Some(timestep),
             _ => None,
         }
     }
@@ -68,8 +68,12 @@ impl Debug for PhaseExecutionPolicy {
         match self {
             Self::Normal => write!(f, "PhaseExecutionPolicy::Normal"),
             Self::Finite(iterations) => write!(f, "PhaseExecutionPolicy::Finite({})", iterations),
-            Self::FixedTimestep(timestep) => {
-                write!(f, "PhaseExecutionPolicy::FixedTimestep({})", timestep)
+            Self::FixedTimestep(time) => {
+                write!(
+                    f,
+                    "PhaseExecutionPolicy::FixedTimestep({})",
+                    time.fixed_delta()
+                )
             }
             Self::Custom(condition) => {
                 write!(
@@ -200,14 +204,17 @@ impl Phase {
     /// Execute this phase
     #[inline]
     pub(super) fn execute(&mut self, world: &mut World, pending_changes: &mut SchedulerChanges) {
+        let mut iterations = 1;
+
         if self.execution_policy.is_normal() {
             // Normal execution, run every frame
         } else if let Some(remaining) = self.execution_policy.decrement_finite() {
             if remaining == 0 {
                 pending_changes.phase_remove(self.label);
             }
-        } else if let Some(_timestep) = self.execution_policy.get_fixed_timestep() {
-            todo!("Fixed timestep execution");
+        } else if let Some(timestep) = self.execution_policy.get_fixed_timestep() {
+            timestep.update();
+            iterations = timestep.iter();
         } else if let Some(condition) = self.execution_policy.get_custom() {
             if !condition.run(world) {
                 return;
@@ -216,9 +223,12 @@ impl Phase {
             panic!("Unknown phase execution policy");
         }
 
-        match self.execution_type {
-            PhaseExecutionType::Sequential => self.execute_sequential(world),
-            PhaseExecutionType::Parallel => self.execute_parallel(world),
+        // Execute systems for the determined number of iterations
+        for _ in 0..iterations {
+            match self.execution_type {
+                PhaseExecutionType::Sequential => self.execute_sequential(world),
+                PhaseExecutionType::Parallel => self.execute_parallel(world),
+            }
         }
 
         // Apply system changes after execution on main thread
@@ -228,6 +238,7 @@ impl Phase {
         world.flush_commands();
     }
 
+    /// Execute systems in this phase sequentially
     #[inline]
     fn execute_sequential(&mut self, world: &mut World) {
         for layer in &mut self.layers {
@@ -264,6 +275,7 @@ impl Phase {
         }
     }
 
+    /// Apply all systems
     #[inline]
     fn apply_systems(&mut self, world: &mut World) {
         for layer in &mut self.layers {

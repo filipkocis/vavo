@@ -9,7 +9,7 @@ pub use location::{IntoSchedulerLocation, SchedulerLocation};
 pub use phase::{Phase, PhaseExecutionPolicy, PhaseExecutionType};
 
 use crate::{
-    prelude::World,
+    prelude::{FixedTime, World},
     system::{ConflictChecker, System},
 };
 
@@ -125,10 +125,10 @@ impl Default for Scheduler {
             pending_changes: SchedulerChanges::default(),
         };
 
-        // scheduler.pending_changes.policy(
-        //     phase::FixedUpdate,
-        //     PhaseExecutionPolicy::FixedTimestep(1.0 / 60.0),
-        // );
+        scheduler.pending_changes.policy(
+            label::phase::FixedUpdate,
+            PhaseExecutionPolicy::FixedTimestep(FixedTime::from_hz(60.0)),
+        );
         scheduler
             .pending_changes
             .policy(label::phase::PreStartup, PhaseExecutionPolicy::Finite(1));
