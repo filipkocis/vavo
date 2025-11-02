@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use crate::{
     app::{App, Plugin},
     audio::AudioPlugin,
@@ -10,10 +12,10 @@ use crate::{
     },
     event::plugin::EventPlugin,
     input::InputPlugin,
-    prelude::{FixedTime, Time},
+    prelude::{FixedTime, FpsCounter, ResMut, Time, on_internval},
     reflect::ReflectionPlugin,
     renderer::culling::FrustumCullingPlugin,
-    system::phase,
+    system::{IntoSystem, phase},
     ui::plugin::UiPlugin,
 };
 
@@ -75,4 +77,35 @@ impl Plugin for TimePlugin {
         app.world.resources.insert(Time::new());
         app.world.resources.insert(FixedTime::from_hz(60.0));
     }
+}
+
+/// Adds an FPS counter resource to the app
+pub struct FpsCounterPlugin {
+    /// The capacity of the FPS counter (number of samples to keep)
+    pub capacity: usize,
+    /// The interval (in seconds) at which to print the FPS to the console, or None to disable
+    /// printing
+    pub interval: Option<f32>,
+}
+
+impl Plugin for FpsCounterPlugin {
+    fn build(&self, app: &mut App) {
+        app.world.resources.insert(FpsCounter::new(self.capacity));
+        app.add_system(update_fps_counter_system);
+
+        if let Some(interval) = self.interval {
+            let duration = Duration::from_secs_f32(interval);
+            app.add_system(print_fps_system.run_if(on_internval(duration)));
+        }
+    }
+}
+
+/// System to update the FPS counter each frame
+fn update_fps_counter_system(mut fps_counter: ResMut<FpsCounter>) {
+    fps_counter.update();
+}
+
+/// System to print the current FPS to the console
+fn print_fps_system(fps_counter: ResMut<FpsCounter>) {
+    println!("FPS: {:.2}", fps_counter.average_fps());
 }
