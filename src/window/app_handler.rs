@@ -129,9 +129,7 @@ impl<'a> ApplicationHandler for AppHandler<'a> {
 
             WindowEvent::Resized(physical_size) => self.resize(physical_size),
             WindowEvent::RedrawRequested => {
-                self.app.update();
-
-                if let Err(err) = self.app.render() {
+                if let Err(err) = self.app.execute_scheduler() {
                     match err {
                         wgpu::SurfaceError::Lost
                         | wgpu::SurfaceError::Outdated

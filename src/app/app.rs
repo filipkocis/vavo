@@ -12,7 +12,7 @@ use crate::reflect::{Reflect, registry::ReflectTypeRegistry};
 use crate::renderer::newtype::{
     RenderSurface, RenderSurfaceConfiguration, RenderSurfaceTexture, RenderSurfaceTextureView,
 };
-use crate::system::{IntoSystem, SystemHandler, SystemParam, SystemStage};
+use crate::system::{IntoSchedulerLocation, IntoSystem, PhaseLabel, Scheduler, SystemParam, phase};
 use crate::window::AppHandler;
 
 use crate::ecs::state::{NextState, State, States, systems::apply_state_transition};
@@ -23,7 +23,7 @@ use super::Plugin;
 use super::input::{Input, KeyCode, MouseButton};
 
 pub struct App {
-    system_handler: SystemHandler,
+    scheduler: Scheduler,
     render_graph: RenderGraph,
 
     pub world: World,
@@ -37,7 +37,7 @@ impl App {
     /// Create a new App
     pub fn build() -> Self {
         Self {
-            system_handler: SystemHandler::new(),
+            scheduler: Scheduler::new(),
             render_graph: RenderGraph::new(),
             world: World::new(),
             known_states: Vec::new(),
@@ -54,8 +54,8 @@ impl App {
             self.world.resources.insert(state);
             self.world.resources.insert(NextState::<S>::new());
 
-            self.register_system(register_state_events::<S>, SystemStage::Startup);
-            self.register_system(apply_state_transition::<S>, SystemStage::FrameEnd);
+            self.register_system(register_state_events::<S>, phase::Startup);
+            self.register_system(apply_state_transition::<S>, phase::FrameEnd);
         } else {
             panic!("State 'State<{}>' already registered", type_name::<S>());
         }
@@ -81,7 +81,7 @@ impl App {
 
             self.world.resources.insert(Events::<E>::new());
 
-            self.register_system(apply_events::<E>, SystemStage::First);
+            self.register_system(apply_events::<E>, phase::First);
         } else {
             panic!("Event '{}' already registered", type_name::<E>());
         }
@@ -115,36 +115,31 @@ impl App {
         self.world.resources.get_mut::<Events<E>>().write(event);
     }
 
-    /// Add a system to the startup stage
+    /// Add a system to the startup phase
     pub fn add_startup_system<Params: SystemParam>(
         &mut self,
         system: impl IntoSystem<Params>,
     ) -> &mut Self {
-        let system = system.build();
-        self.system_handler
-            .register_system(system, SystemStage::Startup);
+        self.scheduler.add_system(system.build(), phase::Startup);
         self
     }
 
-    /// Add a system to the update stage
+    /// Add a system to the update phase
     pub fn add_system<Params: SystemParam>(
         &mut self,
         system: impl IntoSystem<Params>,
     ) -> &mut Self {
-        let system = system.build();
-        self.system_handler
-            .register_system(system, SystemStage::Update);
+        self.scheduler.add_system(system.build(), phase::Update);
         self
     }
 
-    /// Register a system to a specific stage
+    /// Register a system to a specific phase and layer location
     pub fn register_system<Params: SystemParam>(
         &mut self,
         system: impl IntoSystem<Params>,
-        stage: SystemStage,
+        location: impl IntoSchedulerLocation,
     ) -> &mut Self {
-        let system = system.build();
-        self.system_handler.register_system(system, stage);
+        self.scheduler.add_system(system.build(), location);
         self
     }
 
@@ -154,33 +149,33 @@ impl App {
         self
     }
 
-    fn run_systems(&mut self, stage: SystemStage) {
-        let systems = self.system_handler.get_systems(stage);
-        if systems.is_empty() {
-            return;
-        }
-
-        let iterations = if stage.has_fixed_time() {
-            let mut fixed_time = self.world.resources.get_mut::<FixedTime>();
-            fixed_time.iter()
-        } else {
-            1
-        };
-
-        // will be parallel in the future
-        for _ in 0..iterations {
-            for system in systems.iter_mut() {
-                system.run(&mut self.world);
-            }
-        }
-
-        // runs on the main thread
-        for system in systems.iter_mut() {
-            system.apply(&mut self.world);
-        }
-
-        self.world.flush_commands();
-    }
+    // fn run_systems(&mut self, location: impl IntoSchedulerLocation) {
+    //     let systems = self.scheduler.get_systems(phase);
+    //     if systems.is_empty() {
+    //         return;
+    //     }
+    //
+    //     let iterations = if phase.has_fixed_time() {
+    //         let mut fixed_time = self.world.resources.get_mut::<FixedTime>();
+    //         fixed_time.iter()
+    //     } else {
+    //         1
+    //     };
+    //
+    //     // will be parallel in the future
+    //     for _ in 0..iterations {
+    //         for system in systems.iter_mut() {
+    //             system.run(&mut self.world);
+    //         }
+    //     }
+    //
+    //     // runs on the main thread
+    //     for system in systems.iter_mut() {
+    //         system.apply(&mut self.world);
+    //     }
+    //
+    //     self.world.flush_commands();
+    // }
 
     /// Get a mutable reference to the render graph. Use [Self::reborrow] in combination with this.
     ///
@@ -203,27 +198,35 @@ impl App {
     /// Initialize the app
     fn initialize(&mut self) {
         self.world.parent_app = self as *mut App;
+
+        // tepmorary system to execute render graph
+        #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+        struct RenderGraphPhase;
+        impl PhaseLabel for RenderGraphPhase {}
+
+        self.scheduler
+            .pending_changes
+            .phase_add(RenderGraphPhase)
+            .phase_after(RenderGraphPhase, phase::Render)
+            .phase_before(RenderGraphPhase, phase::PostRender);
+
+        let execute_render_graph_system = |world: &mut World, render_graph: &mut RenderGraph| {
+            render_graph.execute(world);
+            world.flush_commands();
+        };
+
+        self.scheduler
+            .add_system(execute_render_graph_system.build(), RenderGraphPhase);
     }
 
-    /// Initialize the app and run all startup systems
+    /// Initialize the app and run startup phases
     pub(crate) fn startup(&mut self) {
-        self.run_systems(SystemStage::PreStartup);
-        self.run_systems(SystemStage::Startup);
+        self.initialize();
 
-        self.system_handler.clear_systems(SystemStage::PreStartup);
-        self.system_handler.clear_systems(SystemStage::Startup);
-    }
-
-    /// Update the app and run all update systems
-    pub(crate) fn update(&mut self) {
-        self.world.update();
-
-        self.run_systems(SystemStage::First);
-        self.run_systems(SystemStage::PreUpdate);
-        self.run_systems(SystemStage::FixedUpdate);
-        self.run_systems(SystemStage::Update);
-        self.run_systems(SystemStage::PostUpdate);
-        self.run_systems(SystemStage::Last);
+        self.scheduler
+            .execute_phase(&mut self.world, phase::PreStartup);
+        self.scheduler
+            .execute_phase(&mut self.world, phase::Startup);
     }
 
     /// Resize the app
@@ -231,30 +234,25 @@ impl App {
         self.render_graph.resize(size);
     }
 
-    /// Run the app
+    /// Run the app event loop
     pub fn run(&mut self) {
-        self.initialize();
         let (event_loop, mut app) = AppHandler::init(self);
         event_loop.run_app(&mut app).unwrap();
-
-        // let systems = &self.systems;
-        // let eq = systems[0].func_ptr == systems[1].func_ptr;
-        // println!("eq: {} | {} == {}", eq, systems[0].name, systems[1].name);
     }
 
-    /// Render the app and run all render systems, and execute the render graph
-    pub(crate) fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
+    /// Execute the system scheduler for one frame
+    #[inline]
+    pub fn execute_scheduler(&mut self) -> Result<(), wgpu::SurfaceError> {
+        // Update
+        self.world.update();
+
+        // This should happen before rendering, for now we do it here
         self.prepare_surface()?;
 
-        self.run_systems(SystemStage::PreRender);
-        self.run_systems(SystemStage::Render);
+        // Run all systems
+        self.scheduler.execute_pipeline(&mut self.world);
 
-        self.render_graph.execute(&mut self.world);
-        self.world.flush_commands();
-
-        self.run_systems(SystemStage::PostRender);
-        self.run_systems(SystemStage::FrameEnd);
-
+        // Present surface
         self.finish_surface();
         Ok(())
     }

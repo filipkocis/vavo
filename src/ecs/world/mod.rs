@@ -28,6 +28,11 @@ pub struct World {
     pub(crate) render_command_queue: RenderCommandQueue,
 }
 
+// Safety: World needs to be Send and Sync so we can use it in schedulers that run systems in
+// parallel. Scheduler manages safe access to the world.
+unsafe impl Send for World {}
+unsafe impl Sync for World {}
+
 impl Default for World {
     fn default() -> Self {
         let tick = Box::new(Tick::default());
