@@ -1,13 +1,14 @@
 pub mod commands;
-mod handler;
+mod conflict;
 mod into;
 mod macros;
 mod params;
+mod scheduler;
 
 pub use commands::Commands;
-pub use handler::*;
 pub use into::{IntoSystem, IntoSystemCondition};
 pub use params::{ParamInfo, SystemParam, TypeInfo};
+pub use scheduler::*;
 
 use crate::prelude::{Tick, World};
 
@@ -43,6 +44,8 @@ pub struct SystemExec<Output = ()> {
     pub exec_info: TypeInfo,
     /// System execution function
     exec: Box<SystemExecFn<Output>>,
+    /// System init function
+    init: Box<SystemExecFn<()>>,
     /// System apply function
     apply: Box<SystemExecFn<()>>,
 }
@@ -53,12 +56,14 @@ impl<Output> SystemExec<Output> {
         params_info: Vec<ParamInfo>,
         exec_info: TypeInfo,
         exec: Box<SystemExecFn<Output>>,
+        init: Box<SystemExecFn<()>>,
         apply: Box<SystemExecFn<()>>,
     ) -> Self {
         Self {
             params_info,
             exec_info,
             exec,
+            init,
             apply,
         }
     }
@@ -68,6 +73,13 @@ impl<Output> SystemExec<Output> {
     pub fn run(&mut self, world: &mut World, last_run: &Tick) -> Output {
         let context = SystemContext::new(last_run, &self.params_info, &self.exec_info);
         (self.exec)(world, context)
+    }
+
+    /// Execute the system's init function
+    #[inline]
+    pub fn init(&mut self, world: &mut World, last_run: &Tick) {
+        let context = SystemContext::new(last_run, &self.params_info, &self.exec_info);
+        (self.init)(world, context);
     }
 
     /// Execute the system's apply function
@@ -83,9 +95,9 @@ pub struct System {
     /// Tick of the last run, or `0`
     last_run: Tick,
     /// System execution
-    exec: SystemExec,
+    pub(super) exec: SystemExec,
     /// Run conditions
-    conditions: Vec<SystemCondition>,
+    pub(super) conditions: Vec<SystemCondition>,
 }
 
 impl System {
@@ -107,7 +119,12 @@ impl System {
         }
     }
 
-    // TODO: add 'init' and 'teardown (?)' functions for systems
+    /// Initializes the system.
+    #[inline]
+    pub fn init(&mut self, world: &mut World) {
+        self.conditions.iter_mut().for_each(|c| c.init(world));
+        self.exec.init(world, &self.last_run);
+    }
 
     /// Applies any changes to the world needed after system execution by system parameters.
     /// This is run on the main thread after all parallel systems have finished executing.
@@ -131,7 +148,7 @@ pub struct SystemCondition {
     /// Tick of the last run, or `0`
     last_run: Tick,
     /// Condition execution
-    exec: SystemExec<bool>,
+    pub(super) exec: SystemExec<bool>,
 }
 
 impl SystemCondition {
@@ -142,6 +159,12 @@ impl SystemCondition {
         let result = self.exec.run(world, &self.last_run);
         self.last_run = *world.tick;
         result
+    }
+
+    /// Initializes the condition.
+    #[inline]
+    pub fn init(&mut self, world: &mut World) {
+        self.exec.init(world, &self.last_run);
     }
 
     /// Applies any changes to the world needed after condition execution by system parameters.

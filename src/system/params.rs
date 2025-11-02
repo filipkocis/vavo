@@ -134,11 +134,9 @@ pub trait SystemParam: IntoParamInfo {
     /// Initialize the parameter state.
     fn init_state() -> Self::State;
 
-    /// Initialize the parameter state with access to the world.
+    /// Initialize the parameter state with access to the world. Noop by default.
     #[inline]
-    fn init_state_world(_world: &mut World) -> Self::State {
-        Self::init_state()
-    }
+    fn init_state_world(_world: &mut World, _state: &mut Self::State, _context: &SystemContext) {}
 }
 
 /// Macro to implement [`SystemParam`] for stateless system parameters with only extract logic
@@ -304,8 +302,8 @@ where
     }
 
     #[inline]
-    fn init_state_world(_world: &mut World) -> Self::State {
-        QueryCache
+    fn init_state_world(_world: &mut World, state: &mut Self::State, _context: &SystemContext) {
+        *state = QueryCache;
     }
 }
 
@@ -353,9 +351,13 @@ pub(super) mod macros {
 
                     #[allow(unused_variables)]
                     #[inline]
-                    fn init_state_world(world: &mut World) -> Self::State {
-                        #[allow(clippy::unused_unit)]
-                        ($($param::init_state_world(unsafe { world.reborrow() }),)*)
+                    fn init_state_world(world: &mut World, state: &mut Self::State, context: &SystemContext) {
+                        #[allow(non_snake_case)]
+                        let ($($param,)*) = state;
+
+                        $(
+                            $param::init_state_world(unsafe { world.reborrow() }, $param, context);
+                        )*
                     }
                 }
 

@@ -144,10 +144,14 @@ pub(super) mod macros {
             // Initialize parameter states into a tuple
             $( let mut $param = Box::new($param::init_state()); )*
 
+            // Safety: These are used only during system initialization
+            #[allow(clippy::unused_unit, unused_mut, unused_unsafe)]
+            let mut unsafe_states_copy_init = unsafe { ( $(&mut *(&mut *$param as *mut _),)* ) };
+
             // Safety: These are used within the 'apply' closure, which is on the main
             // thread after all systems have finished, so 'exec' will not be running
             #[allow(clippy::unused_unit, unused_mut, unused_unsafe)]
-            let mut unsafe_states_copy = unsafe { ( $(&mut *(&mut *$param as *mut _),)* ) };
+            let mut unsafe_states_copy_apply = unsafe { ( $(&mut *(&mut *$param as *mut _),)* ) };
 
             #[allow(unused_variables)]
             let exec_fn = Box::new(move |world: &mut World, context: SystemContext| {
@@ -158,15 +162,24 @@ pub(super) mod macros {
             });
 
             #[allow(unused_variables)]
+            let init_fn = Box::new(move |world: &mut World, context: SystemContext| {
+                let ( $(ref mut $param,)* ) = unsafe_states_copy_init;
+
+                $(
+                    $param::init_state_world(unsafe { world.reborrow() }, $param, &context);
+                )*
+            });
+
+            #[allow(unused_variables)]
             let apply_fn = Box::new(move |world: &mut World, context: SystemContext| {
-                let ( $(ref mut $param,)* ) = unsafe_states_copy;
+                let ( $(ref mut $param,)* ) = unsafe_states_copy_apply;
 
                 $(
                     $param::apply(unsafe { world.reborrow() }, $param, &context);
                 )*
             });
 
-            let exec = SystemExec::new(params_info, exec_info, exec_fn, apply_fn);
+            let exec = SystemExec::new(params_info, exec_info, exec_fn, init_fn, apply_fn);
             exec
         }}
     }
