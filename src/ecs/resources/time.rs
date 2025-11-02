@@ -1,6 +1,7 @@
 use crate::macros::Resource;
 use web_time::{Duration, Instant};
 
+/// Resource used for tracking time in the application
 #[derive(Resource)]
 pub struct Time {
     /// Current world tick / frame count
@@ -28,11 +29,14 @@ impl Default for Time {
 }
 
 impl Time {
+    /// Create a new Time resource
+    #[inline]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Update the delta time and last frame time, increment tick
+    #[inline]
     pub(crate) fn update(&mut self) {
         let now = Instant::now();
         self.delta = now.duration_since(self.last_frame).as_secs_f32();
@@ -41,31 +45,37 @@ impl Time {
     }
 
     /// Returns the start time of the application
+    #[inline]
     pub fn start(&self) -> Instant {
         self.start
     }
 
     /// Returns the start of the current frame (last frame render end)
+    #[inline]
     pub fn last_frame(&self) -> Instant {
         self.last_frame
     }
 
     /// Returns the current tick / frame count
+    #[inline]
     pub fn tick(&self) -> u64 {
         self.tick
     }
 
     /// Returns the duration of the last frame in seconds
+    #[inline]
     pub fn delta(&self) -> f32 {
         self.delta
     }
 
     /// Returns the elapsed time since the application started in seconds
+    #[inline]
     pub fn elapsed(&self) -> f32 {
         self.start.elapsed().as_secs_f32()
     }
 
     /// Returns the frames per second (FPS) of the last frame
+    #[inline]
     pub fn fps(&self) -> f32 {
         1.0 / self.delta
     }
@@ -74,6 +84,7 @@ impl Time {
     /// This should realy only be used once, at the end of the frame, since it will block the
     /// thread and not call [`Self::update`], so each call to this function will sleep the same.
     /// It's not very accurate since it's based on the delta time of the last frame.
+    #[inline]
     pub fn sleep(&mut self, fps_target: f32) {
         let fps = self.fps();
         if fps > fps_target {
@@ -93,6 +104,8 @@ pub struct FixedTime {
 }
 
 impl FixedTime {
+    /// Create a new FixedTime with `fixed_delta` time step, (e.g. 60fps = 1.0 / 60.0)
+    #[inline]
     pub fn new(fixed_delta: f32) -> Self {
         let time = Time::new();
         let accumulator = 0.0;
@@ -104,27 +117,36 @@ impl FixedTime {
         }
     }
 
-    /// Create a new `FixedTime` with time step of `1.0 / hz`
+    /// Create a new FixedTime from a target hertz (e.g 60fps = 60.0)
+    #[inline]
     pub fn from_hz(hz: f32) -> Self {
         Self::new(1.0 / hz)
     }
 
-    /// Increment the accumulator by the internal time's delta time
+    /// Update the internal time and accumulator
+    /// # Note
+    /// This should be called once per frame
+    #[inline]
     pub(crate) fn update(&mut self) {
         self.time.update();
         self.accumulator += self.time.delta();
     }
 
+    /// Sets the internal fixed delta time step
+    #[inline]
     pub fn set_fixed_delta(&mut self, fixed_delta: f32) {
         self.fixed_delta = fixed_delta;
     }
 
+    /// Returns the internal fixed delta time step
+    #[inline]
     pub fn fixed_delta(&self) -> f32 {
         self.fixed_delta
     }
 
     /// Consume the accumulator and return the number of iterations necessary to reach the fixed
     /// time average
+    #[inline]
     pub fn iter(&mut self) -> usize {
         let mut iter = 0;
 
@@ -134,6 +156,65 @@ impl FixedTime {
         }
 
         iter
+    }
+}
+
+/// Resoruce used for tracking the FPS over time
+#[derive(Default, Resource)]
+pub struct FpsCounter {
+    history: Vec<f32>,
+    index: usize,
+    sum: f32,
+    capacity: usize,
+    time: Time,
+}
+
+impl FpsCounter {
+    /// Crate a new FpsCounter with a given history capacity
+    #[inline]
+    pub fn new(capacity: usize) -> Self {
+        Self {
+            history: Vec::with_capacity(capacity),
+            capacity,
+            ..Default::default()
+        }
+    }
+
+    /// Update the FPS counter with the latest FPS value
+    #[inline]
+    pub fn update(&mut self) {
+        self.time.update();
+        let fps = self.time.fps();
+
+        if self.history.len() < self.capacity {
+            self.history.push(fps);
+            self.sum += fps;
+        } else {
+            self.sum -= self.history[self.index];
+            self.history[self.index] = fps;
+            self.sum += fps;
+            self.index = (self.index + 1) % self.capacity;
+        }
+    }
+
+    /// Returns the average FPS over the history
+    #[inline]
+    pub fn average_fps(&self) -> f32 {
+        if self.history.is_empty() {
+            0.0
+        } else {
+            self.sum / self.history.len() as f32
+        }
+    }
+
+    /// Returns the last recorded FPS value
+    #[inline]
+    pub fn last_fps(&self) -> f32 {
+        if self.history.is_empty() {
+            0.0
+        } else {
+            self.history[(self.index + self.capacity - 1) % self.capacity]
+        }
     }
 }
 
