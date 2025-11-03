@@ -2,11 +2,13 @@ mod changes;
 pub mod label;
 mod location;
 mod phase;
+mod threads;
 
 pub use changes::SchedulerChanges;
 pub use label::{LayerLabel, PhaseLabel};
 pub use location::{IntoSchedulerLocation, SchedulerLocation};
 pub use phase::{Phase, PhaseExecutionPolicy, PhaseExecutionType};
+pub(super) use threads::ThreadPool;
 
 use crate::{
     prelude::{FixedTime, World},
@@ -109,6 +111,7 @@ impl Layer {
 /// [batches](Batch).
 pub struct Scheduler {
     phases: Vec<Phase>,
+    thread_pool: ThreadPool,
     pub pending_changes: SchedulerChanges,
 }
 
@@ -120,8 +123,13 @@ impl Default for Scheduler {
             .map(Phase::new)
             .collect();
 
+        let size = std::thread::available_parallelism()
+            .map(|n| n.get())
+            .unwrap_or(1);
+
         let mut scheduler = Self {
             phases,
+            thread_pool: ThreadPool::new(size),
             pending_changes: SchedulerChanges::default(),
         };
 
@@ -266,7 +274,7 @@ impl Scheduler {
         self.apply_changes();
 
         for phase in &mut self.phases {
-            phase.execute(world, &mut self.pending_changes);
+            phase.execute(world, &mut self.pending_changes, &self.thread_pool);
         }
     }
 
@@ -277,7 +285,7 @@ impl Scheduler {
 
         if let Some(phase_index) = self.find_phase(phase.phase_label()) {
             let phase = &mut self.phases[phase_index];
-            phase.execute(world, &mut self.pending_changes);
+            phase.execute(world, &mut self.pending_changes, &self.thread_pool);
         } else {
             panic!(
                 "System phase {:?} not found in scheduler",

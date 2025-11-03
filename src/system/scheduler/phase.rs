@@ -2,7 +2,7 @@ use std::fmt::Debug;
 
 use crate::{
     prelude::{FixedTime, World},
-    system::{Layer, SchedulerChanges, System, SystemCondition, layer},
+    system::{Layer, SchedulerChanges, System, SystemCondition, ThreadPool, layer},
 };
 
 /// Type of execution for a [phase](Phase)
@@ -203,7 +203,12 @@ impl Phase {
 impl Phase {
     /// Execute this phase
     #[inline]
-    pub(super) fn execute(&mut self, world: &mut World, pending_changes: &mut SchedulerChanges) {
+    pub(super) fn execute(
+        &mut self,
+        world: &mut World,
+        pending_changes: &mut SchedulerChanges,
+        thread_pool: &ThreadPool,
+    ) {
         let mut iterations = 1;
 
         if self.execution_policy.is_normal() {
@@ -227,7 +232,7 @@ impl Phase {
         for _ in 0..iterations {
             match self.execution_type {
                 PhaseExecutionType::Sequential => self.execute_sequential(world),
-                PhaseExecutionType::Parallel => self.execute_parallel(world),
+                PhaseExecutionType::Parallel => self.execute_parallel(world, thread_pool),
             }
         }
 
@@ -251,25 +256,29 @@ impl Phase {
     }
 
     /// Execute systems in parallel where possible
-    /// TODO: Currently temporary solution using new threads, replace with proper thread pool
     #[inline]
-    fn execute_parallel(&mut self, world: &mut World) {
-        let mut handles = vec![];
+    fn execute_parallel(&mut self, world: &mut World, thread_pool: &ThreadPool) {
         for layer in &mut self.layers {
             for batch in &mut layer.batches {
+                // TODO: Better heuristic for parallelization, maybe batch systems inside a batch
+                // and send those sub-batches to threads instead of individual systems
+                let parallelize = batch.systems.len() > 5;
+
                 for system in &mut batch.systems {
                     let world_ref = unsafe { &mut *(world as *mut World) };
                     let system_ref = unsafe { &mut *(system as *mut System) };
 
-                    let handle = std::thread::spawn(move || {
-                        system_ref.run(world_ref);
-                    });
-
-                    handles.push(handle);
+                    if parallelize {
+                        thread_pool.submit(Box::new(move || {
+                            system_ref.run(world_ref);
+                        }));
+                    } else {
+                        system.run(world);
+                    }
                 }
 
-                for handle in handles.drain(..) {
-                    handle.join().expect("System thread panicked");
+                if parallelize {
+                    thread_pool.wait_all();
                 }
             }
         }

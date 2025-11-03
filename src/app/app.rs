@@ -149,34 +149,6 @@ impl App {
         self
     }
 
-    // fn run_systems(&mut self, location: impl IntoSchedulerLocation) {
-    //     let systems = self.scheduler.get_systems(phase);
-    //     if systems.is_empty() {
-    //         return;
-    //     }
-    //
-    //     let iterations = if phase.has_fixed_time() {
-    //         let mut fixed_time = self.world.resources.get_mut::<FixedTime>();
-    //         fixed_time.iter()
-    //     } else {
-    //         1
-    //     };
-    //
-    //     // will be parallel in the future
-    //     for _ in 0..iterations {
-    //         for system in systems.iter_mut() {
-    //             system.run(&mut self.world);
-    //         }
-    //     }
-    //
-    //     // runs on the main thread
-    //     for system in systems.iter_mut() {
-    //         system.apply(&mut self.world);
-    //     }
-    //
-    //     self.world.flush_commands();
-    // }
-
     /// Get a mutable reference to the render graph. Use [Self::reborrow] in combination with this.
     ///
     /// # Safety
