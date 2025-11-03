@@ -4,6 +4,7 @@ mod into;
 mod macros;
 mod params;
 mod scheduler;
+mod tasks;
 
 pub use commands::Commands;
 use conflict::ConflictChecker;
@@ -13,6 +14,7 @@ pub use scheduler::{
     label::{layer, phase},
     *,
 };
+pub use tasks::{AsyncTask, Task};
 
 use crate::prelude::{Tick, World};
 

@@ -15,7 +15,10 @@ pub use super::{
     },
     reflect::Reflect,
     renderer::{Color, Face, Image, Material, Mesh, Meshable, Texture},
-    system::{Commands, IntoSchedulerLocation, IntoSystem, IntoSystemCondition, layer, phase},
+    system::{
+        AsyncTask, Commands, IntoSchedulerLocation, IntoSystem, IntoSystemCondition, Task, layer,
+        phase,
+    },
     wgpu::{self},
     window::prelude::*,
     winit::{self},
