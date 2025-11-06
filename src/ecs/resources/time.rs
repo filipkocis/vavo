@@ -292,6 +292,12 @@ impl Timer {
         Duration::from_secs_f32(self.elapsed)
     }
 
+    /// Returns the timer progress as a percentage (0.0 to 1.0)
+    #[inline]
+    pub fn percent(&self) -> f32 {
+        (self.elapsed_secs() / self.duration_secs()).clamp(0.0, 1.0)
+    }
+
     /// Pause the timer
     #[inline]
     pub fn pause(&mut self) {
@@ -331,6 +337,18 @@ impl Timer {
         self.duration
     }
 
+    /// Returns the duration of the timer in seconds
+    #[inline]
+    pub fn duration_secs(&self) -> f32 {
+        self.duration().as_secs_f32()
+    }
+
+    /// Returns the elapsed time of the timer in seconds
+    #[inline]
+    pub fn elapsed_secs(&self) -> f32 {
+        self.elapsed().as_secs_f32()
+    }
+
     /// Returns true if the timer has finished based on its variant, or if it has just finished. In
     /// case of [TimerVariant::Repeat] this will never stay true.
     #[inline]
@@ -341,6 +359,12 @@ impl Timer {
         }
 
         false
+    }
+
+    /// Returns true if the timer is fully finished and will not update anymore.
+    #[inline]
+    pub fn fully_finished(&self) -> bool {
+        self.finished
     }
 
     /// Returns true if the last update caused the timer to finish. This will only be true for one
@@ -373,7 +397,7 @@ impl Timer {
                 }
                 TimerVariant::Repeat => {
                     // Wrap around elapsed time
-                    self.elapsed = self.elapsed % self.duration.as_secs_f32();
+                    self.elapsed %= self.duration.as_secs_f32();
                 }
                 TimerVariant::RepeatN(total) => {
                     self.repeats += 1;
@@ -384,7 +408,7 @@ impl Timer {
                         self.elapsed = self.duration.as_secs_f32();
                     } else {
                         // Wrap around elapsed time
-                        self.elapsed = self.elapsed % self.duration.as_secs_f32();
+                        self.elapsed %= self.duration.as_secs_f32();
                     }
                 }
             }
