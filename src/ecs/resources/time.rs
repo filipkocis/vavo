@@ -240,6 +240,7 @@ pub struct Timer {
     repeats: u32,
     just_finished: bool,
     finished: bool,
+    active: bool,
 }
 
 impl Timer {
@@ -253,6 +254,7 @@ impl Timer {
             repeats: 0,
             just_finished: false,
             finished: false,
+            active: true,
         }
     }
 
@@ -288,6 +290,24 @@ impl Timer {
     #[inline]
     pub fn elapsed(&self) -> Duration {
         Duration::from_secs_f32(self.elapsed)
+    }
+
+    /// Pause the timer
+    #[inline]
+    pub fn pause(&mut self) {
+        self.active = false;
+    }
+
+    /// Resume the timer
+    #[inline]
+    pub fn resume(&mut self) {
+        self.active = true;
+    }
+
+    /// Returns true if the timer is active (not paused)
+    #[inline]
+    pub fn is_active(&self) -> bool {
+        self.active
     }
 
     /// Resets the timer elapsed time to zero
@@ -335,7 +355,7 @@ impl Timer {
     pub fn update(&mut self, delta: f32) {
         self.just_finished = false;
 
-        if self.finished {
+        if self.finished || !self.active {
             return;
         }
 
