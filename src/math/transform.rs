@@ -28,20 +28,33 @@ pub struct GlobalTransform {
 }
 
 impl GlobalTransform {
+    /// Create new `GlobalTransform` from a matrix
+    #[inline]
     pub fn new(matrix: Mat4) -> Self {
         Self { matrix }
     }
 
+    /// Transforms a point by this `GlobalTransform`
+    #[inline]
+    #[must_use]
+    pub fn transform_point(&self, point: Vec3) -> Vec3 {
+        self.matrix.transform_point3(point)
+    }
+
     /// Extract the translation component
+    #[inline]
     pub fn translation(&self) -> Vec3 {
         self.matrix.w_axis.xyz()
     }
 
     /// Extract the rotation component
+    #[inline]
     pub fn rotation(&self) -> Quat {
         self.matrix.to_scale_rotation_translation().1
     }
 
+    /// Create a `GlobalTransform` from a local `Transform`
+    #[inline]
     pub fn from_transform(transform: &Transform) -> Self {
         Self {
             matrix: transform.as_matrix(),
@@ -49,16 +62,20 @@ impl GlobalTransform {
     }
 
     /// Update the global transform based on the provided local transform.
+    #[inline]
     pub fn update(&mut self, local: &Transform) {
         self.matrix = local.as_matrix();
     }
 
+    #[inline]
     pub fn as_matrix(&self) -> Mat4 {
         self.matrix
     }
 
     /// Combine this global transform with a child local transform, returning a new global
     /// transform for the child.
+    #[inline]
+    #[must_use]
     pub fn combine_child(&self, child_local: &Transform) -> Self {
         Self {
             matrix: self.matrix * child_local.as_matrix(),
@@ -68,11 +85,13 @@ impl GlobalTransform {
 
 impl Transform {
     /// Create new default Transform
+    #[inline]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Create new Transform from a matrix
+    #[inline]
     pub fn from_matrix(matrix: &Mat4) -> Self {
         let (scale, rotation, translation) = matrix.to_scale_rotation_translation();
 
@@ -89,19 +108,32 @@ impl Transform {
         Mat4::from_scale_rotation_translation(self.scale, self.rotation, self.translation)
     }
 
+    /// Transforms a point by this `Transform`
     #[inline]
+    #[must_use]
+    pub fn transform_point(&self, point: Vec3) -> Vec3 {
+        self.as_matrix().transform_point3(point)
+    }
+
+    /// Returns self with new `scale`
+    #[inline]
+    #[must_use]
     pub fn with_scale(mut self, scale: Vec3) -> Self {
         self.scale = scale;
         self
     }
 
+    /// Returns self with new `rotation`
     #[inline]
+    #[must_use]
     pub fn with_rotation(mut self, rotation: Quat) -> Self {
         self.rotation = rotation;
         self
     }
 
+    /// Returns self with new `translation`
     #[inline]
+    #[must_use]
     pub fn with_translation(mut self, translation: Vec3) -> Self {
         self.translation = translation;
         self
@@ -110,6 +142,7 @@ impl Transform {
     /// Creates a new Transform with its rotation pointing in the direction of `target`,
     /// using `up` as the up vector.
     #[inline]
+    #[must_use]
     pub fn looking_at(mut self, target: Vec3, up: Vec3) -> Self {
         self.look_at(target, up);
         self
@@ -118,25 +151,84 @@ impl Transform {
     /// Creates a new Transform with its rotation pointing in the `direction`, using `up` as the up
     /// vector.
     #[inline]
+    #[must_use]
     pub fn looking_to(mut self, direction: Vec3, up: Vec3) -> Self {
         self.look_to(direction, up);
         self
     }
 
+    /// Translates this transform by `delta`
     #[inline]
     pub fn translate(&mut self, delta: Vec3) {
         self.translation += delta;
     }
 
+    /// Rotates this transform by `delta`, comes before existing rotation (like parent rotation)
     #[inline]
     pub fn rotate(&mut self, delta: Quat) {
-        // Note: order matters here
         self.rotation = delta * self.rotation;
     }
 
+    /// Rotates this transform by `delta`, comes after existing rotation, relative to local axes
+    #[inline]
+    pub fn rotate_local(&mut self, delta: Quat) {
+        self.rotation *= delta;
+    }
+
+    /// Scales this transform by `delta`
     #[inline]
     pub fn scale(&mut self, delta: Vec3) {
         self.scale *= delta;
+    }
+
+    /// Translates this transform around a point by a rotation
+    #[inline]
+    pub fn translate_around(&mut self, point: Vec3, rotation: Quat) {
+        self.translation = point + rotation * (self.translation - point);
+    }
+
+    /// Rotates this transform around a point by a rotation
+    #[inline]
+    pub fn rotate_around(&mut self, point: Vec3, rotation: Quat) {
+        self.translate_around(point, rotation);
+        self.rotate(rotation);
+    }
+
+    /// Rotates this transform around the `X` axis by `radians`
+    #[inline]
+    pub fn rotate_x(&mut self, radians: f32) {
+        self.rotate(Quat::from_rotation_x(radians));
+    }
+
+    /// Rotates this transform around the `Y` axis by `radians`
+    #[inline]
+    pub fn rotate_y(&mut self, radians: f32) {
+        self.rotate(Quat::from_rotation_y(radians));
+    }
+
+    /// Rotates this transform around the `Z` axis by `radians`
+    #[inline]
+    pub fn rotate_z(&mut self, radians: f32) {
+        self.rotate(Quat::from_rotation_z(radians));
+    }
+
+    /// Rotates this transform around its local `X` axis by `radians`
+    #[inline]
+    pub fn rotate_local_x(&mut self, radians: f32) {
+        let delta = Quat::from_rotation_x(radians);
+        self.rotate(delta);
+    }
+
+    /// Rotates this transform around its local `Y` axis by `radians`
+    #[inline]
+    pub fn rotate_local_y(&mut self, radians: f32) {
+        self.rotate(Quat::from_rotation_y(radians));
+    }
+
+    /// Rotates this transform around its local `Z` axis by `radians`
+    #[inline]
+    pub fn rotate_local_z(&mut self, radians: f32) {
+        self.rotate_local(Quat::from_rotation_z(radians));
     }
 
     /// Rotates this transform to look in the direction of `target` with the `up` vector
@@ -161,19 +253,19 @@ impl Transform {
         self.rotation = Quat::from_mat3(&Mat3::from_cols(right, up, back));
     }
 
-    /// Get the forward direction vector (negative Z axis)
+    /// Get the forward direction vector (local negative Z axis)
     #[inline]
     pub fn forward(&self) -> Vec3 {
         self.rotation.mul_vec3(Vec3::NEG_Z)
     }
 
-    /// Get the up direction vector (Y axis)
+    /// Get the up direction vector (local Y axis)
     #[inline]
     pub fn up(&self) -> Vec3 {
         self.rotation.mul_vec3(Vec3::Y)
     }
 
-    /// Get the right direction vector (X axis)
+    /// Get the right direction vector (local X axis)
     #[inline]
     pub fn right(&self) -> Vec3 {
         self.rotation.mul_vec3(Vec3::X)
