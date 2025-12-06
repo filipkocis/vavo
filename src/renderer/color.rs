@@ -12,16 +12,24 @@ pub struct Color {
 }
 
 impl Color {
+    #[inline]
     pub const fn new(r: f32, g: f32, b: f32, a: f32) -> Self {
         Self { r, g, b, a }
     }
 
+    #[inline]
     pub const fn rgb(r: f32, g: f32, b: f32) -> Self {
         Self::new(r, g, b, 1.0)
     }
 
+    #[inline]
     pub const fn from_rgb_slice(slice: &[f32; 3]) -> Self {
         Self::rgb(slice[0], slice[1], slice[2])
+    }
+
+    #[inline]
+    pub const fn from_rgba_slice(slice: &[f32; 4]) -> Self {
+        Self::new(slice[0], slice[1], slice[2], slice[3])
     }
 
     pub fn as_rgba_slice(&self) -> [f32; 4] {
