@@ -11,7 +11,7 @@ bytemuck = { version = "1.24", features = ["derive"] }
 glam = "0.30"
 # glyphon = "0.8"
 # temporary git dependency with wgpu 27 support
-glyphon = { git = "https://github.com/grovesNL/glyphon.git", rev = "de4b5b8d4e52310be8df56d82a759593920acc04" }
+glyphon = { git = "https://github.com/grovesNL/glyphon.git", rev = "9dd937623314eac1cc0863465fd359eef3270d66" }
 image = { version = "0.25", features = ["png", "jpeg", "gif", "hdr"], default-features = false }
 kira = "0.11"
 pollster = "0.4"
