@@ -13,14 +13,11 @@ fn resolve_path_name() -> proc_macro2::TokenStream {
             let ident = Ident::new(&crate_name, Span::call_site());
             quote!(#ident)
         }
-        Err(_) => {
-            return syn::Error::new(
-                Span::call_site(),
-                "Could not find the `vavo` crate. Ensure it is a dependency in your Cargo.toml.",
-            )
-            .to_compile_error()
-            .into();
-        }
+        Err(_) => syn::Error::new(
+            Span::call_site(),
+            "Could not find the `vavo` crate. Ensure it is a dependency in your Cargo.toml.",
+        )
+        .to_compile_error(),
     }
 }
 
