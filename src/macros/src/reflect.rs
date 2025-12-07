@@ -73,7 +73,7 @@ pub fn derive_reflect_implementation(item: TokenStream) -> TokenStream {
                         let indices = 0..named.named.len();
                         let field_names: Vec<_> = named.named.iter().map(|f| &f.ident).collect();
                         quote! {
-                            Self::#variant_name { #(ref #field_names),* } => match index {
+                            Self::#variant_name { #( #field_names),* } => match index {
                                 #( #indices => Some(#field_names), )*
                                 _ => None,
                             }
@@ -85,7 +85,7 @@ pub fn derive_reflect_implementation(item: TokenStream) -> TokenStream {
                             .map(|i| Ident::new(&format!("field_{}", i), Span::call_site()))
                             .collect();
                         quote! {
-                            Self::#variant_name( #( ref #field_idents ),* ) => match index {
+                            Self::#variant_name( #( #field_idents ),* ) => match index {
                                 #( #indices => Some(#field_idents), )*
                                 _ => None,
                             }
@@ -103,7 +103,7 @@ pub fn derive_reflect_implementation(item: TokenStream) -> TokenStream {
                         let field_names: Vec<_> = named.named.iter().map(|f| &f.ident).collect();
                         let field_types = named.named.iter().map(|f| &f.ty);
                         quote! {
-                            Self::#variant_name { #(ref mut #field_names),* } => match index {
+                            Self::#variant_name { #( #field_names),* } => match index {
                                 #( #indices => value.downcast::<#field_types>().map(|value| *#field_names = *value), )*
                                 _ => Err(value),
                             }
@@ -116,7 +116,7 @@ pub fn derive_reflect_implementation(item: TokenStream) -> TokenStream {
                             .collect();
                         let field_types = unnamed.unnamed.iter().map(|f| &f.ty);
                         quote! {
-                            Self::#variant_name( #( ref mut #field_idents ),* ) => match index {
+                            Self::#variant_name( #( #field_idents ),* ) => match index {
                                 #( #indices => value.downcast::<#field_types>().map(|value| *#field_idents = *value), )*
                                 _ => Err(value),
                             }
