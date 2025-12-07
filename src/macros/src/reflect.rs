@@ -1,7 +1,7 @@
 use proc_macro::TokenStream;
 use proc_macro2::{Ident, Span};
 use quote::quote;
-use syn::{parse_macro_input, Data, DeriveInput, Fields};
+use syn::{Data, DeriveInput, Fields, parse_macro_input};
 
 use crate::resolve_path_name;
 
@@ -11,21 +11,30 @@ pub fn derive_reflect_implementation(item: TokenStream) -> TokenStream {
     let name = &input.ident;
     let generics = &input.generics;
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
-    
+
     let (reflect_impl_block, get_type_info_impl_block) = match &input.data {
         Data::Struct(data_struct) => {
             let is_tuple = matches!(data_struct.fields, Fields::Unnamed(_));
-            let fields: Vec<_> = data_struct.fields.iter().enumerate().map(|(i, f)| 
-                f.ident.as_ref()
-                    .map(|ident| quote! { #ident })
-                    .unwrap_or_else(|| {
-                        let i = syn::Index::from(i);
-                        quote! { #i }
-                    })
-            ).collect();
+            let fields: Vec<_> = data_struct
+                .fields
+                .iter()
+                .enumerate()
+                .map(|(i, f)| {
+                    f.ident
+                        .as_ref()
+                        .map(|ident| quote! { #ident })
+                        .unwrap_or_else(|| {
+                            let i = syn::Index::from(i);
+                            quote! { #i }
+                        })
+                })
+                .collect();
 
             let field_names: Vec<_> = fields.iter().map(|f| f.to_string()).collect();
-            let field_types: Vec<_> = fields.iter().map(|f| quote! { self.#f.type_info() }).collect();
+            let field_types: Vec<_> = fields
+                .iter()
+                .map(|f| quote! { self.#f.type_info() })
+                .collect();
             let field_indices: Vec<_> = (0..fields.len()).collect();
 
             let reflect = quote! {
@@ -35,7 +44,7 @@ pub fn derive_reflect_implementation(item: TokenStream) -> TokenStream {
                         _ => None,
                     }
                 }
-                
+
                 fn set_field_by_index(&mut self, index: usize, value: Box<dyn std::any::Any>) -> Result<(), Box<dyn std::any::Any>> {
                     match index {
                         #(#field_indices => value.downcast::<_>().map(|value| self.#fields = *value),)*
@@ -55,7 +64,7 @@ pub fn derive_reflect_implementation(item: TokenStream) -> TokenStream {
                         #is_tuple
                     ))
                 }
-                
+
                 fn type_name(&self) -> &'static str {
                     stringify!(#name)
                 }
@@ -64,7 +73,11 @@ pub fn derive_reflect_implementation(item: TokenStream) -> TokenStream {
             (reflect, get_type_info)
         }
         Data::Enum(data_enum) => {
-            let variant_names: Vec<_> = data_enum.variants.iter().map(|v| v.ident.to_string()).collect();
+            let variant_names: Vec<_> = data_enum
+                .variants
+                .iter()
+                .map(|v| v.ident.to_string())
+                .collect();
 
             let variant_matches = data_enum.variants.iter().map(|v| {
                 let variant_name = &v.ident;
@@ -94,7 +107,7 @@ pub fn derive_reflect_implementation(item: TokenStream) -> TokenStream {
                     Fields::Unit => quote! { Self::#variant_name => None },
                 }
             });
-            
+
             let set_variant_matches = data_enum.variants.iter().map(|v| {
                 let variant_name = &v.ident;
                 match &v.fields {
@@ -133,7 +146,7 @@ pub fn derive_reflect_implementation(item: TokenStream) -> TokenStream {
                         _ => None,
                     }
                 }
-                
+
                 fn set_field_by_index(&mut self, index: usize, value: Box<dyn std::any::Any>) -> Result<(), Box<dyn std::any::Any>> {
                     match self {
                         #(#set_variant_matches,)*
@@ -151,7 +164,7 @@ pub fn derive_reflect_implementation(item: TokenStream) -> TokenStream {
                         [#(#variant_names),*],
                     ))
                 }
-                
+
                 fn type_name(&self) -> &'static str {
                     stringify!(#name)
                 }
@@ -160,10 +173,12 @@ pub fn derive_reflect_implementation(item: TokenStream) -> TokenStream {
             (reflect, get_type_info)
         }
         Data::Union(_) => {
-            return syn::Error::new_spanned(name, "Reflect cannot be derived for unions").to_compile_error().into();
+            return syn::Error::new_spanned(name, "Reflect cannot be derived for unions")
+                .to_compile_error()
+                .into();
         }
     };
-    
+
     let expanded = quote! {
         impl #impl_generics #path::reflect::Reflect for #name #ty_generics #where_clause {
             #reflect_impl_block
@@ -173,6 +188,6 @@ pub fn derive_reflect_implementation(item: TokenStream) -> TokenStream {
             #get_type_info_impl_block
         }
     };
-    
+
     TokenStream::from(expanded)
 }
