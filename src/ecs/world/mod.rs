@@ -1,5 +1,5 @@
 use crate::app::App;
-use crate::prelude::EntityId;
+use crate::prelude::{Component, EntityId};
 use crate::query::Query;
 use crate::renderer::newtype::{RenderCommandQueue, RenderQueue};
 use crate::system::commands::CommandQueue;
@@ -86,6 +86,26 @@ impl World {
     #[inline]
     pub fn query_filtered<T, F>(&mut self) -> Query<T, F> {
         Query::new(&mut self.entities, *self.tick)
+    }
+
+    /// Inserts (or replaces) a component into an entity
+    #[inline]
+    pub fn insert_component<C: Component>(
+        &mut self,
+        entity_id: EntityId,
+        component: C,
+        replace: bool,
+    ) {
+        use crate::ecs::ptr::OwnedPtr;
+        use std::mem::ManuallyDrop;
+
+        let info = self.registry.get_or_register::<C>();
+        let mut component = ManuallyDrop::new(component);
+        // Safety: component is inserted and not used anymore
+        let ptr = unsafe { OwnedPtr::new_ref(&mut component) };
+
+        self.entities
+            .insert_component(entity_id, ptr, info, replace);
     }
 
     /// Returns a mutable reference to the parent app.

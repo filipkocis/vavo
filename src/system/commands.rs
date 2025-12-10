@@ -1,9 +1,8 @@
-use std::{any::TypeId, mem::ManuallyDrop};
+use std::any::TypeId;
 
 use crate::{
     ecs::{
         entities::{Component, EntityId, tracking::EntityTracking},
-        ptr::OwnedPtr,
         resources::Resource,
         world::World,
     },
@@ -192,14 +191,7 @@ impl<'a, 't, 'q> EntityCommands<'a, 't, 'q> {
         let entity_id = self.entity_id;
 
         let insert_closure = move |world: &mut World| {
-            let info = world.registry.get_or_register::<C>();
-            let mut component = ManuallyDrop::new(component);
-            // Safety: component is inserted and not used anymore
-            let ptr = unsafe { OwnedPtr::new_ref(&mut component) };
-
-            world
-                .entities
-                .insert_component(entity_id, ptr, info, replace);
+            world.insert_component(entity_id, component, replace);
         };
 
         self.commands
