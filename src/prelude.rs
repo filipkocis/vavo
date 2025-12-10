@@ -26,5 +26,8 @@ pub use super::{
 
 pub use vavo_macros::*;
 
+/// Re-exported scene macros
+pub use crate::{child, children, scene};
+
 /// Re-exported pallette module as color
 pub use super::renderer::palette as color;
