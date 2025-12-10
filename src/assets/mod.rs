@@ -1,11 +1,13 @@
 mod assets;
 mod handle;
 mod loader;
+pub mod scene;
 mod shader;
 
 pub use assets::Assets;
 pub use handle::Handle;
 pub use loader::{AssetLoader, LoadableAsset};
+pub use scene::{Scene, SceneProto};
 pub use shader::{Shader, ShaderLoader};
 
 pub trait Asset: Send + Sync + 'static {}

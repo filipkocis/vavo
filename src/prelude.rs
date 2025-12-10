@@ -1,6 +1,6 @@
 pub use super::{
     app::{App, Plugin},
-    assets::{Asset, AssetLoader, Assets, Handle, ShaderLoader},
+    assets::{Asset, AssetLoader, Assets, Handle, Name, Scene, SceneProto, ShaderLoader},
     audio::prelude::*,
     ecs::prelude::*,
     event::*,
