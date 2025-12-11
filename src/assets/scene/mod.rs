@@ -5,6 +5,7 @@ pub use macros::*;
 pub use proto::Proto;
 
 use crate::prelude::{Component, EntityId, World};
+use std::any::Any;
 
 /// Trait for scene objects which can create a default instance of themselves using
 /// [`prototypes`](Proto) with a scene context.
@@ -45,7 +46,7 @@ impl<T: Default> SceneProto for T {
 ///
 /// Users should implement [`SceneProto`] for their `components`, this trait will then be
 /// implemented automatically.
-pub trait Scene: Send + Sync + 'static {
+pub trait Scene: Any + Send + Sync + 'static {
     /// Build the scene into the given world under the specified entity.
     /// You can also use
     /// [Commands::insert_scene](crate::system::commands::EntityCommands::insert_scene).

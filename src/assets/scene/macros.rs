@@ -1,3 +1,5 @@
+use std::any::Any;
+
 use crate::{
     assets::Scene,
     prelude::{EntityId, World},
@@ -7,9 +9,10 @@ use crate::{
 /// A list of scene objects to be built into the ECS world.
 /// Describes a node and its components, as well as children.
 pub struct SceneList {
-    pub scenes: Vec<Box<dyn Scene>>,
+    /// List of scene objects to build
+    scenes: Vec<Box<dyn Scene>>,
     /// Whether to create this node as a child of the parent entity
-    pub child: bool,
+    child: bool,
 }
 
 impl SceneList {
@@ -22,10 +25,51 @@ impl SceneList {
         }
     }
 
+    /// Check if this scene list is for a child entity
+    #[inline]
+    pub fn is_child(&self) -> bool {
+        self.child
+    }
+
     /// Push a new scene object into the list
     #[inline]
-    pub fn push(&mut self, scene: impl Scene) {
-        self.scenes.push(Box::new(scene));
+    pub fn push<S: Scene>(&mut self, scene: S) {
+        self.push_boxed(Box::new(scene));
+    }
+
+    /// Internal push logic for `push`
+    #[inline]
+    fn push_boxed(&mut self, mut scene: Box<dyn Scene>) {
+        let new_any = scene.as_mut() as &mut dyn Any;
+        let new_type_id = (*new_any).type_id();
+
+        if let Some(list) = new_any.downcast_mut::<SceneList>() {
+            if list.child {
+                // Just add the SceneList as a child
+                self.scenes.push(scene);
+            } else {
+                // Unwrap nested SceneList and merge with this one
+                for nested_scene in list.scenes.drain(..) {
+                    self.push_boxed(nested_scene);
+                }
+            }
+
+            return;
+        }
+
+        // Replace existing scene objects of the same type
+        for current in &mut self.scenes {
+            let curr_any = current.as_ref() as &dyn Any;
+            let curr_type_id = (*curr_any).type_id();
+
+            if curr_type_id == new_type_id {
+                *current = scene;
+                return;
+            }
+        }
+
+        // Not a duplicate, not a list, just add it
+        self.scenes.push(scene);
     }
 }
 
@@ -74,10 +118,8 @@ impl Scene for SceneList {
 ///         // Local child
 ///         (Name::new("Child 2")),
 ///
-///         // Nested child in children is unwrapped
+///         // Nested child/children here are **not** unwrapped
 ///         (child![Name::new("Child 3")]),
-///
-///         // Nested children in children are unwrapped
 ///         (children![(Name::new("Child 4"))])
 ///     ],
 /// ];
@@ -116,11 +158,12 @@ impl Scene for SceneList {
 #[macro_export]
 macro_rules! scene {
     ($($component:expr),* $(,)?) => {{
-        let list = vec![ $( Box::new($component) as Box<dyn $crate::assets::scene::Scene>, )* ];
-        $crate::assets::scene::SceneList {
-            scenes: list,
-            child: false,
-        }
+        #[allow(unused_mut)]
+        let mut list = $crate::assets::scene::SceneList::default();
+        $(
+            list.push($component);
+        )*
+        list
     }}
 }
 
@@ -134,25 +177,21 @@ macro_rules! scene {
 ///     (Name::new("Child 1")),
 ///     (Name::new("Child 2"), Transform::proto()),
 ///
-///     // You can also use the `child!` macro
-///     child![Name::new("Child 3")],
-///
-///     // Nested children of children are `unwrapped` since it doesnt belong to a entity directly
-///     children![
+///     // Nested child/children will act as a new child with children, it does not unwrap
+///     (child![Name::new("Child 3")]),
+///     (children![
 ///         (Name::new("Child 4")),
-///     ]
+///     ]),
 /// ];
 #[macro_export]
 macro_rules! children {
     ($(( $( $component:expr ),+ )),* $(,)?) => {{
         #[allow(unused_mut)]
         let mut children = $crate::assets::scene::SceneList::default();
-
         $(
             let child = $crate::child![ $( $component ),+ ];
             children.push(child);
         )*
-
         children
     }}
 }
@@ -162,10 +201,11 @@ macro_rules! children {
 #[macro_export]
 macro_rules! child {
     ($($component:expr),* $(,)?) => {{
-        let list = vec![ $( Box::new($component) as Box<dyn $crate::assets::scene::Scene>, )* ];
-        $crate::assets::scene::SceneList {
-            scenes: list,
-            child: true,
-        }
+        #[allow(unused_mut)]
+        let mut list = $crate::assets::scene::SceneList::child();
+        $(
+            list.push($component);
+        )*
+        list
     }}
 }
