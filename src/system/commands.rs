@@ -1,6 +1,7 @@
 use std::any::TypeId;
 
 use crate::{
+    assets::Scene,
     ecs::{
         entities::{Component, EntityId, tracking::EntityTracking},
         resources::Resource,
@@ -47,19 +48,25 @@ pub struct CommandQueue {
 
 /// Queue of commands to be applied to the world.
 pub struct Commands<'t, 'q> {
+    /// Reference to entityk tracking storage.
     tracking: &'t mut EntityTracking,
+    /// Reference to the internal command queue.
     queue: &'q mut CommandQueue,
 }
 
 /// Commands for a specific entity.
 pub struct EntityCommands<'a, 't, 'q> {
+    /// Id of the entity being modified.
     entity_id: EntityId,
+    /// Reference to the commands manager.
     commands: &'a mut Commands<'t, 'q>,
 }
 
 /// Commands for creating child entities under a parent.
 pub struct ParentCommands<'a, 't, 'q> {
+    /// Id of the parent entity.
     parent_id: EntityId,
+    /// Reference to the comnands manager.
     commands: &'a mut Commands<'t, 'q>,
 }
 
@@ -144,6 +151,16 @@ impl<'a, 't, 'q> EntityCommands<'a, 't, 'q> {
         } else {
             self
         }
+    }
+
+    /// Inserts a scene to the entity.
+    pub fn insert_scene<S: Scene>(self, scene: S) -> Self {
+        self.commands.queue(Command::InsertComponent(Box::new(
+            move |world: &mut World| {
+                scene.build(world, self.entity_id);
+            },
+        )));
+        self
     }
 
     /// Removes a component from the entity.
