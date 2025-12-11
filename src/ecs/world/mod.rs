@@ -88,26 +88,6 @@ impl World {
         Query::new(&mut self.entities, *self.tick)
     }
 
-    /// Inserts (or replaces) a component into an entity
-    #[inline]
-    pub fn insert_component<C: Component>(
-        &mut self,
-        entity_id: EntityId,
-        component: C,
-        replace: bool,
-    ) {
-        use crate::ecs::ptr::OwnedPtr;
-        use std::mem::ManuallyDrop;
-
-        let info = self.registry.get_or_register::<C>();
-        let mut component = ManuallyDrop::new(component);
-        // Safety: component is inserted and not used anymore
-        let ptr = unsafe { OwnedPtr::new_ref(&mut component) };
-
-        self.entities
-            .insert_component(entity_id, ptr, info, replace);
-    }
-
     /// Returns a mutable reference to the parent app.
     ///
     /// # Safety
@@ -141,7 +121,49 @@ impl World {
     /// # Safety
     /// This is unsafe because it can lead to aliasing mutable references if used improperly.
     #[inline]
+    #[allow(clippy::needless_lifetimes)]
     pub(crate) unsafe fn reborrow<'a, 'b>(&'a mut self) -> &'b mut World {
         unsafe { &mut *(self as *mut World) }
+    }
+}
+
+impl World {
+    /// Spawns a new empty entity and returns its id
+    #[inline]
+    pub fn spawn(&mut self) -> EntityId {
+        let entity_id = self.entities.tracking.new_id();
+        self.entities.spawn_entity(entity_id, vec![]);
+        entity_id
+    }
+
+    /// Inserts (or replaces) a component into an entity
+    #[inline]
+    pub fn insert_component<C: Component>(
+        &mut self,
+        entity_id: EntityId,
+        component: C,
+        replace: bool,
+    ) {
+        use crate::ecs::ptr::OwnedPtr;
+        use std::mem::ManuallyDrop;
+
+        let info = self.registry.get_or_register::<C>();
+        let mut component = ManuallyDrop::new(component);
+        // Safety: component is inserted and not used anymore
+        let ptr = unsafe { OwnedPtr::new_ref(&mut component) };
+
+        self.entities
+            .insert_component(entity_id, ptr, info, replace);
+    }
+
+    /// Adds a child entity to a parent entity
+    #[inline]
+    pub fn add_child(&mut self, parent: EntityId, child: EntityId) {
+        use crate::prelude::{Children, Parent};
+        let parent_info = self.registry.get_or_register::<Parent>();
+        let children_info = self.registry.get_or_register::<Children>();
+
+        self.entities
+            .add_child(parent, child, parent_info, children_info);
     }
 }

@@ -75,9 +75,18 @@ impl SceneList {
 
 impl Scene for SceneList {
     fn build(&self, world: &mut World, entity: EntityId) {
-        // Since replace is false, we need to build from the end
         for scene in self.scenes.iter().rev() {
-            scene.build(world, entity);
+            if self.child {
+                // Create a new child entity
+                let child_entity = world.spawn();
+                scene.build(world, child_entity);
+
+                // Attach to parent
+                world.add_child(entity, child_entity);
+            } else {
+                // Apply normally
+                scene.build(world, entity);
+            }
         }
     }
 }
